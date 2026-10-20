@@ -37,3 +37,8 @@ name for nothing. Make the claim on its own terms instead.
 
 `app_comparison/bin/xpublic` does not catch this — it greps for hostnames,
 buckets, AWS identities, keys and developer paths, not for sibling app names.
+
+**Its history is published, so don't rewrite it.** The first two commits are on
+`origin/master`; an amend or a squash of anything at or below them means a force
+push over what people have already cloned. New work is new commits, however
+small.
