@@ -172,15 +172,17 @@ function run_asr4(type, docids, ldc, source_uid_channels, span = null){
             return;
         }
     }
-    // Optional feature: an instance with no HLT_ENDPOINT / PROMISE_BUCKET has
-    // nowhere to send the audio. Say so and stop, rather than posting to an
-    // empty URL and failing somewhere the annotator can't interpret.
     // A local_audio kit's file never leaves the annotator's computer, and
-    // both services work by sending it to one.
+    // every *hosted* service works by sending it to one. The local type above
+    // is the exception, which is why this is no longer the last word on ASR
+    // for such a kit.
     else if(local_audio_active()){
         asro.status = 'local_audio';
         return;
     }
+    // Optional feature: an instance with no HLT_ENDPOINT / PROMISE_BUCKET has
+    // nowhere to send the audio. Say so and stop, rather than posting to an
+    // empty URL and failing somewhere the annotator can't interpret.
     else if(!services_configured()){
         asro.status = 'unavailable';
         return;

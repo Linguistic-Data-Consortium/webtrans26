@@ -47,8 +47,9 @@
     {#if local_audio}
         <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             This kit's audio is a file on your computer, and it stays there, so
-            speech activity detection and ASR are unavailable. Everything else
-            works as normal.
+            the speech services on the server are unavailable for it.
+            Recognition that runs in this browser, and everything else, works as
+            normal.
         </div>
     {/if}
     {#if no_local_engine}

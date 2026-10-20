@@ -36,8 +36,10 @@ class Feature < ApplicationRecord
       label: "Local Audio (OnTheFly only)",
       description: "Before each new kit the annotator picks an audio file on their own computer, " \
                    "and the waveform and playback read it there — the audio never reaches the " \
-                   "server. Annotations save as usual. SAD and ASR are off, since they would " \
-                   "have to send the audio away. Only for tasks using the OnTheFly workflow." }
+                   "server. Annotations save as usual. The server's SAD and ASR are off for " \
+                   "these kits, since they would have to send the audio away — the in-browser " \
+                   "recognition in the Services menu still works. Only for tasks using the " \
+                   "OnTheFly workflow." }
   ].freeze
 
   # Create the rows the admin UI offers, refreshing the label and description

@@ -143,7 +143,8 @@
     {/if}
     <p class="mt-2 text-sm text-gray-500">
         The audio stays on your computer. Only its file name and size are sent,
-        along with your transcript. SAD and ASR are unavailable.
+        along with your transcript. The server's speech services can't be used
+        on it, but speech recognition that runs in this browser can.
     </p>
     <div class="mt-4 flex flex-wrap items-center gap-3">
         {#if saved?.ask}
