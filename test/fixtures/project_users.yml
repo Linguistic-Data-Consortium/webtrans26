@@ -1,0 +1,17 @@
+alice_owns_alpha:
+  project: alpha
+  user: alice
+  owner: true
+  admin: true
+
+bob_on_alpha:
+  project: alpha
+  user: bob
+  owner: false
+  admin: false
+
+alice_on_beta:
+  project: beta
+  user: alice
+  owner: false
+  admin: false

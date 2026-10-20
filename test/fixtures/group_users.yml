@@ -1,0 +1,7 @@
+bob_in_researchers:
+  group: researchers
+  user: bob
+
+pat_in_portal_managers:
+  group: portal_managers
+  user: pat

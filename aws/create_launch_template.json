@@ -1,0 +1,31 @@
+{
+  "LaunchTemplateName": "vm_for_kamal_deployment",
+  "VersionDescription": "example vm template for kamal deployment",
+  "LaunchTemplateData": {
+    "KeyName": "$key_pair_name",
+    "SecurityGroupIds": [
+      "$ingress_sg_id",
+      "$egress_sg_id"
+    ],
+    "UserData": "I2Nsb3VkLWNvbmZpZwpwYWNrYWdlX3VwZGF0ZTogdHJ1ZQpwYWNrYWdlX3VwZ3JhZGU6IHRydWUKCnBhY2thZ2VzOgogIC0gImFwdC10cmFuc3BvcnQtaHR0cHMiCiAgLSAiY2EtY2VydGlmaWNhdGVzIgogIC0gImN1cmwiCiAgLSAiZ251cGciCiAgLSAibHNiLXJlbGVhc2UiCgpydW5jbWQ6CiAgLSAibWtkaXIgLXAgL2V0Yy9hcHQva2V5cmluZ3MiCiAgLSAiY3VybCAtZnNTTCBodHRwczovL2Rvd25sb2FkLmRvY2tlci5jb20vbGludXgvdWJ1bnR1L2dwZyB8IGdwZyAtLWRlYXJtb3IgLW8gL2V0Yy9hcHQva2V5cmluZ3MvZG9ja2VyLmdwZyIKICAtICdlY2hvICJkZWIgW2FyY2g9JChkcGtnIC0tcHJpbnQtYXJjaGl0ZWN0dXJlKSBzaWduZWQtYnk9L2V0Yy9hcHQva2V5cmluZ3MvZG9ja2VyLmdwZ10gaHR0cHM6Ly9kb3dubG9hZC5kb2NrZXIuY29tL2xpbnV4L3VidW50dSAkKGxzYl9yZWxlYXNlIC1jcykgc3RhYmxlIiB8IHRlZSAvZXRjL2FwdC9zb3VyY2VzLmxpc3QuZC9kb2NrZXIubGlzdCA+IC9kZXYvbnVsbCcKICAtICJhcHQtZ2V0IHVwZGF0ZSIKICAtICJhcHQtZ2V0IGluc3RhbGwgLXkgZG9ja2VyLWNlIGRvY2tlci1jZS1jbGkgY29udGFpbmVyZC5pbyBkb2NrZXItY29tcG9zZS1wbHVnaW4iCiAgLSAidXNlcm1vZCAtYUcgZG9ja2VyIHVidW50dSIKICAtICJyZWJvb3QiCg==",
+    "BlockDeviceMappings": [
+      {
+        "DeviceName": "/dev/sda1",
+        "Ebs": {
+          "Encrypted": true,
+          "DeleteOnTermination": false,
+          "KmsKeyId": "alias/aws/ebs",
+          "VolumeSize": 15,
+          "VolumeType": "gp3"
+        }
+      }
+    ],
+    "InstanceType": "t3a.small",
+    "ImageId": "$ami_id",
+    "EbsOptimized": true,
+    "MetadataOptions": {
+      "HttpPutResponseHopLimit": 2
+    },
+    "InstanceInitiatedShutdownBehavior": "stop"
+  }
+}

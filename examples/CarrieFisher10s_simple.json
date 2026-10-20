@@ -1,0 +1,4 @@
+{
+  "wav": "s3://my-bucket/demo/CarrieFisher10s.wav",
+  "tsv": "s3://my-bucket/demo/CarrieFisher10s.tsv"
+}

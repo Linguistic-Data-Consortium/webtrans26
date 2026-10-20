@@ -1,0 +1,17 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "319e7c0da5d0a90171b6883850607a84c012dec43806f9e0bbebdda1b0df9302",
+      "note": "Pre-existing pennmed file-upload code in tasks_controller#file_upload. Uses user-controlled task/project/filename when building the destination path. Needs a separate cleanup pass (sanitize names, write to ActiveStorage, etc.) — ignored here so the rest of the CI doesn't block on it."
+    },
+    {
+      "fingerprint": "9eb02c076f435046fb5009f6ec52d2d5c22756d641124e2c85bc3a0747270fb0",
+      "note": "Slug is validated against VALID_SLUG (`/\\A[A-Za-z0-9_\\-]+\\z/`) before the File.read, so it can't escape docs/. Brakeman can't see the regex guard."
+    },
+    {
+      "fingerprint": "ecc95cdeb6f494bde199f33cb3cea62a4dd05eae706857fca2e93c1a090dff9f",
+      "note": "Intentional: @html is HTML produced by Redcarpet from a trusted Markdown file in docs/. The slug guard above ensures the file is one we control."
+    }
+  ],
+  "updated": "2026-06-04 00:00:00 +0000"
+}

@@ -1,0 +1,2 @@
+class TaskUserState < ApplicationRecord
+end

@@ -1,0 +1,39 @@
+- if signed_in? || request.fullpath == "/" and not @confirmation
+  .Header.md:flex.justify-start.bg-white.fixed.top-0.left-0.right-0.opacity-90.z-10
+    .md:hidden
+      %a{ href: "javascript:void(0)", id: "js-mobile-menu", class: "navigation-menu-button"}
+        MENU
+    - if not @failed
+      / %li.nav-link= link_to image_tag( "ldc.jpg", :alt => 'LDC', :class => 'round inline align-top', :width => 100 ), root_path
+      .Header-item.mr-10.p-4.hidden
+        %a{ href: "/" }
+          UA
+      - if false #admin? or project_manager?
+        %details.details-reset.details-overlay.dropdown
+          %summary.btn.bg-white
+            Admin
+          %ul.dropdown-menu.dropdown-menu-se
+            %li.dropdown-item= link_to "Project Builder", new_project_builder_path
+            %li.dropdown-item= link_to "Projects", projects_path
+            %li.dropdown-item= link_to "Tasks", tasks_path
+            %li.dropdown-item= link_to "Kit Types", kit_types_path
+            %li.dropdown-item= link_to "Kit Batches", kit_batches_path
+            %li.dropdown-item= link_to "Data Sets", data_sets_path
+            %li.dropdown-item= link_to "Kit Batches", kit_batches_path
+            %li.dropdown-item= link_to "User Defined Objects", user_defined_objects_path
+      - if signed_in?
+        .Header-item.mr-10.p-4= link_to "Home", user_path(current_user)
+        .Header-item.mr-10.p-4= link_to "Documentation", documentation_path
+        / .Header-item.mr-10.p-4= link_to "Profile", profile_user_path(current_user)
+        .Header-item.mr-10.p-4= link_to "Sign out", logout2_path, :method => :delete, :id => "logout"
+        .Header-item.mr-10.p-4
+          #current_user_name.Label.Label--green
+            = current_user.name
+        .Header-item.mr-10.p-4
+          #kit_uid.Label.Label--green
+            - if @kit
+              = @kit.uid
+    .Header-item.mr-10.p-4.Header-item--full
+      #unlock
+        - if @kit and @kit.tree.locked
+          =link_to "unlock", unlock_tree_kits_path(@kit), :remote => true, data: { type: 'json' }

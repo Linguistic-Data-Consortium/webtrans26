@@ -1,0 +1,54 @@
+{
+  "GroupId": "$ingress_sg_id",
+  "IpPermissions": [
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 80,
+      "ToPort": 80,
+      "IpRanges": [
+        {
+          "Description": "HTTP from any source",
+          "CidrIp": "0.0.0.0/0"
+        }
+      ],
+      "Ipv6Ranges": [
+        {
+          "Description": "HTTP from any source",
+          "CidrIpv6": "::/0"
+        }
+      ]
+    },
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "IpRanges": [
+        {
+          "Description": "HTTPS from any source",
+          "CidrIp": "0.0.0.0/0"
+        }
+      ],
+      "Ipv6Ranges": [
+        {
+          "Description": "HTTPS from any source",
+          "CidrIpv6": "::/0"
+        }
+      ]
+    },
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 22,
+      "ToPort": 22,
+      "IpRanges": [
+        {
+          "Description": "SSH from a range of addresses",
+          "CidrIp": "198.51.100.0/24"
+        },
+        {
+          "Description": "SSH from a single IP",
+          "CidrIp": "203.0.113.1/32"
+        }
+      ]
+    }
+  ]
+}

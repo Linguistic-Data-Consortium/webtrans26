@@ -1,0 +1,64 @@
+services:
+  web:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/rails
+      - /rails/node_modules
+      - gem_cache:/gems
+    # Example only: uncomment and point at your own files if you need to pass
+    # extra variables in. `.env*` is gitignored, so these paths do not exist in
+    # a fresh clone and compose refuses to start when they are enabled —
+    # "env file .../.env/development/aws not found".
+    #
+    # Nothing in the app requires them: it reads what it needs from
+    # config/credentials.yml.enc and the variables in docs/CONFIGURATION.md,
+    # which can also go under `environment:` below.
+    # env_file:
+    #   - .env/development/aws
+    environment:
+      - RAILS_ENV=development
+      - VITE_RUBY_HOST=vite
+    # command: sleep 300
+  vite:
+    build:
+      context: .
+      target: dev
+    # entrypoint: ./docker-vite-entrypoint.sh
+    # command: bunx --bun vite
+    command: bun run dev -- --host --port 3036
+    ports:
+      - 3036:3036
+    volumes:
+      - .:/rails
+      - /rails/node_modules
+      - gem_cache:/gems
+    # Example only: uncomment and point at your own files if you need to pass
+    # extra variables in. `.env*` is gitignored, so these paths do not exist in
+    # a fresh clone and compose refuses to start when they are enabled —
+    # "env file .../.env/development/aws not found".
+    #
+    # Nothing in the app requires them: it reads what it needs from
+    # config/credentials.yml.enc and the variables in docs/CONFIGURATION.md,
+    # which can also go under `environment:` below.
+    # env_file:
+    #   - .env/development/aws
+    environment:
+      - DEBUG='*vite*'
+      - RAILS_ENV=development
+      - VITE_RUBY_HOST=0.0.0.0
+  # database:
+  #   image: postgres
+  #   ports:
+  #     - 5439:5432
+  #   env_file:
+  #     - .envv/development/database
+  #     - .envv/development/aws
+  #   volumes:
+  #     - db_data:/var/lib/postgresql/data
+volumes:
+  db_data:
+  gem_cache:

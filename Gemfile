@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.4"
+gem "rails", "~> 8.1.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use sqlite3 as the database for Active Record
@@ -18,7 +18,13 @@ gem "stimulus-rails"
 gem "jbuilder"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
-# gem "bcrypt", "~> 3.1.7"
+gem "bcrypt", "~> 3.1.7"
+
+# Rack middleware for blocking & throttling abusive requests
+gem "rack-attack"
+
+# Security headers for Rails applications
+gem "secure_headers"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
@@ -38,13 +44,13 @@ gem "kamal", require: false
 gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-gem "image_processing", "~> 1.2"
+# gem "image_processing", "~> 1.2"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 
-  # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
+  # Audits gems for known security defects (see config/bundler-audit.yml).
   gem "bundler-audit", require: false
 
   # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
@@ -64,3 +70,25 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
 end
+
+# Pinned to match the working pair: vite_rails 3.0.x + vite_ruby 3.9.x
+# accepts vite-plugin-ruby ^5.1.0 in package.json. vite_ruby 3.10+ enforces
+# a stricter compatibility check that rejects the v5 plugin.
+gem "vite_rails", "= 3.0.20"
+gem "vite_ruby",  "= 3.9.2"
+gem 'haml', '5.1.2'
+gem 'jquery-rails-cdn', '1.1.2'
+gem 'paper_trail'#, '12.2.0'
+gem "aws-sdk-rails", '~> 3'
+gem "aws-sdk-s3", '~> 1'
+gem "aws-sdk-cognitoidentity", "~> 1.31"
+# Markdown renderer for the in-app documentation viewer (same `.md` files
+# are also browsable directly on GitHub).
+gem "redcarpet"
+gem 'sequel'
+gem 'pg', '1.5.9'
+gem "recaptcha"
+gem 'mini_magick'
+gem 'image_processing', '~> 1.2'
+gem 'jwt'
+gem 'csv'

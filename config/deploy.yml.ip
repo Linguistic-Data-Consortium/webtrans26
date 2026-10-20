@@ -1,0 +1,155 @@
+# Name of your application. Used to uniquely configure containers.
+service: webtrans26
+
+# Name of the container image (use your-user/app-name on external registries).
+image: your-user/webtrans26
+
+# Deploy to these servers.
+servers:
+  web:
+    - your-ip
+  # job:
+  #   hosts:
+  #     - 192.168.0.1
+  #   cmd: bin/jobs
+
+# Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
+# If used with Cloudflare, set encryption mode in SSL/TLS setting to "Full" to enable CF-to-app encryption.
+#
+# Using an SSL proxy like this requires turning on config.assume_ssl and config.force_ssl in production.rb!
+#
+# Don't use this when deploying to multiple web servers (then you have to terminate SSL at your load balancer).
+#
+proxy:
+  ssl:
+    enable: true
+    certificate_pem: APP_CERT_PEM
+    private_key_pem: APP_PRIVATE_KEY_PEM
+  host: your-ip
+
+# Where you keep your container images.
+registry:
+  # Leave `server` unset for Docker Hub — that is Kamal's default. Set it for
+  # anything else: ghcr.io / registry.digitalocean.com / your-host:5000 / ...
+  # (hub.docker.com is the website, not a registry endpoint.)
+  #
+  # localhost:5555 below is for a registry running on your own machine; comment
+  # it out unless that is what you have. See docs/DEPLOYMENT.md.
+  # server: localhost:5555
+
+  # Needed for authenticated registries.
+  username: your-user
+
+  # Always use an access token rather than real password when possible.
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Inject ENV variables into containers (secrets come from .kamal/secrets).
+env:
+  secret:
+    - RAILS_MASTER_KEY
+    - APP_CERT_PEM
+    - APP_PRIVATE_KEY_PEM
+  clear:
+    # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
+    # When you start using multiple servers, you should split out job processing to a dedicated machine.
+    SOLID_QUEUE_IN_PUMA: true
+
+    # Set number of processes dedicated to Solid Queue (default: 1)
+    # JOB_CONCURRENCY: 3
+
+    # Set number of cores available to the application on each server (default: 1).
+    # WEB_CONCURRENCY: 2
+
+    # Match this to any external database server to configure Active Record correctly
+    # Use webtrans26-db for a db accessory server on same machine via local kamal docker network.
+    # DB_HOST: 192.168.0.2
+
+    # Log everything from Rails
+    # RAILS_LOG_LEVEL: debug
+
+    # Where this app's S3 bucket lives. Needed for s3:// kit sources and the
+    # Browse tab, which get credentials from Cognito via POST /token — the AWS
+    # SDK raises MissingRegionError without it, before the credentials are even
+    # read, so this is the first thing to set when wiring S3 up. Both are
+    # unavailable until then, and the app says so rather than failing obscurely.
+    # Cognito itself is configured in credentials (cognito_pool_id,
+    # cognito_provider_name).
+    # AWS_REGION: us-east-1
+
+    # The speech-activity-detection / ASR service and the bucket it exchanges
+    # work through. Both are off unless set; see config/application.rb.
+    # HLT_ENDPOINT: https://sad.example.org
+    # PROMISE_BUCKET: my-promises
+
+    # The hostname used in links in outgoing mail. Only matters once email is
+    # on, and needs a hostname to be worth setting.
+    # APP_HOST: app.example.com
+
+    # HTTPS handling — assume_ssl and force_ssl — is ON unless you set this to
+    # false. Configure the `proxy` block above to match: a hostname gets a
+    # Let's Encrypt certificate automatically, and without one you supply a
+    # self-signed certificate for the IP. See docs/DEPLOYMENT.md.
+    #
+    # SSL=false serves plain HTTP with no redirect and no secure cookies.
+    # SSL: false
+
+# Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
+# "bin/kamal logs -r job" will tail logs from the first server in the job section.
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
+
+# Use a persistent storage volume for sqlite database files and local Active Storage files.
+# Recommended to change this to a mounted volume path that is backed up off server.
+volumes:
+  - "webtrans26_storage:/rails/storage"
+
+# Bridge fingerprinted assets, like JS and CSS, between versions to avoid
+# hitting 404 on in-flight requests. Combines all files from new and old
+# version inside the asset_path.
+asset_path: /rails/public/assets
+
+# Configure the image builder.
+builder:
+  arch: amd64
+
+  # # Build image via remote server (useful for faster amd64 builds on arm64 computers)
+  # remote: ssh://docker@docker-builder-server
+  #
+  # # Pass arguments and secrets to the Docker build process
+  # args:
+  #   RUBY_VERSION: 3.4.3
+  # secrets:
+  #   - GITHUB_TOKEN
+  #   - RAILS_MASTER_KEY
+
+# Use a different ssh user than root
+ssh:
+  user: ubuntu
+
+# Use accessory services (secrets come from .kamal/secrets).
+# accessories:
+#   db:
+#     image: mysql:8.0
+#     host: 192.168.0.2
+#     # Change to 3306 to expose port to the world instead of just local network.
+#     port: "127.0.0.1:3306:3306"
+#     env:
+#       clear:
+#         MYSQL_ROOT_HOST: '%'
+#       secret:
+#         - MYSQL_ROOT_PASSWORD
+#     files:
+#       - config/mysql/production.cnf:/etc/mysql/my.cnf
+#       - db/production.sql:/docker-entrypoint-initdb.d/setup.sql
+#     directories:
+#       - data:/var/lib/mysql
+#   redis:
+#     image: valkey/valkey:8
+#     host: 192.168.0.2
+#     port: 6379
+#     directories:
+#       - data:/data

@@ -1,0 +1,5 @@
+Hi <%= @user.name %>,
+
+Welcome! In order to use this app, you will need to active your account. Please click on the link below to activate your account:
+
+<%= edit_account_activation_url(@user.activation_token, email: @user.email_address) %>

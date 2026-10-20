@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+# Launches the Rails server in the dedicated `repl` env on port 3001 with the
+# transcription-REPL manifest patch enabled. Pair with script/transcription_repl.rb.
+ENV["RAILS_ENV"]         = "repl"
+ENV["TRANSCRIPTION_REPL"] = "1"
+exec "./bin/rails", "server", "-p", "3001", *ARGV

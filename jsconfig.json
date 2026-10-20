@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "$lib": ["./app/javascript/src/lib"],
+      "$lib/*": ["./app/javascript/src/lib/*"]
+    }
+  }
+}

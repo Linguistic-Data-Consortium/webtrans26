@@ -8,6 +8,13 @@ development:
 test:
   adapter: test
 
+# The transcription REPL harness (bin/repl) runs a single process, like
+# development. Without an entry here Action Cable falls back to its default
+# adapter, redis, which isn't in the bundle — the server still boots, but logs
+# "Error loading the 'redis' Action Cable pubsub adapter" on every attempt.
+repl:
+  adapter: async
+
 production:
   adapter: solid_cable
   connects_to:
@@ -15,5 +22,3 @@ production:
       writing: cable
   polling_interval: 0.1.seconds
   message_retention: 1.day
-  writer_batch_size: 4
-  writer_batch_delay: 0.001.seconds

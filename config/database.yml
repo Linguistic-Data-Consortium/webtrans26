@@ -20,6 +20,12 @@ test:
   <<: *default
   database: storage/test.sqlite3
 
+# Isolated DB for the transcription REPL harness (script/transcription_repl.rb).
+# Lets the harness run alongside the dev server without polluting either dev or test data.
+repl:
+  <<: *default
+  database: storage/repl.sqlite3
+
 # Store production database in the storage/ directory, which by default
 # is mounted as a persistent Docker volume in config/deploy.yml.
 production:

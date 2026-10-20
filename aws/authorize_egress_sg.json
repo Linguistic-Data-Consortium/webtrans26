@@ -1,0 +1,39 @@
+{
+  "GroupId": "$egress_sg_id",
+  "IpPermissions": [
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 80,
+      "ToPort": 80,
+      "IpRanges": [
+        {
+          "Description": "HTTP to any destination",
+          "CidrIp": "0.0.0.0/0"
+        }
+      ],
+      "Ipv6Ranges": [
+        {
+          "Description": "HTTP to any destination",
+          "CidrIpv6": "::/0"
+        }
+      ]
+    },
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 443,
+      "ToPort": 443,
+      "IpRanges": [
+        {
+          "Description": "HTTPS to any destination",
+          "CidrIp": "0.0.0.0/0"
+        }
+      ],
+      "Ipv6Ranges": [
+        {
+          "Description": "HTTPS to any destination",
+          "CidrIpv6": "::/0"
+        }
+      ]
+    }
+  ]
+}

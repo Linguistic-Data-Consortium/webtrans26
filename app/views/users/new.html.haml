@@ -1,0 +1,44 @@
+-content_for :head do
+  = vite_javascript_tag 'users'
+
+- provide :title, 'Sign up'
+.w-96.mx-auto
+  .text-3xl
+    Sign up
+  %div
+    = form_for(@user, url: signup_path) do |f|
+      = render 'shared/error_messages'
+      .form-group
+        .form-group-header
+          = f.label :name, 'User name'
+        .form-group-body
+          = f.text_field :name, class: 'border rounded w-full'
+      %div
+        This is the name that will appear within the app. Your username can only contain letters, numbers, the underscore <tt>_</tt> character and the simple dash <tt>-</tt> character.
+        -#       VALID_USERNAME_REGEX  = /\A[a-zA-Z0-9_-]+\Z/
+        -# validates :name, presence: true, length: { maximum: 30 }, format: { with: VALID_USERNAME_REGEX }, uniqueness: { case_sensitive: false }
+      %br
+      .form-group
+        .form-group-header
+          = f.label :email_address
+        .form-group-body
+          = f.email_field :email_address, class: 'border rounded w-full'
+      %div
+        We will use email to send a verification link and notify you of changes. We will never share your email in any way.
+      %br
+      .form-group
+        .form-group-header
+          = f.label :password
+        .form-group-body
+          = f.password_field :password, class: 'border rounded w-full'
+      %div
+        At least 8 characters.
+      %br
+      .form-group.mb-8
+        .form-group-header
+          = f.label :password_confirmation, 'Password Confirmation'
+        .form-group-body
+          = f.password_field :password_confirmation, class: 'border rounded w-full'
+      = f.submit "Sign up", class: "w-full justify-center rounded-md border border-transparent shadow-sm px-3 py-1 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+
+#action_specific_js.init_new()

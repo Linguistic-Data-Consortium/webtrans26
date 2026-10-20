@@ -1,0 +1,21 @@
+<div class="min-h-[85vh] flex flex-col items-center justify-center">
+  <div class="w-96">
+    <%= form_with url: session_path do |form| %>
+      <div class="mb-4">
+        <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "Enter your email address", value: params[:email_address], class: 'border rounded w-full' %>
+      </div>
+      <div class="mb-4">
+        <%= form.password_field :password, required: true, autocomplete: "current-password", placeholder: "Enter your password", maxlength: 72, class: 'border rounded w-full' %>
+      </div>
+      <%= form.submit "Sign in", class: "w-full justify-center rounded-md border border-transparent shadow-sm px-3 py-1 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" %>
+    <% end %>
+  </div>
+
+  <div class="w-96 pt-6">
+    <h4>New Account Creation</h4>
+    <%= link_to "Create account", new_user_path, :class => "block text-center w-full rounded-md border border-transparent shadow-sm px-3 py-1 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" %>
+  </div>
+  <div class="w-96 pt-4">
+    <%= link_to "Username/password recovery", new_password_path, :class => "block text-center w-full rounded-md border border-transparent shadow-sm px-3 py-1 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" %>
+  </div>
+</div>

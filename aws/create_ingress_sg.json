@@ -1,0 +1,5 @@
+{
+  "VpcId": "$vpc_id",
+  "Description": "Ingress security group for AWS EC2 deployment",
+  "GroupName": "ingress_traffic"
+}

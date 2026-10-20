@@ -1,0 +1,9 @@
+-# The task's annotation graph, drawn. Everything below the mount point is the
+-# task_graph component's; the page hands it the ids it needs to fetch with and
+-# the names to put in its header, so the first paint says which task this is
+-# before the snapshot comes back.
+#task_graph{ data: { "svelte-component": "task_graph",
+                     props: { task_id: @task.id,
+                              project_id: @task.project_id,
+                              task_name: @task.name,
+                              project_name: @task.project_name }.to_json } }

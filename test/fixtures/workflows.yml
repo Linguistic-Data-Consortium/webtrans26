@@ -1,0 +1,11 @@
+orderly:
+  name: Orderly
+  description: Orderly workflow used in tests
+  user_states: "needs_kit,has_kit"
+  kit_states: "unassigned,assigned,done"
+
+on_the_fly:
+  name: OnTheFly
+  description: OnTheFly workflow used as the default when task creation omits a workflow
+  user_states: "needs_kit,has_kit"
+  kit_states: "unassigned,assigned,done"

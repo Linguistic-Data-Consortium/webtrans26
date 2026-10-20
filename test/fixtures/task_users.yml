@@ -1,0 +1,11 @@
+alice_admin_alpha_task_one:
+  task: alpha_task_one
+  user: alice
+  admin: true
+  state: needs_kit
+
+bob_on_alpha_task_one:
+  task: alpha_task_one
+  user: bob
+  admin: false
+  state: needs_kit

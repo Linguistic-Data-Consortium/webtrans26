@@ -1,0 +1,20 @@
+alpha_task_one:
+  name: alpha_task_one
+  project: alpha
+  workflow: orderly
+  kit_type: basic
+  status: active
+
+alpha_task_two:
+  name: alpha_task_two
+  project: alpha
+  workflow: orderly
+  kit_type: basic
+  status: active
+
+beta_task_one:
+  name: beta_task_one
+  project: beta
+  workflow: orderly
+  kit_type: basic
+  status: active

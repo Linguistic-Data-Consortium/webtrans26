@@ -1,0 +1,8 @@
+researchers:
+  name: researchers_group
+
+portal_managers:
+  name: Portal Managers
+
+project_managers:
+  name: Project Managers

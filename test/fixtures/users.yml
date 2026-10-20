@@ -1,0 +1,51 @@
+<% password_digest = BCrypt::Password.create("password123", cost: BCrypt::Engine::MIN_COST) %>
+
+alice:
+  name: alice
+  email_address: alice@example.com
+  password_digest: <%= password_digest %>
+  activated: true
+  activated_at: <%= 1.day.ago %>
+  admin: false
+
+bob:
+  name: bob
+  email_address: bob@example.com
+  password_digest: <%= password_digest %>
+  activated: true
+  activated_at: <%= 1.day.ago %>
+  admin: false
+
+admin:
+  name: admin_user
+  email_address: admin@example.com
+  password_digest: <%= password_digest %>
+  activated: true
+  activated_at: <%= 2.days.ago %>
+  admin: true
+
+unactivated:
+  name: pending_user
+  email_address: pending@example.com
+  password_digest: <%= password_digest %>
+  activated: false
+  admin: false
+
+charlie:
+  name: charlie
+  email_address: charlie@example.com
+  password_digest: <%= password_digest %>
+  activated: true
+  activated_at: <%= 1.day.ago %>
+  admin: false
+
+# Portal Manager (via portal_managers group_user fixture below).
+# NOT a system admin, NOT a member of any project — used to test the
+# portal-manager-can-add-users-to-any-project path.
+pat:
+  name: pat
+  email_address: pat@example.com
+  password_digest: <%= password_digest %>
+  activated: true
+  activated_at: <%= 1.day.ago %>
+  admin: false

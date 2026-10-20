@@ -1,0 +1,5 @@
+{
+  "VpcId": "$vpc_id",
+  "Description": "Egress security group for AWS EC2 deployment",
+  "GroupName": "egress_traffic"
+}

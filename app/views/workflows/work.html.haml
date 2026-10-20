@@ -1,0 +1,12 @@
+-content_for :head do
+  = vite_javascript_tag 'work'
+-content_for :action_specific_js do
+  - hash = { admin: admin?, project_manager: project_manager?, project_admin: project_admin?, task_admin: task_admin?, constraints: @kit_type.constraints }
+  != "window.ldc_work_work = #{hash.to_json};"
+  - hash = @kit.to_simple_hash
+  - hash['source']['url'] = url_for @source.file if @source and @source.file
+  -if @manifest
+    != "window.ldc_work_work.manifest = #{@manifest.to_json.force_encoding('utf-8')};"
+  != "window.ldc_work_work.initt = #{hash.to_json};"
+  -if Rails.application.config.x.transcription_repl
+    != "window.ldc_work_work.transcription_repl = true;"

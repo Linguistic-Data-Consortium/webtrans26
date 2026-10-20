@@ -1,0 +1,2 @@
+class KitState < ApplicationRecord
+end

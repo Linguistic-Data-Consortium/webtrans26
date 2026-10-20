@@ -1,0 +1,18 @@
+.min-h-screen.flex.items-center.justify-center.px-4.py-12
+  .max-w-md.w-full
+    .bg-white.border.border-gray-200.rounded-lg.shadow-sm.p-6.text-center
+      .mx-auto.flex.items-center.justify-center.w-12.h-12.bg-amber-100.text-amber-700.rounded-full.mb-4
+        %svg{ xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", "stroke-width" => "1.5", stroke: "currentColor", class: "w-6 h-6" }
+          %path{ "stroke-linecap" => "round", "stroke-linejoin" => "round", d: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" }
+      %h1.text-xl.font-semibold.text-gray-900.mb-2
+        Account created — awaiting activation
+      %p.text-sm.text-gray-600.mb-4
+        Thanks for signing up
+        - if @email
+          %span.font-medium.text-gray-800= " (#{@email})"
+        \. This instance isn't configured to send email, so an administrator has
+        to activate your account manually before you can sign in.
+      %p.text-xs.text-gray-500.mb-6
+        Reach out to your administrator with the email address above; they'll
+        flip your account to active. You'll then be able to log in normally.
+      = link_to "Back to home", root_path, class: "inline-block text-sm text-indigo-700 hover:text-indigo-900"

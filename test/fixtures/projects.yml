@@ -1,0 +1,9 @@
+alpha:
+  name: alpha_project
+  title: Alpha Project
+  subtitle: Primary test project
+
+beta:
+  name: beta_project
+  title: Beta Project
+  subtitle: Secondary test project

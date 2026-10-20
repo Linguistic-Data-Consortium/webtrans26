@@ -32,4 +32,14 @@
 
 # Ignore key files for decrypting credentials and more.
 /config/*.key
+/config/*.pem
+node_modules
+
+# Vite Ruby (one publicOutputDir per env in config/vite.json)
+/public/vite
+/public/vite-dev
+/public/vite-test
+/public/vite-repl
+*.local
+.DS_Store
 
