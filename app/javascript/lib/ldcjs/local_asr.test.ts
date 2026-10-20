@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
   chunks_to_segments, run_local_asr, run_local_asr_for, audio_url_for,
-  local_asr_available, webgpu_available, asr_model, asr_model_base
+  local_asr_available, webgpu_available, asr_model, asr_model_base, asr_dtype
 } from "./local_asr";
 import { register_local_file, forget_local_files } from "./local_audio";
 
@@ -118,6 +118,10 @@ describe("run_local_asr", () => {
     expect(sent.type).toBe("run");
     expect(sent.samples.length).toBe(16000 * 6);
     expect(sent.model).toBeTruthy();
+    // The quantisation has to travel with the run: the library defaults
+    // anything that is not wasm to fp32, which for whisper-base.en is 291 MB
+    // of weights rather than 77 MB.
+    expect(sent.dtype).toBe("q8");
 
     worker.reply({ type: "done", chunks: [ chunk(0, 1, "hi"), chunk(1, null, "there") ] });
     await expect(p).resolves.toEqual([
@@ -317,6 +321,14 @@ describe("configuration", () => {
     finally {
       document.head.querySelectorAll('meta[name^="asr-model"]').forEach(el => el.remove());
     }
+  });
+
+  test("the quantisation is configurable, and defaults to the small one", () => {
+    expect(asr_dtype()).toBe("q8");
+
+    document.head.insertAdjacentHTML("beforeend", '<meta name="asr-dtype" content="fp16">');
+    try { expect(asr_dtype()).toBe("fp16"); }
+    finally { document.head.querySelectorAll('meta[name="asr-dtype"]').forEach(el => el.remove()); }
   });
 
   test("an empty tag falls back rather than naming an empty model", () => {

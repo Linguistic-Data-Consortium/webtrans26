@@ -22,7 +22,7 @@ import { pipeline, env } from '@huggingface/transformers';
 let transcriber = null;
 let loaded_model = null;
 
-async function get_transcriber(model, base, webgpu, post){
+async function get_transcriber(model, base, dtype, webgpu, post){
     if(transcriber && loaded_model === model) return transcriber;
 
     // An instance serving the weights from its own origin says so; otherwise
@@ -32,10 +32,11 @@ async function get_transcriber(model, base, webgpu, post){
     if(base) env.remoteHost = base;
     env.allowLocalModels = false;
 
-    // WebGPU where the browser has it, WASM otherwise. The dtypes here are a
-    // starting point, not a tuned choice — phase 5 of the spec measures this.
+    // WebGPU where the browser has it, WASM otherwise. The quantisation comes
+    // from the caller rather than from the device: the library defaults
+    // anything that is not wasm to fp32, which for whisper-base.en is a 291 MB
+    // download rather than 77 MB. See asr_dtype() in local_asr.js.
     const device = webgpu ? 'webgpu' : 'wasm';
-    const dtype  = webgpu ? 'fp32' : 'q8';
 
     transcriber = await pipeline('automatic-speech-recognition', model, {
         device,
@@ -54,7 +55,7 @@ async function get_transcriber(model, base, webgpu, post){
 
 self.onmessage = async (e) => {
     const post = (m) => self.postMessage(m);
-    const { type, samples, model, base, webgpu } = e.data || {};
+    const { type, samples, model, base, dtype, webgpu } = e.data || {};
     if(type !== 'run') return;
 
     // Which half failed matters: fetching the weights and running them fail
@@ -63,7 +64,7 @@ self.onmessage = async (e) => {
     // from anything else unless this says where it happened.
     let doing = `loading the model ${model}`;
     try {
-        const run = await get_transcriber(model, base, webgpu, post);
+        const run = await get_transcriber(model, base, dtype || 'q8', webgpu, post);
         doing = 'transcribing';
         post({ type: 'progress', stage: 'transcribing' });
 

@@ -47,6 +47,21 @@ function meta(name, fallback){
 // multilingual model, says so here rather than in the code.
 export function asr_model(){ return meta('asr-model', DEFAULT_MODEL); }
 
+// How heavily the weights are quantised, which decides the download. For
+// whisper-base.en, measured from the model repo:
+//
+//     fp32   291 MB      the library's own default on any device but wasm
+//     fp16   146 MB
+//     q4     142 MB
+//     q8      77 MB      <- default here
+//
+// q8 because this is a per-annotator download over whatever connection they
+// have, and 291 MB is not a thing to ask for by accident — which is exactly
+// what passing 'fp32' for WebGPU was doing. Whether fp16 or q4 earns its extra
+// ~70 MB in speed or accuracy on WebGPU is phase 5's measurement, and a
+// deployment that has measured it says so here.
+export function asr_dtype(){ return meta('asr-dtype', 'q8'); }
+
 // Where the weights come from. Empty means the library's own default host.
 // An instance that must work offline, or that may not talk to a third party at
 // all, serves the files from its own origin and names it here. Weights are not
@@ -206,6 +221,7 @@ export async function run_local_asr(audio, opts = {}){
         signal = null,
         model = asr_model(),
         base = asr_model_base(),
+        dtype = asr_dtype(),
         decode = decode_to_samples,
         worker_factory = default_worker
     } = opts;
@@ -240,7 +256,7 @@ export async function run_local_asr(audio, opts = {}){
 
             // The samples are transferred, not copied: a long recording is
             // tens of megabytes and this is the one place that matters.
-            worker.postMessage({ type: 'run', samples, model, base, webgpu: webgpu_available() }, [ samples.buffer ]);
+            worker.postMessage({ type: 'run', samples, model, base, dtype, webgpu: webgpu_available() }, [ samples.buffer ]);
         });
     }
     finally {
@@ -281,5 +297,5 @@ export async function run_local_asr_for(docid, ldc, opts = {}){
 
 export default {
     run_local_asr, run_local_asr_for, audio_url_for, chunks_to_segments,
-    local_asr_available, webgpu_available, asr_model, asr_model_base
+    local_asr_available, webgpu_available, asr_model, asr_model_base, asr_dtype
 };
