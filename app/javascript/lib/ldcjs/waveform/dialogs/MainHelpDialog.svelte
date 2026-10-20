@@ -13,6 +13,7 @@
     import { asro, sado, run_asr4, run_sad } from '../asr.svelte';
     import { services_configured } from '../../service_config';
     import { local_audio_active } from '../../local_audio';
+    import { local_asr_available } from '../../local_asr';
     import { modes, home_keys, waveform_map, input_map, playback_map, modifier_label, text_only_forbidden } from '../bindings';
     import { settings } from '../stores';
     let {
@@ -32,14 +33,20 @@
     let span_dialog = $state();
     let dialog_asr = $state();
     let dialog_keyboard = $state();
+    // 'local' is an ASR run too. These two conditions are what open the
+    // response dialog and put ServiceResponse inside it, and /asr/ does not
+    // match 'local' — so without this a local run would proceed with no
+    // dialog, reporting its progress to a panel nobody opened.
+    const asr_run = (type) => Boolean(type?.match(/^(asr|local)/));
+
     let add_which = $derived.by(() => {
         if(sado.status) return 'asr';
-        if(asro.type?.match(/^asr/)) return 'asr';
+        if(asr_run(asro.type)) return 'asr';
         return '';
     });
 
     $effect(() => {
-        if(sado.status || asro.type?.match(/asr/)){
+        if(sado.status || asr_run(asro.type)){
             dialog_asr.showModal();
         }
     });
@@ -169,14 +176,21 @@
     // digit landed in it: the span began as "06".
     const SERVICES_KEYS = new Set([ 'h', '1', '2', '3', '4', '5', '6' ]);
 
+    // Which keys do anything depends on what the dialog is actually showing,
+    // and the two halves are independent: 1-4 need a hosted service the audio
+    // may be sent to, 5 needs a browser that can run a model. A key for an
+    // entry the dialog did not render must do nothing — dispatching it would
+    // start a run against an empty endpoint, or one this browser cannot do.
+    const LOCAL_KEY = '5';
+    function key_allowed(k){
+        if(k === 'h') return true;
+        if(k === LOCAL_KEY) return local_asr_available();
+        return services_configured() && !local_audio_active();
+    }
+
     function dialog_services_keydown(e){
         if(SERVICES_KEYS.has(e.key)) e.preventDefault();
-        // With nothing configured the dialog shows a notice rather than the
-        // numbered menu, so there is nothing to pick — but the keys still
-        // reach here, and dispatching them would start a run against an empty
-        // endpoint. Only 'h' does anything.
-        // Likewise for local audio, which no service may be sent.
-        if((!services_configured() || local_audio_active()) && e.key !== 'h') return;
+        if(!key_allowed(e.key)) return;
         dialog_services.close();
         switch(e.key){
             case 'h':
@@ -192,8 +206,10 @@
                 start_asr_run('asr6');
                 break;
             case '4':
-            case '5':
                 alert('unavailable');
+                break;
+            case '5':
+                start_asr_run('local');
                 break;
         }
     }
