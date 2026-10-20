@@ -94,6 +94,20 @@ RUN echo "PATH=$PATH" && \
     ls -la /rails/node_modules/.bin/vite 2>&1 || echo "vite NOT in node_modules/.bin" && \
     test -d /rails/node_modules && echo "node_modules exists ($(ls /rails/node_modules | wc -l) entries)" || echo "node_modules DOES NOT EXIST"
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+
+# node_modules exists only to build the assets. Production serves them from
+# public/vite and never runs vite: autoBuild is false there (config/vite.json
+# sets it for development, test and repl only, and vite_ruby's own default is
+# false), and nothing in the app shells out to node or bun at runtime.
+#
+# It is removed *here*, in the build stage, rather than in the final stage,
+# because deleting files in a later layer does not shrink the image — the bytes
+# stay in the layer that added them. The final stage copies what is left.
+#
+# Worth ~650 MB, of which @huggingface/transformers' dependencies are ~440 MB
+# (onnxruntime-web 140 MB, and onnxruntime-node 289 MB, which a browser build
+# never imports).
+RUN rm -rf node_modules
 # end build
 
 

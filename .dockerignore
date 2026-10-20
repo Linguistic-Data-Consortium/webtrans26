@@ -36,6 +36,12 @@
 !/app/assets/builds/.keep
 /public/assets
 
+# Built JS/CSS. assets:precompile generates public/vite in the image, so
+# copying the host's gives two generations of every chunk — and public/vite-dev
+# and public/vite-test, which production never serves. 56 MB of someone else's
+# build, and it makes the image depend on whatever the host last built.
+/public/vite*
+
 # Ignore CI service files.
 /.github
 
