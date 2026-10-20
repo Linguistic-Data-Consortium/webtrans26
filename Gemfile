@@ -89,6 +89,6 @@ gem 'sequel'
 gem 'pg', '1.5.9'
 gem "recaptcha"
 gem 'mini_magick'
-gem 'image_processing', '~> 1.2'
+gem 'image_processing', '~> 2.2'
 gem 'jwt'
 gem 'csv'
