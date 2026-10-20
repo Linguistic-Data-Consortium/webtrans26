@@ -69,6 +69,16 @@ SecureHeaders::Configuration.default do |config|
     # Added blob: for Web Audio API and data: for data URIs
     media_src: %w['self' https: https://*.amazonaws.com blob: data:],
 
+    # Workers: same origin, plus blob: URLs.
+    #
+    # There is no default for this. Without worker_src a Worker falls back to
+    # default_src, which is 'self' alone — so a bundled worker loads but the
+    # blob: workers that onnxruntime-web and some bundlers create do not, and
+    # the failure arrives as a CSP violation in the console rather than as an
+    # error the calling code can report. In-browser speech recognition
+    # (ports/local-stt.md) runs in a Worker, which is why this is here.
+    worker_src: %w['self' blob:],
+
     # Frames/iframes: Don't allow any framing
     frame_src: %w['none'],
 
