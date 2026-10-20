@@ -159,22 +159,19 @@ describe("run_local_asr", () => {
     await expect(p).rejects.toThrow("failed to import");
   });
 
-  test("a worker that dies with no message — which is what a load failure gives — is diagnosed", async () => {
-    // A 404 on the worker script fires an ErrorEvent with an empty message, so
-    // the only way to tell "not there" from "there but broken" is to ask.
-    (globalThis as any).fetch = async () => ({ ok: false, status: 404 } as any);
+  test("a worker that dies with no message — which is what a load failure gives — points at the console", async () => {
     const p = run();
     await vi.waitUntil(() => worker.sent.length > 0);
     worker.fail({ message: "" });
-    await expect(p).rejects.toThrow(/was not found at .*404.*rebuild/s);
+    await expect(p).rejects.toThrow(/failed to start.*Content-Security-Policy/s);
   });
 
-  test("a worker script that is present but failed to start points at the console", async () => {
-    (globalThis as any).fetch = async () => ({ ok: true, status: 200 } as any);
-    const p = run();
-    await vi.waitUntil(() => worker.sent.length > 0);
-    worker.fail({ message: "" });
-    await expect(p).rejects.toThrow(/loaded but failed to start.*Content-Security-Policy/s);
+  test("an async worker factory is awaited, as the real one is", async () => {
+    const w = fake_worker();
+    const p = run({ worker_factory: async () => w });
+    await vi.waitUntil(() => w.sent.length > 0);
+    w.reply({ type: "done", chunks: [ chunk(0, 1, "awaited") ] });
+    await expect(p).resolves.toHaveLength(1);
   });
 
   test("an abort signal cancels the run and takes the worker with it", async () => {

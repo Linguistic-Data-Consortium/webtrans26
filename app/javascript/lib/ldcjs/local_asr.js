@@ -154,50 +154,37 @@ async function bytes_for(audio){
     throw new Error('unusable audio: expected a Blob, an ArrayBuffer or a url');
 }
 
-// Where the worker script is, kept separate so a failure can say which url it
-// was and check whether anything is actually there.
-export function worker_url(){
-    return new URL('./local_asr_worker.js', import.meta.url).href;
-}
-
-function default_worker(){
-    const url = worker_url();
-    try {
-        return new Worker(url, { type: 'module' });
-    }
-    catch (e) {
-        // A Worker may not be constructed from a cross-origin script: the
-        // browser throws SecurityError outright. That happens when the assets
-        // are served by the vite dev server on its own port rather than by the
-        // app. A one-line module worker that *imports* the real one is
-        // same-origin (a blob: url, which worker-src allows), and a module
-        // import is CORS-governed rather than forbidden — so this works where
-        // the asset host sends CORS headers, as the dev server does.
-        if(e?.name === 'SecurityError'){
-            const shim = `import ${JSON.stringify(url)};`;
-            return new Worker(URL.createObjectURL(new Blob([ shim ], { type: 'text/javascript' })), { type: 'module' });
-        }
-        throw e;
-    }
+// The worker, through vite's `?worker` import rather than by url.
+//
+// This was `new Worker(new URL('./local_asr_worker.js', import.meta.url))`,
+// which works — but only while that exact expression sits at the construction
+// site. Vite's worker plugin matches the shape syntactically; lifting the url
+// into a variable or a helper leaves it untransformed, and the request then
+// goes to the *source* path (…/vite-dev/lib/ldcjs/local_asr_worker.js), which
+// the build never emits. That is a silent trap: the code reads fine and fails
+// only at run time, in the built app.
+//
+// `?worker` has no such shape requirement. Vite emits the chunk, owns the url,
+// and handles the dev case where assets come from another origin — which a
+// hand-written Worker cannot, since the browser refuses a cross-origin worker
+// script outright (SecurityError).
+//
+// Imported dynamically so the module stays importable where `?worker` has no
+// meaning: the tests inject their own factory and never call this.
+async function default_worker(){
+    const { default: LocalAsrWorker } = await import('./local_asr_worker.js?worker');
+    return new LocalAsrWorker();
 }
 
 // Why a worker died, when the browser won't say.
 //
 // A worker that fails to load fires an ErrorEvent with an empty message —
-// measured, not assumed — so "the worker failed to start" is all the calling
-// code can see. The one thing worth distinguishing is a missing script from a
-// script that loaded and then threw, and that is answerable: ask for the url.
-async function worker_failure_message(url, event){
+// measured in a browser, not assumed — so without this, "the worker failed to
+// start" is all the calling code can see.
+function worker_failure_message(event){
     const said = event?.message || '';
     if(said) return said;
-    try {
-        const r = await fetch(url, { method: 'GET' });
-        if(!r.ok) return `the speech recognition worker was not found at ${url} (HTTP ${r.status}) — the built assets are probably stale, so rebuild them`;
-    }
-    catch (e) {
-        return `the speech recognition worker could not be loaded from ${url} (${e?.message || e})`;
-    }
-    return `the speech recognition worker at ${url} loaded but failed to start, and the browser gave no reason — the console will have it, usually a Content-Security-Policy refusal (worker-src) or an error thrown while the module initialised`;
+    return 'the speech recognition worker loaded but failed to start, and the browser gave no reason — the console will have it, usually a Content-Security-Policy refusal (worker-src) or an error thrown while the module initialised';
 }
 
 // Transcribe `audio` here, in this browser.
@@ -230,7 +217,7 @@ export async function run_local_asr(audio, opts = {}){
     const { samples, duration } = await decode(bytes);
     if(signal?.aborted) throw new Error('cancelled');
 
-    const worker = worker_factory();
+    const worker = await worker_factory();
     let on_abort = null;
 
     try {
@@ -244,9 +231,7 @@ export async function run_local_asr(audio, opts = {}){
             // A Worker that dies — a missing model, an import that fails —
             // otherwise leaves this promise pending for ever, and the progress
             // panel hides the transcript while a run is in flight.
-            worker.onerror = (e) => {
-                worker_failure_message(worker_url(), e).then(m => reject(new Error(m)));
-            };
+            worker.onerror = (e) => reject(new Error(worker_failure_message(e)));
 
             if(signal){
                 on_abort = () => reject(new Error('cancelled'));
