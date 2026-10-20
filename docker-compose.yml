@@ -7,6 +7,14 @@ services:
       - "3000:3000"
     volumes:
       - .:/rails
+      # An anonymous volume, masking the host's node_modules on purpose: the
+      # host's may hold binaries built for another platform. The cost is that
+      # it PERSISTS across restarts and rebuilds, so after any change to
+      # package.json or bun.lock the container keeps installing nothing new and
+      # vite reports "Failed to resolve import". Recreate it:
+      #     docker compose build && docker compose up -V
+      # (-V renews anonymous volumes only; `down -v` would also drop gem_cache
+      # and db_data.) Or, to patch a running container: bun install in it.
       - /rails/node_modules
       - gem_cache:/gems
     # Example only: uncomment and point at your own files if you need to pass
@@ -34,6 +42,14 @@ services:
       - 3036:3036
     volumes:
       - .:/rails
+      # An anonymous volume, masking the host's node_modules on purpose: the
+      # host's may hold binaries built for another platform. The cost is that
+      # it PERSISTS across restarts and rebuilds, so after any change to
+      # package.json or bun.lock the container keeps installing nothing new and
+      # vite reports "Failed to resolve import". Recreate it:
+      #     docker compose build && docker compose up -V
+      # (-V renews anonymous volumes only; `down -v` would also drop gem_cache
+      # and db_data.) Or, to patch a running container: bun install in it.
       - /rails/node_modules
       - gem_cache:/gems
     # Example only: uncomment and point at your own files if you need to pass
