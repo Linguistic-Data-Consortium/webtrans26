@@ -2,6 +2,7 @@ import { add_sad_send } from './helpers';
 import { split_word_sequence, add_asr_sendx, xasr_process } from './services';
 import { services_configured } from '../service_config';
 import { local_audio_active } from '../local_audio';
+import { local_asr_available, run_local_asr_for } from '../local_asr';
 import { activeo } from './shared.svelte';
 import { BATCH_SIZE, bulk_start, bulk_total, bulk_done, bulk_end } from './bulk.svelte';
 import { round_to_6_places } from './times';
@@ -162,16 +163,25 @@ function add_timestamps(o, docids) {
 // before the span prompt and how any caller that doesn't ask still behaves.
 function run_asr4(type, docids, ldc, source_uid_channels, span = null){
     ldco = ldc;
+    // 'local' runs the model in this browser, so neither refusal below
+    // applies to it: there is nothing to configure and nothing to send. What
+    // it needs instead is a browser that can run it at all.
+    if(type == 'local'){
+        if(!local_asr_available()){
+            asro.status = 'no_local_engine';
+            return;
+        }
+    }
     // Optional feature: an instance with no HLT_ENDPOINT / PROMISE_BUCKET has
     // nowhere to send the audio. Say so and stop, rather than posting to an
     // empty URL and failing somewhere the annotator can't interpret.
     // A local_audio kit's file never leaves the annotator's computer, and
     // both services work by sending it to one.
-    if(local_audio_active()){
+    else if(local_audio_active()){
         asro.status = 'local_audio';
         return;
     }
-    if(!services_configured()){
+    else if(!services_configured()){
         asro.status = 'unavailable';
         return;
     }
@@ -209,9 +219,23 @@ function run_asr4(type, docids, ldc, source_uid_channels, span = null){
     run_asr4_helper();
 }
 
+// A local run has stages a service call does not: the audio is decoded, the
+// model may have to be downloaded, and only then is anything transcribed. The
+// panel already copes with a total that arrives late (bulk.svelte.js), so each
+// stage reports into it — otherwise the first run of the day looks like a hang
+// while 75 MB of weights arrive.
+function local_progress(m){
+    if(m.stage == 'decoding')           bulk_total(0, 'Reading the audio');
+    else if(m.stage == 'downloading'){
+        if(m.total) bulk_total(m.total, 'Downloading the speech model');
+        if(typeof m.loaded == 'number') bulk_done(m.loaded);
+    }
+    else if(m.stage == 'transcribing')  bulk_total(0, 'Transcribing in this browser');
+}
+
 function run_asr4_helper(){
     asro.status = 'pending';
-    bulk_start('Running ASR');
+    bulk_start(asro.type == 'local' ? 'Transcribing in this browser' : 'Running ASR');
     asro.pending_promise = xasr(asro.docids, ldco).then(y => {
         console.log('adding')
         console.log(y)
@@ -249,7 +273,9 @@ function xasr(docids, ldc){
   if(asrp.has(docid)) return asrp.get(docid);
   asrp.set(docid, Promise.resolve());  // make sure it can't be called twice
   asro.source_uid = asro.source_uid_channels[asro.i];
-  let p = add_asr_sendx(docid, type, ldc);
+  let p = type == 'local'
+      ? run_local_asr_for(docid, ldc, { onprogress: local_progress })
+      : add_asr_sendx(docid, type, ldc);
   if(type == 'rev') p = p.then(x => split_word_sequence(x, activeo.channel == asro.i, stereo));
   const mapf = (x) => x == 'ch_1' ? docids[1] : docid;
   // Before xasr_process, which is what turns these into the rows that get

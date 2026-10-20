@@ -35,6 +35,10 @@
     // this says so plainly rather than reporting an error.
     let unavailable = $derived(sado.status == 'unavailable' || asro.status == 'unavailable');
     let local_audio = $derived(sado.status == 'local_audio' || asro.status == 'local_audio');
+    // Asked for in-browser recognition in a browser that cannot run it. Not a
+    // server misconfiguration and not an error — a different browser, or the
+    // hosted service where the audio may be sent, is the answer.
+    let no_local_engine = $derived(asro.status == 'no_local_engine');
     let m4 = $state();
 
 </script>
@@ -45,6 +49,12 @@
             This kit's audio is a file on your computer, and it stays there, so
             speech activity detection and ASR are unavailable. Everything else
             works as normal.
+        </div>
+    {/if}
+    {#if no_local_engine}
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            This browser cannot run speech recognition on its own — it has no
+            Web Worker or no audio decoding. Everything else works as normal.
         </div>
     {/if}
     {#if unavailable}

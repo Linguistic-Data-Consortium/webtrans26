@@ -203,4 +203,37 @@ export async function run_local_asr(audio, opts = {}){
     }
 }
 
-export default { run_local_asr, chunks_to_segments, local_asr_available, webgpu_available, asr_model, asr_model_base };
+// The audio the waveform is already drawing, as something fetchable.
+//
+// `ldc.resources.urls` is keyed by docid and holds whatever this kit's audio
+// turned out to be: the blob: url a local_audio file is registered under, a
+// plain http(s) url, or — for an s3:// source — the presigned https url that
+// signed_url_for_audio wrote back over the s3 path (waveform/helpers.js:81).
+// So by the time a kit is open this is a url `fetch` can read, whatever the
+// kit type, and the local engine needs no S3 knowledge of its own.
+export function audio_url_for(docid, ldc){
+    const url = ldc?.resources?.urls?.[docid];
+    if(!url) throw new Error(`no audio url for ${docid}`);
+    // An s3: path that was never signed would fetch as a relative url and
+    // 404 somewhere unhelpful. Say which of the two things went wrong.
+    if(/^s3(:|\/)/.test(url)) throw new Error(`the audio for ${docid} has not been signed yet`);
+    return url;
+}
+
+// One channel of one kit, transcribed here. This is what the ASR run calls,
+// once per docid, so the stereo loop in asr.svelte.js works unchanged: each
+// channel has its own docid and its own url.
+//
+// `async` for a reason worth keeping: audio_url_for throws, and a synchronous
+// throw here would escape xasr() rather than reaching run_asr4_helper's
+// .catch — leaving asro.status at 'pending' and bulk_end() uncalled, which
+// hides the transcript behind the progress panel until a reload. As a
+// rejection it lands where every other service failure lands.
+export async function run_local_asr_for(docid, ldc, opts = {}){
+    return run_local_asr(audio_url_for(docid, ldc), opts);
+}
+
+export default {
+    run_local_asr, run_local_asr_for, audio_url_for, chunks_to_segments,
+    local_asr_available, webgpu_available, asr_model, asr_model_base
+};

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
-  chunks_to_segments, run_local_asr, local_asr_available, webgpu_available,
-  asr_model, asr_model_base
+  chunks_to_segments, run_local_asr, run_local_asr_for, audio_url_for,
+  local_asr_available, webgpu_available, asr_model, asr_model_base
 } from "./local_asr";
 
 // The mapping from the library's chunks to this app's segments is the part
@@ -178,6 +178,67 @@ describe("run_local_asr", () => {
   test("audio it cannot read is refused with a sayable message", async () => {
     await expect(run_local_asr(42 as any, { worker_factory: () => worker }))
       .rejects.toThrow(/unusable audio/);
+  });
+});
+
+describe("audio_url_for", () => {
+  const ldc = (urls: any) => ({ resources: { urls } });
+
+  test("a local_audio kit's blob: url", () => {
+    expect(audio_url_for("local://a.wav", ldc({ "local://a.wav": "blob:http://x/1" })))
+      .toBe("blob:http://x/1");
+  });
+
+  test("an ordinary http(s) kit", () => {
+    expect(audio_url_for("a.wav", ldc({ "a.wav": "https://example.test/a.wav" })))
+      .toBe("https://example.test/a.wav");
+  });
+
+  test("an s3 source reaches here already signed, because helpers.js writes the signed url back", () => {
+    expect(audio_url_for("s3://b/a.wav", ldc({ "s3://b/a.wav": "https://b.s3.amazonaws.com/a.wav?X=1" })))
+      .toBe("https://b.s3.amazonaws.com/a.wav?X=1");
+  });
+
+  test("an s3 path that was never signed says so, instead of fetching a relative url", () => {
+    expect(() => audio_url_for("k", ldc({ k: "s3://bucket/a.wav" })))
+      .toThrow(/has not been signed/);
+  });
+
+  test("no url at all names the docid", () => {
+    expect(() => audio_url_for("missing.wav", ldc({}))).toThrow(/no audio url for missing.wav/);
+    expect(() => audio_url_for("missing.wav", {} as any)).toThrow(/no audio url/);
+  });
+});
+
+describe("run_local_asr_for", () => {
+  test("resolves the docid's audio and transcribes it", async () => {
+    const worker = fake_worker();
+    const ldc = { resources: { urls: { "a.wav:A": "blob:http://x/2" } } };
+    const fetched: string[] = [];
+    (globalThis as any).fetch = async (u: string) => {
+      fetched.push(u);
+      return { ok: true, arrayBuffer: async () => new ArrayBuffer(16) } as any;
+    };
+
+    const p = run_local_asr_for("a.wav:A", ldc, {
+      channel: "ch_0",
+      decode: decode_to(3),
+      worker_factory: () => worker
+    });
+    await vi.waitUntil(() => worker.sent.length > 0);
+    worker.reply({ type: "done", chunks: [ chunk(0, 1, "one channel") ] });
+
+    await expect(p).resolves.toEqual([
+      { beg: 0, end: 1, text: "one channel", speaker: "0", channel: "ch_0" }
+    ]);
+    expect(fetched).toEqual([ "blob:http://x/2" ]);
+  });
+
+  test("a docid with no audio rejects before any worker is made", async () => {
+    const factory = vi.fn();
+    await expect(run_local_asr_for("x", { resources: { urls: {} } }, { worker_factory: factory }))
+      .rejects.toThrow(/no audio url/);
+    expect(factory).not.toHaveBeenCalled();
   });
 });
 
