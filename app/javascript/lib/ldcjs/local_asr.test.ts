@@ -3,6 +3,7 @@ import {
   chunks_to_segments, run_local_asr, run_local_asr_for, audio_url_for,
   local_asr_available, webgpu_available, asr_model, asr_model_base
 } from "./local_asr";
+import { register_local_file, forget_local_files } from "./local_audio";
 
 // The mapping from the library's chunks to this app's segments is the part
 // worth testing: a wrong answer here puts text at the wrong time in the
@@ -178,6 +179,40 @@ describe("run_local_asr", () => {
   test("audio it cannot read is refused with a sayable message", async () => {
     await expect(run_local_asr(42 as any, { worker_factory: () => worker }))
       .rejects.toThrow(/unusable audio/);
+  });
+});
+
+describe("reading the audio", () => {
+  test("a local_audio kit's blob: url is read from the File, never fetched", async () => {
+    // fetch() of a blob: url is blocked by connect-src, which lists 'self',
+    // wss:, https: and *.amazonaws.com. It surfaces as "TypeError: Failed to
+    // fetch" with only a console violation to go on, so this path must not
+    // reach fetch at all.
+    const file = new File([ new Uint8Array(64) ], "a.wav", { type: "audio/wav" });
+    const url = register_local_file(file);
+    const worker = fake_worker();
+    const fetch_spy = vi.fn();
+    (globalThis as any).fetch = fetch_spy;
+
+    const p = run_local_asr(url, { decode: decode_to(2), worker_factory: () => worker });
+    await vi.waitUntil(() => worker.sent.length > 0);
+    worker.reply({ type: "done", chunks: [ chunk(0, 1, "read locally") ] });
+
+    await expect(p).resolves.toHaveLength(1);
+    expect(fetch_spy).not.toHaveBeenCalled();
+    forget_local_files();
+  });
+
+  test("a url that cannot be fetched says which url, and points at CORS", async () => {
+    (globalThis as any).fetch = async () => { throw new TypeError("Failed to fetch"); };
+    await expect(run_local_asr("https://elsewhere.test/a.wav", { worker_factory: () => fake_worker() }))
+      .rejects.toThrow(/could not fetch the audio at https:\/\/elsewhere.test\/a.wav .*CORS/);
+  });
+
+  test("a url that answers with an error status reports the status", async () => {
+    (globalThis as any).fetch = async () => ({ ok: false, status: 403 } as any);
+    await expect(run_local_asr("https://elsewhere.test/a.wav", { worker_factory: () => fake_worker() }))
+      .rejects.toThrow(/HTTP 403/);
   });
 });
 

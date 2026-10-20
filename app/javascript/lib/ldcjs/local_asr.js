@@ -22,6 +22,7 @@
 // the trust-boundary decision behind this module are recorded.
 
 import { round_to_6_places } from './waveform/times';
+import { local_file_for } from './local_audio';
 
 // Whisper wants 16 kHz mono, and asking the AudioContext for that rate lets
 // the browser resample during decode rather than us doing it badly afterwards.
@@ -124,14 +125,30 @@ async function decode_to_samples(bytes){
     }
 }
 
-// A Blob, a File, or a url (including the blob: url a local_audio kit's file
-// is registered under) into an ArrayBuffer.
+// A Blob, a File, or a url into an ArrayBuffer.
 async function bytes_for(audio){
     if(audio instanceof ArrayBuffer) return audio;
     if(typeof Blob !== 'undefined' && audio instanceof Blob) return audio.arrayBuffer();
     if(typeof audio === 'string'){
-        const r = await fetch(audio);
-        if(!r.ok) throw new Error(`could not read audio: ${r.status}`);
+        // A local_audio kit's url is a blob: url standing in for a File the
+        // page already holds. Read the File; do not fetch the url.
+        //
+        // Two reasons, and the first is fatal: fetch() is governed by
+        // connect-src, which lists 'self', wss:, https: and *.amazonaws.com —
+        // not blob: — so fetching a blob: url fails as
+        // "TypeError: Failed to fetch", with the CSP violation visible only in
+        // the console. The second is that the bytes are already in memory, so
+        // the round trip buys nothing. getp_wav reads local files the same way
+        // for the same reasons (getp.js:106).
+        const file = local_file_for(audio);
+        if(file) return file.arrayBuffer();
+        // Anything else is a real request, and the two ways it fails are worth
+        // telling apart: a 4xx/5xx from the host, or a TypeError, which for a
+        // cross-origin audio url usually means CORS rather than a dead host.
+        let r;
+        try { r = await fetch(audio); }
+        catch(e){ throw new Error(`could not fetch the audio at ${audio} (${e?.message || e}) — if it is on another host, check its CORS headers`); }
+        if(!r.ok) throw new Error(`could not read the audio at ${audio}: HTTP ${r.status}`);
         return r.arrayBuffer();
     }
     throw new Error('unusable audio: expected a Blob, an ArrayBuffer or a url');

@@ -57,8 +57,14 @@ self.onmessage = async (e) => {
     const { type, samples, model, base, webgpu } = e.data || {};
     if(type !== 'run') return;
 
+    // Which half failed matters: fetching the weights and running them fail
+    // in completely different ways, and both arrive here as one Error. A bare
+    // "Failed to fetch" from the library's model download is indistinguishable
+    // from anything else unless this says where it happened.
+    let doing = `loading the model ${model}`;
     try {
         const run = await get_transcriber(model, base, webgpu, post);
+        doing = 'transcribing';
         post({ type: 'progress', stage: 'transcribing' });
 
         // chunk_length_s is what lets a recording longer than Whisper's 30s
@@ -76,6 +82,10 @@ self.onmessage = async (e) => {
     catch (err) {
         // The message is shown to the annotator, so pass something sayable
         // rather than the whole error.
-        post({ type: 'error', message: err?.message || String(err) });
+        const why = err?.message || String(err);
+        const hint = /failed to fetch|networkerror|load failed/i.test(why) && doing.startsWith('loading')
+            ? ` — the weights are fetched over the network; check that ${base || 'the model host'} is reachable from this browser`
+            : '';
+        post({ type: 'error', message: `${doing}: ${why}${hint}` });
     }
 };
