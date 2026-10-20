@@ -12,6 +12,7 @@
     import { mark_transcription } from '../../../guide_state';
     import { asro, sado, run_asr4, run_sad } from '../asr.svelte';
     import { services_configured } from '../../service_config';
+    import { local_audio_active } from '../../local_audio';
     import { modes, home_keys, waveform_map, input_map, playback_map, modifier_label, text_only_forbidden } from '../bindings';
     import { settings } from '../stores';
     let {
@@ -174,7 +175,8 @@
         // numbered menu, so there is nothing to pick — but the keys still
         // reach here, and dispatching them would start a run against an empty
         // endpoint. Only 'h' does anything.
-        if(!services_configured() && e.key !== 'h') return;
+        // Likewise for local audio, which no service may be sent.
+        if((!services_configured() || local_audio_active()) && e.key !== 'h') return;
         dialog_services.close();
         switch(e.key){
             case 'h':

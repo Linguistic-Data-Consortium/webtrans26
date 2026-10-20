@@ -12,6 +12,7 @@ class FeatureTest < ActiveSupport::TestCase
 
     assert_includes names, "comments"
     assert_includes names, "transcribe_text_only"
+    assert_includes names, "local_audio"
     assert_equal names.sort, Feature.where(category: "kit_type").pluck(:name).sort
   end
 

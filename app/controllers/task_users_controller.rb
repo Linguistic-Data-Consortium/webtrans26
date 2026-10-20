@@ -5,7 +5,7 @@ class TaskUsersController < ApplicationController
   # the refusal as JSON, the way create and destroy do — the before_action
   # redirects, which a JSON caller can't read. task_admin2 sets @task for them
   # without redirecting, since task_admin? needs it set first.
-  before_action :task_admin, :except => [ :get, :read_only, :create, :destroy, :update,
+  before_action :task_admin, :except => [ :get, :local_audio, :read_only, :create, :destroy, :update,
                                           :source_tasks, :copy_from_task ]
   before_action :task_admin2, :only => [ :source_tasks, :copy_from_task ]
 
@@ -194,6 +194,16 @@ class TaskUsersController < ApplicationController
 
     task_user.goto_state 'needs_kit' if task_user.state == nil
 
+    # A local_audio kit is named after a file only the annotator's browser can
+    # see, so it can't be made yet. Render the page without one: it asks for
+    # the file, then POSTs local_audio below, which makes and assigns the kit.
+    if local_audio_kit_needed? task_user
+      @task_user = task_user
+      @kit_type = @task.kit_type
+      render 'workflows/work'
+      return
+    end
+
     @kit = @workflow.work task_user
 
     raise Workflow::KitLockError, 'wrong user' if @kit.user_id != current_user.id
@@ -224,6 +234,64 @@ class TaskUsersController < ApplicationController
     redirect_to user_path(task_user.user), :flash => {:info => e.to_s}
   end
   
+  # POST /workflows/:id/work/:workflow_id/local_audio  { name:, size: }
+  #
+  # The second half of a local_audio GET: the annotator has picked their file,
+  # and this makes the OnTheFly kit for it — named local://<name> — and assigns
+  # it exactly as the GET would have. Only the name and size come here; the
+  # audio stays in the browser. Replies with what the work page would have
+  # rendered into window.ldc_work_work, so the page carries on without a
+  # reload (a reload would lose the file).
+  def local_audio
+    task_user = TaskUser.find params[:id]
+    @task = task_user.task
+    @project = @task.project
+    @workflow = @task.workflow
+    return render(json: { error: 'wrong user' }, status: :forbidden) if task_user.user != current_user
+    return render(json: { error: 'That task is inactive.' }, status: :unprocessable_entity) if @task.status == 'inactive'
+    unless @task.local_audio? && @workflow.name == 'OnTheFly'
+      return render(json: { error: 'this task does not take local audio' }, status: :unprocessable_entity)
+    end
+    # Already holding a kit — a second tab, or a double submit. Reloading
+    # brings that kit up and asks for its file.
+    unless local_audio_kit_needed? task_user
+      return render(json: { error: 'you already have a kit; reload to continue it', reload: true }, status: :conflict)
+    end
+    name = params[:name].to_s
+    if name.empty? || name.include?('/') || name.length > 255
+      return render(json: { error: 'that file name cannot be used' }, status: :unprocessable_entity)
+    end
+    size = params[:size].to_i
+
+    @kit = @workflow.work task_user, local: { name: name, size: size }
+    @kit_type = @kit.kit_type
+    kit_source_helper
+    render json: work_page_data
+  rescue Workflow::HoldError => e
+    task_user.goto_state 'hold'
+    render json: { error: e.to_s }, status: :unprocessable_entity
+  rescue Workflow::NoKitError, Workflow::WorkError => e
+    render json: { error: e.to_s }, status: :unprocessable_entity
+  end
+
+  # What the work page hands the client as window.ldc_work_work. Without a kit
+  # (a local_audio kit not made yet) it carries where to ask for one instead.
+  def work_page_data
+    data = { admin: admin?, project_manager: project_manager?, project_admin: project_admin?,
+             task_admin: task_admin?, constraints: @kit_type.constraints }
+    if @kit
+      hash = @kit.to_simple_hash
+      hash['source']['url'] = url_for @source.file if @source and @source.file
+      hash['source']['size'] = @kit.source[:size] if @kit.source[:type] == 'local'
+      data[:manifest] = @manifest if @manifest
+      data[:initt] = hash
+    else
+      data[:local_audio_url] = "/workflows/#{@task_user.id}/work/#{@workflow.id}/local_audio"
+    end
+    data
+  end
+  helper_method :work_page_data
+
   def kit_source_helper
     if @kit.source[:uid]
       @source = Source.where(uid: @kit.source[:uid]).first
@@ -274,6 +342,17 @@ class TaskUsersController < ApplicationController
   end
 
   private
+
+  # Whether this visit would make a new kit for a local_audio task — the case
+  # where the file has to be picked first. A user returning to a kit
+  # (has_kit, paused, ?kit_id=) already has one, named after their file.
+  def local_audio_kit_needed?(task_user)
+    return false unless @task.local_audio?
+    unless @workflow.name == 'OnTheFly'
+      raise Workflow::WorkError, 'local audio only works with the OnTheFly workflow'
+    end
+    %w[needs_kit ok].include? task_user.state
+  end
 
   # Every task the signed-in user administers: the ones they're a task admin
   # of, plus every task in a project they admin or own.

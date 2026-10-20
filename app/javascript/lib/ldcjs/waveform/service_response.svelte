@@ -34,11 +34,19 @@
     // a normal state for an install that only needs manual transcription — so
     // this says so plainly rather than reporting an error.
     let unavailable = $derived(sado.status == 'unavailable' || asro.status == 'unavailable');
+    let local_audio = $derived(sado.status == 'local_audio' || asro.status == 'local_audio');
     let m4 = $state();
 
 </script>
 
 <div class="w-full mx-auto">
+    {#if local_audio}
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            This kit's audio is a file on your computer, and it stays there, so
+            speech activity detection and ASR are unavailable. Everything else
+            works as normal.
+        </div>
+    {/if}
     {#if unavailable}
         <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             Speech activity detection and ASR are not configured on this server,

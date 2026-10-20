@@ -231,10 +231,31 @@ class Task < ActiveRecord::Base
     end
   end
 
-  def create_default_kit_with_default_doc
+  # `local`, when given, is audio the annotator picked on their own computer
+  # ({ name:, size: }) for a kit type carrying local_audio. The kit names it
+  # local://<name> in place of the task's docid; the file itself never comes
+  # here, and the size is kept so a re-pick after a reload can be checked.
+  def create_default_kit_with_default_doc(local: nil)
     kit = create_default_kit
-    use_default_doc kit
+    if local
+      use_local_doc kit, local
+    else
+      use_default_doc kit
+    end
     kit
+  end
+
+  LOCAL_AUDIO_PREFIX = 'local://'
+
+  def use_local_doc(kit, local)
+    docid = "#{LOCAL_AUDIO_PREFIX}#{local[:name]}"
+    kit.source = { uid: docid, id: docid, type: 'local', size: local[:size] }
+    kit.source_uid = docid
+    kit.save!
+  end
+
+  def local_audio?
+    kit_type&.constraints&.key?('local_audio') || false
   end
   
   def all_transcripts

@@ -163,8 +163,11 @@ class Workflow < ApplicationRecord
   def kit_source_helper(*args)
   end
   
-  def work(task_user)
+  # `local` is the annotator's own audio file ({ name:, size: }), for an
+  # OnTheFly task whose kit type carries local_audio; see Task#use_local_doc.
+  def work(task_user, local: nil)
     @task_user = task_user
+    @local = local
     @task_id = @task_user.task_id
     @user_id = @task_user.user_id
     unlock_task
@@ -228,7 +231,7 @@ class Workflow < ApplicationRecord
   end
 
   def create_default_kit_with_default_doc
-    @kit = @task_user.task.create_default_kit_with_default_doc
+    @kit = @task_user.task.create_default_kit_with_default_doc(local: @local)
   end
 
   def put_on_hold_if_kit_limit_is_reached

@@ -1,6 +1,7 @@
 <script>
     import BaseDialog from './BaseDialog.svelte';
     import { services_configured } from '../../service_config';
+    import { local_audio_active } from '../../local_audio';
 
     let {
         dialogRef = $bindable(),
@@ -15,7 +16,19 @@
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div use:focus tabindex="0" onkeydown={onKeydown} class="p-6 outline-none">
-            {#if !services_configured()}
+            {#if local_audio_active()}
+                <!-- The audio is a file on the annotator's computer, and every
+                     service here works by sending it away. -->
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p class="text-sm text-amber-900">
+                        This kit's audio is a file on your computer, and it stays there,
+                        so no speech services are available for it.
+                    </p>
+                    <p class="mt-3 text-sm text-amber-900">
+                        Press <kbd class="px-2 py-1 bg-white rounded text-amber-900 font-mono text-xs shadow-sm">h</kbd> to return to the main menu
+                    </p>
+                </div>
+            {:else if !services_configured()}
                 <!-- Nowhere to send the work, so don't offer a numbered menu
                      whose every option would fail. This is a normal state for
                      an install that only needs manual transcription. -->

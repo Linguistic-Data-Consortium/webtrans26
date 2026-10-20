@@ -145,6 +145,7 @@ Rails.application.routes.draw do
       get 'read_only/:kit_id', to: 'task_users#read_only'
       # get 'quality_control/:kit_id/:task_id', :action => 'quality_control'
       get 'work/:workflow_id', to: 'task_users#get'
+      post 'work/:workflow_id/local_audio', to: 'task_users#local_audio'
       # get 'work/:task_user_id/:value', :action => 'work'
       get 'set/:task_user_id/:value', :action => 'set'
       # get 'set_lock/:state', :action => 'set_lock'

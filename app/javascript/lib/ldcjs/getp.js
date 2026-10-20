@@ -1,3 +1,4 @@
+import { local_file_for, read_local_range } from './local_audio';
 function get_init(){
     return {
       headers: {
@@ -100,6 +101,12 @@ function get_init(){
     });
   }
   function getp_wav(url, b, e) {
+    // A local_audio kit's file: read the range off disk rather than fetch the
+    // blob: url, whose Range support differs between browsers.
+    const file = local_file_for(url);
+    if(file) return read_local_range(file, b, e).catch(function(e) {
+      return console.error('Error reading local audio:', e);
+    });
     return fetch(url, get_init_wav(b, e)).then(responsef).catch(function(e) {
       return console.error('Error:', e);
     });

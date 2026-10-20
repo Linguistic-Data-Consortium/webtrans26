@@ -1,6 +1,7 @@
 import { init } from './init'
 import { setup } from '../settings'
 import { getp } from '../lib/ldcjs/getp';
+import { needs_local_audio, prepare_local_audio } from './local_audio_gate';
 
 // import { sources_object_add_node } from '../lib/ldcjs/waveform/sources_stores';
 // const debug = false;
@@ -873,7 +874,9 @@ function namespace(ldc){
 
 function main(){
   if(window.ldc_work_work){
-    work(window.ldc_work_work);
+    // A local_audio kit waits here for its file; any other goes straight on.
+    if(needs_local_audio(window.ldc_work_work)) prepare_local_audio(window.ldc_work_work).then(work);
+    else                                        work(window.ldc_work_work);
   }
   else{
     setTimeout( main, 500 );

@@ -31,7 +31,13 @@ class Feature < ApplicationRecord
       description: "Transcribe against an imported graph matched to this kit's audio: its spans " \
                    "become the segments and the captions above them, and only their text can be " \
                    "edited — no times, no splitting or merging, no speaker or section. The value " \
-                   "names which tier to read (reference, asr, …); blank means reference." }
+                   "names which tier to read (reference, asr, …); blank means reference." },
+    { name: "local_audio", value: "local_audio",
+      label: "Local Audio (OnTheFly only)",
+      description: "Before each new kit the annotator picks an audio file on their own computer, " \
+                   "and the waveform and playback read it there — the audio never reaches the " \
+                   "server. Annotations save as usual. SAD and ASR are off, since they would " \
+                   "have to send the audio away. Only for tasks using the OnTheFly workflow." }
   ].freeze
 
   # Create the rows the admin UI offers, refreshing the label and description

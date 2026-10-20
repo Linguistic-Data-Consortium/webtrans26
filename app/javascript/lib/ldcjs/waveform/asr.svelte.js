@@ -1,6 +1,7 @@
 import { add_sad_send } from './helpers';
 import { split_word_sequence, add_asr_sendx, xasr_process } from './services';
 import { services_configured } from '../service_config';
+import { local_audio_active } from '../local_audio';
 import { activeo } from './shared.svelte';
 import { BATCH_SIZE, bulk_start, bulk_total, bulk_done, bulk_end } from './bulk.svelte';
 import { round_to_6_places } from './times';
@@ -91,6 +92,12 @@ function run_sad(docids, ldc, source_uid_channels){
     // Optional feature: an instance with no HLT_ENDPOINT / PROMISE_BUCKET has
     // nowhere to send the audio. Say so and stop, rather than posting to an
     // empty URL and failing somewhere the annotator can't interpret.
+    // A local_audio kit's file never leaves the annotator's computer, and
+    // both services work by sending it to one.
+    if(local_audio_active()){
+        sado.status = 'local_audio';
+        return;
+    }
     if(!services_configured()){
         sado.status = 'unavailable';
         return;
@@ -158,6 +165,12 @@ function run_asr4(type, docids, ldc, source_uid_channels, span = null){
     // Optional feature: an instance with no HLT_ENDPOINT / PROMISE_BUCKET has
     // nowhere to send the audio. Say so and stop, rather than posting to an
     // empty URL and failing somewhere the annotator can't interpret.
+    // A local_audio kit's file never leaves the annotator's computer, and
+    // both services work by sending it to one.
+    if(local_audio_active()){
+        asro.status = 'local_audio';
+        return;
+    }
     if(!services_configured()){
         asro.status = 'unavailable';
         return;
