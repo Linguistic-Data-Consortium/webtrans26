@@ -159,6 +159,24 @@ describe("run_local_asr", () => {
     await expect(p).rejects.toThrow("failed to import");
   });
 
+  test("a worker that dies with no message — which is what a load failure gives — is diagnosed", async () => {
+    // A 404 on the worker script fires an ErrorEvent with an empty message, so
+    // the only way to tell "not there" from "there but broken" is to ask.
+    (globalThis as any).fetch = async () => ({ ok: false, status: 404 } as any);
+    const p = run();
+    await vi.waitUntil(() => worker.sent.length > 0);
+    worker.fail({ message: "" });
+    await expect(p).rejects.toThrow(/was not found at .*404.*rebuild/s);
+  });
+
+  test("a worker script that is present but failed to start points at the console", async () => {
+    (globalThis as any).fetch = async () => ({ ok: true, status: 200 } as any);
+    const p = run();
+    await vi.waitUntil(() => worker.sent.length > 0);
+    worker.fail({ message: "" });
+    await expect(p).rejects.toThrow(/loaded but failed to start.*Content-Security-Policy/s);
+  });
+
   test("an abort signal cancels the run and takes the worker with it", async () => {
     const ac = new AbortController();
     const p = run({ signal: ac.signal });

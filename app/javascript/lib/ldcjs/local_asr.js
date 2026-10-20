@@ -154,8 +154,50 @@ async function bytes_for(audio){
     throw new Error('unusable audio: expected a Blob, an ArrayBuffer or a url');
 }
 
+// Where the worker script is, kept separate so a failure can say which url it
+// was and check whether anything is actually there.
+export function worker_url(){
+    return new URL('./local_asr_worker.js', import.meta.url).href;
+}
+
 function default_worker(){
-    return new Worker(new URL('./local_asr_worker.js', import.meta.url), { type: 'module' });
+    const url = worker_url();
+    try {
+        return new Worker(url, { type: 'module' });
+    }
+    catch (e) {
+        // A Worker may not be constructed from a cross-origin script: the
+        // browser throws SecurityError outright. That happens when the assets
+        // are served by the vite dev server on its own port rather than by the
+        // app. A one-line module worker that *imports* the real one is
+        // same-origin (a blob: url, which worker-src allows), and a module
+        // import is CORS-governed rather than forbidden — so this works where
+        // the asset host sends CORS headers, as the dev server does.
+        if(e?.name === 'SecurityError'){
+            const shim = `import ${JSON.stringify(url)};`;
+            return new Worker(URL.createObjectURL(new Blob([ shim ], { type: 'text/javascript' })), { type: 'module' });
+        }
+        throw e;
+    }
+}
+
+// Why a worker died, when the browser won't say.
+//
+// A worker that fails to load fires an ErrorEvent with an empty message —
+// measured, not assumed — so "the worker failed to start" is all the calling
+// code can see. The one thing worth distinguishing is a missing script from a
+// script that loaded and then threw, and that is answerable: ask for the url.
+async function worker_failure_message(url, event){
+    const said = event?.message || '';
+    if(said) return said;
+    try {
+        const r = await fetch(url, { method: 'GET' });
+        if(!r.ok) return `the speech recognition worker was not found at ${url} (HTTP ${r.status}) — the built assets are probably stale, so rebuild them`;
+    }
+    catch (e) {
+        return `the speech recognition worker could not be loaded from ${url} (${e?.message || e})`;
+    }
+    return `the speech recognition worker at ${url} loaded but failed to start, and the browser gave no reason — the console will have it, usually a Content-Security-Policy refusal (worker-src) or an error thrown while the module initialised`;
 }
 
 // Transcribe `audio` here, in this browser.
@@ -202,7 +244,9 @@ export async function run_local_asr(audio, opts = {}){
             // A Worker that dies — a missing model, an import that fails —
             // otherwise leaves this promise pending for ever, and the progress
             // panel hides the transcript while a run is in flight.
-            worker.onerror = (e) => reject(new Error(e?.message || 'the speech recognition worker failed to start'));
+            worker.onerror = (e) => {
+                worker_failure_message(worker_url(), e).then(m => reject(new Error(m)));
+            };
 
             if(signal){
                 on_abort = () => reject(new Error('cancelled'));
