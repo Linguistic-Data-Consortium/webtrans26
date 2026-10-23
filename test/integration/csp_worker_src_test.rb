@@ -22,4 +22,16 @@ class CspWorkerSrcTest < ActionDispatch::IntegrationTest
 
     assert_includes response.headers["Content-Security-Policy"], "default-src 'self'"
   end
+
+  # Allowing the Worker to be created is only half of it: onnxruntime-web then
+  # loads its own glue from a blob: URL inside that Worker, and a script load
+  # falls back to script-src. Deploying without this gets
+  #   Loading the script 'blob:https://…' violates … "script-src 'self' …"
+  # and the engine never starts, which is how it was found.
+  test "blob: scripts are allowed, which the recognition engine loads inside its worker" do
+    get new_session_url
+
+    csp = response.headers["Content-Security-Policy"]
+    assert_match(/script-src [^;]*\bblob:/, csp)
+  end
 end

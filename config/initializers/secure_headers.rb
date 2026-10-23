@@ -26,7 +26,18 @@ SecureHeaders::Configuration.default do |config|
   # This is the most important security header - it prevents XSS attacks
 
   # Build script_src based on environment
-  script_sources = %w['self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net]
+  # blob: is for in-browser speech recognition. worker_src below lets the
+  # Worker be created; this is the step after that — onnxruntime-web loads its
+  # own glue script from a blob: URL inside the Worker, and a script load is
+  # governed by script_src (script-src-elem is unset, so it falls back here).
+  # Without it the console says
+  #     Loading the script 'blob:https://…' violates … "script-src 'self' …"
+  # and the engine never starts.
+  #
+  # It does widen script_src, but next to the 'unsafe-inline' and 'unsafe-eval'
+  # already here — both required by Vite and Svelte — a blob: script is not the
+  # weakest link in this policy.
+  script_sources = %w['self' 'unsafe-inline' 'unsafe-eval' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net]
   script_sources << 'http://localhost:3036' if Rails.env.development?
 
   # Build style_src based on environment
