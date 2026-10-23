@@ -148,7 +148,7 @@ function get_audio_buffer_info(k, ldc){
             // console.log(JSON.stringify(urls));
             // console.log(urls);
             // console.log(audio);
-            getp_wav(url, 0, 8191).then( (header) => {
+            return getp_wav(url, 0, 8191).then( (header) => {
                 // # url = "#{bucket}#{audio.id}.json"
                 console.log("header ", header);
                 // const url = urls[audio.uid || audio.id]
@@ -157,13 +157,24 @@ function get_audio_buffer_info(k, ldc){
                 const parser = new ParseB('name');
                 ret.info = parser.parse(header);
                 console.log(ret);
-                getp_wav(url, 0, ret.info.dataOffset-1).then( (data) => {
+                return getp_wav(url, 0, ret.info.dataOffset-1).then( (data) => {
                     console.log("data2 ",  data);
                     ret.header = data;
                     resolve(ret);
                 } );
             } );
-        } );
+        } )
+        // Without this the promise is simply never settled, and the page sits
+        // on "loading audio" for ever with nothing to show. Nothing in the
+        // chain above rejects on its own: getp_wav catches its own errors and
+        // resolves with undefined, so the throw usually happens in ParseB, in
+        // a .then nobody was watching. A rejection at least reaches the
+        // {:catch} in waveform.svelte.
+        //
+        // The two `return`s above are half of the fix and the less obvious
+        // half: without them the inner reads are separate chains this .catch
+        // never sees, so a failed read still hung. A test caught that.
+        .catch( (e) => reject(e) );
     } );
 }
 

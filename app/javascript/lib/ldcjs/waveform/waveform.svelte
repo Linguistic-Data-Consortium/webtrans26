@@ -2586,6 +2586,7 @@
     {docids}
     {ldc}
     {text_only}
+    transcribe_segments={(span) => segmentsc.transcribe_empty_segments(span)}
 />
 
 
@@ -2658,6 +2659,20 @@
     {source_uid_channels}
     {segmentsc}
 />
+{:catch e}
+    <!-- The audio load used to hang here rather than fail: every error in
+         get_audio_buffer_info left its promise unsettled, so this branch could
+         never be reached and the page stayed on "loading audio". It rejects
+         now, so say so. -->
+    <div class="m-4 max-w-xl rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+        <p class="font-semibold">The audio could not be loaded.</p>
+        <p class="mt-2">Error: <tt class="font-mono">{e?.message || e}</tt></p>
+        <p class="mt-2">
+            Reloading the page is worth trying first — it also fetches a fresh
+            audio link. If it keeps happening on one computer but not others,
+            it is usually a proxy, VPN or anti-virus inspecting the connection.
+        </p>
+    </div>
 {/await}
 {/if}
 
@@ -2720,6 +2735,7 @@
     {debug}
     {text_only}
     {docids}
+    {source_uid_channels}
     {set_current_selection}
     {wave_active_transcript_line}
     {set_active_transcript_line_helper}
