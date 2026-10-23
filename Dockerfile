@@ -31,7 +31,16 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     node -e 'process.exit(parseInt(process.versions.node) >= 20 ? 0 : 1)'
 
 # use bun instead of node
-RUN curl -fsSL https://bun.sh/install | bash
+# The `| bash` is why this needs a check: `curl -f` on a failure writes nothing,
+# bash reads empty input and exits 0, so the layer "succeeds" with bun never
+# installed — and the build goes on to fail fifty lines later with
+# `bun: not found`, pointing at the wrong line. Seen for real: the script said
+# "error: unzip is required to install bun" and the build carried on.
+#
+# Asking bun its version is what turns that into a failure here, where the
+# install is. (unzip comes from the apt line above; the script needs it.)
+RUN curl -fsSL https://bun.sh/install | bash && \
+    "$HOME/.bun/bin/bun" --version
 ENV BUN_INSTALL="/root/.bun"
 ENV PATH="$BUN_INSTALL/bin:$PATH"
 # end base
