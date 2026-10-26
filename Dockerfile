@@ -21,6 +21,21 @@ RUN apt-get update -qq && \
 
 ### more
 RUN apt-get update -yqq && apt-get install -yqq --no-install-recommends apt-transport-https netcat-openbsd libpq5 libpq-dev unzip
+# Node and bun are NOT installed in this stage. They are build-time only —
+# the asset build needs them, production runs neither — and the final stage
+# starts FROM base, so whatever is here ships. They live in `gem` instead,
+# which every stage needing them descends from. Worth ~335 MB of image.
+# end base
+
+
+# Throw-away build stage to reduce size of final image
+### build stage was broken up into gem, lock, bundled, and build stages
+FROM base AS gem
+
+# Node and bun, moved out of `base` so the final image does not carry them:
+# nodejs is ~228 MB and the bun install ~107 MB, and production runs neither.
+# Every stage that needs them — lock, bundled, build, dev — descends from here.
+# `unzip`, which the bun installer requires, stays in base's apt line.
 # Install Node 22 from NodeSource. Use `curl -fsSL` so a failed download aborts
 # the build instead of silently falling back to Debian's Node 18, and assert the
 # resulting major version so a stale/broken layer can never ship an old Node again.
@@ -43,12 +58,7 @@ RUN curl -fsSL https://bun.sh/install | bash && \
     "$HOME/.bun/bin/bun" --version
 ENV BUN_INSTALL="/root/.bun"
 ENV PATH="$BUN_INSTALL/bin:$PATH"
-# end base
 
-
-# Throw-away build stage to reduce size of final image
-### build stage was broken up into gem, lock, bundled, and build stages
-FROM base AS gem
 # Install packages needed to build gems
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential git libyaml-dev pkg-config && \
