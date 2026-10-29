@@ -2559,7 +2559,10 @@
 <div>prev {asro.asr_previous.length}</div> -->
 <!-- <div>results {JSON.stringify(asro.result)}</div> -->
 
-<Toaster richColors expand={true} />
+<!-- duration: the library's default is 4 seconds, which is not long enough to
+     read an error, let alone a diagnostic one. closeButton so a long-lived
+     toast is never in the way. -->
+<Toaster richColors expand={true} closeButton duration={10000} />
 
     <!-- .selection-handle {
         cursor: col-resize;

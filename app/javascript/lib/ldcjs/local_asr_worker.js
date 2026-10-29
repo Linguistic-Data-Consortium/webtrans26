@@ -49,6 +49,25 @@ async function get_transcriber(model, base, dtype, webgpu, post){
             total: p.total
         })
     });
+    // pipeline() decides which parts a model has by *probing* for them, with a
+    // `Range: bytes=0-0` request per file (utils/model_registry/get_file_metadata.js),
+    // and treats any non-2xx as "not there". It also skips the probe outright
+    // for a relative base url, because `new URL()` throws on one. Either way a
+    // missing or unprobeable preprocessor_config.json yields `processor: null`,
+    // the pipeline builds happily, and inference dies later with
+    //
+    //     Cannot read properties of null (reading 'feature_extractor')
+    //
+    // which says nothing about the cause. Reproduced against a static server
+    // that answers plain GETs and refuses range requests.
+    if(transcriber && !transcriber.processor){
+        transcriber = null;
+        throw new Error(
+            `the model at ${base || 'the default host'} loaded without its audio preprocessor — ` +
+            `preprocessor_config.json is either missing, or the server will not answer the ` +
+            `range request the library probes it with (Range: bytes=0-0 must return 2xx), ` +
+            `which is also what happens when ASR_MODEL_BASE is relative rather than absolute`);
+    }
     loaded_model = model;
     return transcriber;
 }
