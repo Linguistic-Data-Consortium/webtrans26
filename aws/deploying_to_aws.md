@@ -77,7 +77,19 @@ aws ec2 authorize-security-group-egress --cli-input-json file://authorize_egress
 
 Upon success, the cli will output a JSON response showing the group rules.
 
-**TODO** _explain the purpose of the egress rules in the sample_
+The sample opens outbound TCP 80 and 443 to anywhere. What the instance
+actually needs that for:
+
+| | |
+| --- | --- |
+| **`apt` and Docker's prerequisites** | `kamal setup` installs what is missing on first use, over HTTP/HTTPS to Ubuntu's and Docker's package hosts. |
+| **Let's Encrypt**, if you have a hostname | the proxy fetches and renews the certificate over 443. Not needed on the IP route, where the certificate is one you generate. |
+| **nothing for the application image** | the deploy files use a registry on *your* machine and Kamal forwards it over the SSH connection, so the image arrives through port 22 inbound rather than any outbound route. |
+
+So once the instance is running and Docker is installed, the IP route needs no
+egress at all for a deploy, and the hostname route needs only 443 for
+certificate renewal. Narrowing these rules is reasonable; the sample is
+permissive so that the first deploy does not fail on a missing package.
 
 ## Create a EC2 launch template
 
@@ -241,14 +253,20 @@ cp config/deploy.yml.hostname config/deploy.yml     # or .ip
 
 Until you do, `kamal` stops with `Configuration file not found`.
 
-Both files are already set up for this walkthrough's instance: Docker Hub as
-the registry, `ubuntu` as the login user, HTTPS on. Replace the placeholders:
+Both files are already set up for this walkthrough's instance: a registry on
+your own machine, `ubuntu` as the login user, HTTPS on. There are only two
+placeholders:
 
 | Placeholder | Replace with |
 | --- | --- |
 | `your-ip` or `your-hostname` | the instance's public IP (or its DNS name), in **both** `servers.web` and `proxy.host`. |
-| `your-user` | your Docker Hub account, in **both** `image:` and `registry.username:`. `image:` has to be `your-user/webtrans26` — Docker Hub namespaces every repository by account, so a bare `webtrans26` will not push. |
 | `ssh.user: ubuntu` | leave it. The Ubuntu image this template launches logs in as `ubuntu`, and the cloud-init config added that user to the `docker` group. Change it only if you changed the image. |
+
+Nothing to fill in for the registry: `registry.server` is `localhost:5555`, so
+Kamal starts a registry on the machine you deploy from and sends the image to
+the instance through the SSH connection. No ECR, no Docker Hub, no account.
+`docs/DEPLOYMENT.md` has the detail and what to change if you want an external
+registry instead.
 
 If your SSH key is a `.pem` file rather than one already loaded in your agent,
 tell Kamal where it is:
@@ -270,24 +288,31 @@ env:
 On the IP route there is no point setting `APP_HOST` — there is nothing useful
 to put in a link.
 
-### 3. Set the registry password
+### 3. Make your own master key
 
-`.kamal/secrets` already passes it through, so there is nothing to edit — just
-export it in the shell you deploy from:
+**A fresh clone cannot boot without this.** `config/credentials.yml.enc` is in
+the repository but the key that decrypts it is not — it belongs to whoever you
+cloned from. The value inside is `secret_key_base`, which signs session
+cookies, so every instance needs its own regardless.
 
 ```sh
-export KAMAL_REGISTRY_PASSWORD=...
+rm config/credentials.yml.enc config/master.key
+bin/rails credentials:edit
 ```
 
-On Docker Hub, create an access token under **Account settings → Personal
-access tokens** and use that rather than your password. Forget this and the
-deploy fails at the registry login, not at the configuration check.
+That writes a new `config/master.key` and a new credentials file with a fresh
+secret. `.kamal/secrets` already reads the key, so there is nothing to edit
+there — but keep a copy in a password manager, because **nothing can decrypt
+that file without it**.
 
-For a registry other than Docker Hub, uncomment `server:` in `config/deploy.yml`
-and set it — `ghcr.io`, `registry.digitalocean.com`,
-`your-registry.example.com:5000`. The template leaves it commented because an
-unset `server:` is how Kamal selects Docker Hub. (`hub.docker.com` is the
-website, not a registry endpoint; don't put it there.)
+The `rm` matters: run `credentials:edit` against the inherited file and you get
+`Couldn't decrypt config/credentials.yml.enc. Perhaps you passed the wrong
+key?`, which sounds like your mistake and isn't. `docs/DEPLOYMENT.md` covers
+this, and the alternative of setting `SECRET_KEY_BASE` and skipping credentials
+altogether.
+
+There is no registry password to set — the deploy uses a registry on your own
+machine, which Kamal does not log in to.
 
 ### 4. Without a hostname: generate the certificate
 
@@ -343,9 +368,10 @@ year — nothing reminds you.
 
 ### 5. Deploy
 
-`.kamal/secrets` already reads `RAILS_MASTER_KEY` from `config/master.key`, so
-there is nothing to do for that as long as the file exists on the machine you
-are deploying *from*.
+`.kamal/secrets` reads `RAILS_MASTER_KEY` from `config/master.key`, so there is
+nothing to do for that as long as you made one in step 3 and it is on the
+machine you are deploying *from*. Docker also has to be running there: the
+image is built locally and pushed to a local registry.
 
 ```
 bin/kamal setup

@@ -7,7 +7,8 @@ This app deliberately avoids hard-coded infra. The defaults are chosen so a fres
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `MAIL_ENABLED` | unset (treated as `false`) | When `"true"`, signups send an activation email. Otherwise, signups land on `/awaiting_activation`. |
-| `RAILS_MASTER_KEY` | from `config/master.key` | Decrypts `config/credentials.yml.enc`. The Kamal secrets file reads this from `config/master.key`. |
+| `RAILS_MASTER_KEY` | from `config/master.key` | Decrypts `config/credentials.yml.enc`. `.kamal/secrets` reads it from `config/master.key`, which is gitignored and **which you have to create yourself** — the committed credentials file belongs to whoever you cloned from and cannot be decrypted without their key. See [Deployment](DEPLOYMENT.md#first-make-your-own-master-key). |
+| `SECRET_KEY_BASE` | from credentials | Signs session cookies. Normally it lives in `credentials.yml.enc`, but this env var takes precedence — which lets you deploy with no master key at all. **It must differ between instances**: a cookie signed with one is accepted by any instance sharing it. |
 | `APP_HOST` | `example.com` | The hostname used in links in activation and password-reset email. Irrelevant until you turn email on, and meaningless without a hostname. |
 | `SSL` | unset (treated as **`true`**) | Sets `assume_ssl` and `force_ssl` in production: HTTP redirects to HTTPS and cookies are marked secure. **On by default** — every deployment in [Deployment](DEPLOYMENT.md) serves HTTPS, either with a Let's Encrypt certificate if the machine has a hostname or a self-signed one for its IP if not. Set `SSL=false` only for a deliberate plain-HTTP deployment, and note that passwords then cross the network in the clear. |
 | `AWS_REGION` | unset | The region for Cognito and S3. **Required for `s3://` kit sources and the Browse tab** — the AWS SDK refuses to build a client without it, so until it is set those features report themselves unavailable. |
@@ -64,8 +65,8 @@ A few notes on branch 2:
 ## Where the config lives
 
 - `config/application.rb` — sets `config.x.mail_enabled`, `config.x.transcription_repl`, `config.x.hlt_endpoint` and `config.x.promise_bucket` from env vars
-- `config/credentials.yml.enc` — encrypted, holds AWS / recaptcha / cognito keys (decrypt with `bin/rails credentials:edit`)
-- `config/deploy.yml` — Kamal deploy targets (servers, image, registry, SSL) and the `env.clear` list above. **Not in the repository**: copy `config/deploy.yml.hostname` or `config/deploy.yml.ip` to create it. See [Deployment](DEPLOYMENT.md).
-- `.kamal/secrets` — passes `RAILS_MASTER_KEY` (and certs, if you add them) to Kamal at deploy time
+- `config/credentials.yml.enc` — encrypted; `secret_key_base` plus optional SMTP / Azure / Cognito / `jwt_secret` entries (`bin/rails credentials:edit`). **Replace the committed one with your own on a fresh clone** — [Deployment](DEPLOYMENT.md#first-make-your-own-master-key)
+- `config/deploy.yml` — Kamal deploy targets (servers, image, registry, SSL) and the `env.clear` list above. **Not in the repository**: copy `config/deploy.yml.hostname` or `config/deploy.yml.ip` to create it. Both default to a registry on your own machine. See [Deployment](DEPLOYMENT.md).
+- `.kamal/secrets` — passes `RAILS_MASTER_KEY` (and certs, if you add them) to Kamal at deploy time. `KAMAL_REGISTRY_PASSWORD` is there but commented out: the deploy files use a local registry, which needs no login
 
 If you add a new configurable behaviour, put the env-var-with-default line in `config/application.rb` next to the others, and add a row to the table above so it's discoverable.

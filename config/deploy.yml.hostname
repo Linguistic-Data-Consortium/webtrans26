@@ -1,7 +1,9 @@
 # Name of your application. Used to uniquely configure containers.
 service: webtrans26
 
-# Name of the container image (use your-user/app-name on external registries).
+# Name of the container image. Unqualified, which is right for the local
+# registry below. On an external registry it must be namespaced by your
+# account: your-user/webtrans26.
 image: webtrans26
 
 # Deploy to these servers.
@@ -26,15 +28,28 @@ proxy:
 
 # Where you keep your container images.
 registry:
-  # Leave `server` unset for Docker Hub — that is Kamal's default. Set it for
-  # anything else: ghcr.io / registry.digitalocean.com / your-host:5000 / ...
-  # (hub.docker.com is the website, not a registry endpoint.)
+  # A registry Kamal runs on *this* machine for the length of the deploy, and
+  # reaches the servers through the SSH connection it already has. Any `server`
+  # matching ^localhost[:$] turns this on (configuration/registry.rb):
   #
-  # localhost:5555 below is for a registry running on your own machine; comment
-  # it out unless that is what you have. See docs/DEPLOYMENT.md.
+  #   build   starts a `kamal-docker-registry` container bound to
+  #           127.0.0.1:5555 and port-forwards it to each host
+  #   login   is skipped entirely, which is why username and password are
+  #           commented out below — the validator stops requiring them
+  #
+  # So the image never leaves your network, there is no registry account to
+  # create, and the servers need no route to a registry at all.
+  #
+  # To use an external registry instead: set `server` (ghcr.io /
+  # registry.digitalocean.com / your-host:5000 / ...), or delete the line
+  # for Docker Hub, which is what an unset `server` selects. Then uncomment
+  # username and password, and namespace `image:` above by your account.
+  # Mind that the image is then published there — check the repository is
+  # private, and see .dockerignore for what the image carries.
+  # (hub.docker.com is the website, not a registry endpoint.)
   server: localhost:5555
 
-  # Needed for authenticated registries.
+  # Needed for authenticated registries. Not for the local one.
   # username: your-user
 
   # Always use an access token rather than real password when possible.

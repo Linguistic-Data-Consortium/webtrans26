@@ -32,7 +32,10 @@
 
 # Ignore key files for decrypting credentials and more.
 /config/*.key
+
+# TLS material for the IP deploy route; see docs/DEPLOYMENT.md.
 /config/*.pem
+
 node_modules
 
 # Vite Ruby (one publicOutputDir per env in config/vite.json)

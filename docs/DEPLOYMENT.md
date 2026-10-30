@@ -5,8 +5,10 @@ Docker Compose. This is about putting it on a server.
 
 Deployment uses [Kamal](https://kamal-deploy.org), which can target **any
 machine you can reach over SSH and run Docker on** — a cloud VM, a rented
-server, a box under a desk. It builds the image, pushes it to a registry, and
-runs it on the host over SSH. There is no Kubernetes, no agent on the server,
+server, a box under a desk. It builds the image on your own machine, pushes it
+to a registry Kamal starts there for the occasion, and runs it on the host over
+SSH — so no registry account is involved and the image never leaves your
+network. There is no Kubernetes, no agent on the server,
 and nothing to install there beyond Docker. The rest of this document describes
 that process and what each piece is for.
 
@@ -41,7 +43,7 @@ server, a box under a desk — Kamal does not care. The requirements are:
 | **Docker** | installed and running. Kamal does the rest. |
 | **SSH access** | key-based, as a user in the `docker` group. Kamal runs `docker` over SSH, so a user who needs `sudo` for it will not work. |
 | **Ports 80 and 443 reachable** | the app's proxy terminates HTTP/HTTPS. 443 is only needed if you let it get a certificate (below). |
-| **Outbound HTTPS** | to pull the image from your registry, and to reach Let's Encrypt if you use `proxy.ssl`. |
+| **Outbound HTTPS** | only to reach Let's Encrypt, if you use `proxy.ssl`. **Not for the image** — the deploy files use a local registry and send it over the SSH connection, so the server needs no route to a registry. See [The registry](#the-registry). |
 | **A disk that survives redeploys** | the database is SQLite in `/rails/storage`, mounted from a Docker volume. See [Persistence](#persistence). |
 | **Architecture matching your build** | an image built on an Apple Silicon Mac will not run on an x86_64 server unless you build for it. See [Architecture](#architecture). |
 
@@ -52,6 +54,72 @@ annotator's browser, not on the server.
 `aws/deploying_to_aws.md` produces a machine that meets all of this: its
 cloud-init config installs Docker and adds the login user to the `docker` group,
 and its security groups open 80 and 443 while restricting SSH.
+
+## First: make your own master key
+
+**A fresh clone cannot boot, and this is the step nothing warns you about.**
+`config/credentials.yml.enc` *is* in the repository, but the key that decrypts
+it is not — `config/master.key` is gitignored and belongs to whoever built the
+image you cloned. So the file you have is somebody else's, and you need your
+own.
+
+That matters beyond getting the app to start. The one value inside it is
+`secret_key_base`, which signs every session cookie. **It has to be different
+for every instance**: if two deployments shared one, a cookie minted by either
+would be accepted by both.
+
+```sh
+rm config/credentials.yml.enc config/master.key
+bin/rails credentials:edit
+```
+
+That generates a new key *and* a new credentials file holding a fresh
+`secret_key_base`. Keep `config/master.key` — it is gitignored, it never goes
+into the image, and `.kamal/secrets` reads it at deploy time. **If you lose it,
+nothing can decrypt that file again**, so put a copy in a password manager.
+
+The `rm` is the part to get right. Running `credentials:edit` against the
+inherited file instead gives you a key, appends a duplicate ignore rule to
+`.gitignore`, and then stops with
+
+```
+Couldn't decrypt config/credentials.yml.enc. Perhaps you passed the wrong key?
+```
+
+which is misleading: you did not pass the wrong key, the file simply is not
+yours. Delete both and start again.
+
+### Or skip credentials entirely
+
+Rails reads `ENV["SECRET_KEY_BASE"]` ahead of the credentials file, so you can
+leave the inherited `credentials.yml.enc` undecryptable and never make a key:
+
+```yaml
+# config/deploy.yml
+env:
+  secret:
+    - SECRET_KEY_BASE
+```
+
+```sh
+# .kamal/secrets — replace the RAILS_MASTER_KEY line
+SECRET_KEY_BASE=$SECRET_KEY_BASE
+```
+
+with `export SECRET_KEY_BASE=$(openssl rand -hex 64)` in the shell you deploy
+from — kept somewhere, because changing it signs every existing session out.
+Without the key, every credential reads as `nil` rather than raising, so the
+app boots and runs.
+
+The cost is that you then have nowhere to put the *other* secrets. SMTP, Azure
+storage and speech, and `jwt_secret` all come from credentials. SMTP and Azure
+simply stay off, which is their default anyway. `jwt_secret` is the one to
+know about: `/jwts` mints tokens for API clients and errors without it — no
+part of the app's own interface calls it, so nothing an annotator does
+notices, but it is a broken route rather than a disabled one.
+
+Use the credentials route if you expect to need any of those, which is why it
+is the one above.
 
 ## Choosing a `config/deploy.yml`
 
@@ -75,30 +143,17 @@ Your copy is untracked. In your own fork it is worth committing, once the
 placeholders below are real values; it is the record of where this app is
 deployed.
 
-Both are set up for Docker Hub, for an `ubuntu` login user, and for HTTPS. They
-differ only in `servers.web`, in the `proxy` block, and — for the IP version —
-in two certificate secrets. What is left to do is replace the placeholders:
+Both are set up for a **local registry**, for an `ubuntu` login user, and for
+HTTPS. They differ only in `servers.web`, in the `proxy` block, and — for the
+IP version — in two certificate secrets. There are only two placeholders:
 
 | Placeholder | Replace with |
 | --- | --- |
-| `your-user` | your registry account, in **both** `image:` and `registry.username:`. On Docker Hub, `image:` has to be `your-user/webtrans26`; a bare `webtrans26` only works on a registry that doesn't namespace by account. |
 | `your-hostname` / `your-ip` | the machine's DNS name or IP address, in **both** `servers.web` and `proxy.host`. |
 | `ssh.user: ubuntu` | your login user, if it isn't `ubuntu`. It has to be in the `docker` group — Kamal runs `docker` over SSH and will not use `sudo`. |
 
-Then export your registry password in the shell you deploy from:
-
-```sh
-export KAMAL_REGISTRY_PASSWORD=...
-```
-
-`.kamal/secrets` already passes it through — the line is live, so nothing to
-edit there. On Docker Hub, create an access token under **Account settings →
-Personal access tokens** and use that rather than your password.
-
-If you forget to export it, the secret resolves to an empty string and the
-failure comes later, as a registry login error rather than a configuration one.
-
-The IP version needs two more secrets, which [SSL](#ssl) covers.
+There is deliberately no registry account to fill in — see below. The IP
+version needs two secrets for its certificate, which [SSL](#ssl) covers.
 
 ### What the keys mean
 
@@ -108,19 +163,86 @@ comments in them are the first reference. The ones that matter:
 | Key | |
 | --- | --- |
 | `servers.web` | the host(s) to deploy to, as IP or hostname. |
-| `image` | `your-user/webtrans26`. Docker Hub and most other registries namespace every repository by account, so a bare `webtrans26` only works on one that doesn't. |
-| `registry.server` | **commented out**, which is how Kamal selects Docker Hub. Set it for anything else: `ghcr.io`, `registry.digitalocean.com`, your own host. (`hub.docker.com` is the website, not a registry endpoint.) |
-| `registry.username`, `registry.password` | active, pointing at `KAMAL_REGISTRY_PASSWORD`, which `.kamal/secrets` reads from your shell. Use an access token, not a password. |
+| `image` | `webtrans26`, unqualified, which is right for the local registry. An external registry needs it namespaced: `your-user/webtrans26`. |
+| `registry.server` | `localhost:5555` — the local registry. See [The registry](#the-registry). |
+| `registry.username`, `registry.password` | **commented out**, and valid that way only because the registry is local. |
 | `proxy` | configured for HTTPS — differently in the two files. See [SSL](#ssl). |
 | `ssh.user` | `ubuntu`. It has to be a user in the `docker` group: Kamal runs `docker` over SSH and will not use `sudo`. |
 | `volumes` | the SQLite database. See [Persistence](#persistence). |
 | `env.clear` | the app's own settings, listed as comments. See [Application configuration](#application-configuration). |
 
-One trap, if you start commenting things out: `registry:` must not end up empty.
-Removing `server:` *and* `username`/`password` leaves the key with nothing under
-it, and Kamal stops with `registry: should be a hash` — which does not hint at
-the cause. Both files ship with `server:` commented and the other two active,
-which is a valid combination.
+One trap, if you start commenting things out: `registry:` must not end up
+empty. Both files ship with `server:` active and `username`/`password`
+commented, which is valid; comment out `server:` as well and the key has
+nothing under it, and Kamal stops with `registry: should be a hash`, which does
+not hint at the cause.
+
+### The registry
+
+**The deploy does not need a registry account, and the server does not need to
+reach one.** Kamal builds the image on the machine you deploy *from*, and both
+deploy files point it at a registry on that same machine:
+
+```yaml
+registry:
+  server: localhost:5555
+```
+
+Any `server` matching `^localhost[:$]` switches Kamal into this mode
+(`configuration/registry.rb`). Three things follow, and they are why the
+templates look the way they do:
+
+| | |
+| --- | --- |
+| **the registry is started for you** | `kamal build` runs `docker start kamal-docker-registry \|\| docker run --detach -p 127.0.0.1:5555:5000 --name kamal-docker-registry registry:3`. Nothing to install; it is Docker's own registry image. |
+| **the image reaches the servers over SSH** | before pulling, Kamal forwards port 5555 to each host over the connection it already has, so the host's `docker pull localhost:5555/webtrans26` comes back through the tunnel. The image never crosses the public internet. |
+| **there is no login** | `Kamal::Commands::Registry#login` returns early for a local registry, and the config validator stops requiring `username` and `password` — which is the only reason those two lines can be commented out. |
+
+So no `KAMAL_REGISTRY_PASSWORD`, no access token, no account, and nothing
+published anywhere. The line for it in `.kamal/secrets` is commented out to
+match.
+
+**What it costs.** The registry container holds the images, and it has no
+volume — so its contents live in the container's own filesystem. `docker stop`
+and a later `docker start` keep them, but **removing that container discards
+every image in it**, and with them the versions `bin/kamal rollback` would roll
+back to. Leave `kamal-docker-registry` alone on the build machine, and expect
+to rebuild rather than roll back if you ever clear it.
+
+And because the image is built locally, the build machine needs Docker and
+enough disk for the build cache. That was already true — Kamal builds there
+either way — but with no external registry it is also the only place the image
+exists.
+
+#### Using an external registry instead
+
+Reasonable if you deploy from more than one machine, or want the image kept
+somewhere durable. In `config/deploy.yml`:
+
+1. Set `registry.server` to the endpoint — `ghcr.io`,
+   `registry.digitalocean.com`, `your-registry.example.com:5000` — or delete
+   the line for Docker Hub, which is what an unset `server` selects.
+   (`hub.docker.com` is the website, not a registry endpoint.)
+2. Uncomment `username` and `password`. They are required as soon as the
+   registry is not local.
+3. Namespace `image:` by your account: `your-user/webtrans26`. Docker Hub and
+   most others reject an unqualified name.
+4. Uncomment the `KAMAL_REGISTRY_PASSWORD` line in `.kamal/secrets` and export
+   it in the shell you deploy from:
+
+   ```sh
+   export KAMAL_REGISTRY_PASSWORD=...
+   ```
+
+   On Docker Hub that is an access token from **Account settings → Personal
+   access tokens**, not your password. Forget the export and the secret
+   resolves to an empty string, so the failure arrives later as a registry
+   login error rather than a configuration one.
+
+**Check the repository is private before the first push.** The image carries
+the whole application directory; `.dockerignore` is what decides what stays
+out of it. A public repository on a registry publishes all of it to anyone who
+looks.
 
 ### SSL
 
@@ -289,19 +411,23 @@ error` that doesn't name the cause.
 
 ## Secrets
 
-`.kamal/secrets` ships with two live lines, both reading from the machine you
+`.kamal/secrets` ships with **one** live line, reading from the machine you
 deploy *from*:
 
 ```
-KAMAL_REGISTRY_PASSWORD=$KAMAL_REGISTRY_PASSWORD
 RAILS_MASTER_KEY=$(cat config/master.key)
 ```
 
 The master key is how the container gets to decrypt
-`config/credentials.yml.enc`. `config/master.key` is gitignored and must exist
-locally — Kamal reads it and injects it as an environment variable; it never
-goes into the image. The registry password comes from your shell, so
-`export KAMAL_REGISTRY_PASSWORD=...` before deploying.
+`config/credentials.yml.enc`. `config/master.key` is gitignored and **must
+exist locally — you create it yourself**, see [First: make your own master
+key](#first-make-your-own-master-key). Kamal reads it and injects it as an
+environment variable; it never goes into the image.
+
+`KAMAL_REGISTRY_PASSWORD` is in the file too but **commented out**, because the
+deploy files use a local registry and there is nothing to log in to. Uncomment
+it only if you switch to an external registry —
+[Using an external registry instead](#using-an-external-registry-instead).
 
 Nothing here is a file of secrets. Each line is a *command* Kamal runs to fetch
 one, which is why the file is safe to commit.
@@ -336,12 +462,27 @@ are vestigial and setting them has no effect.
 
 ## The first deploy
 
+Four things have to be true before this works, and three of them are easy to
+forget:
+
+```sh
+ls config/master.key                 # you made one — "First: make your own master key"
+ls config/deploy.yml                 # you copied .hostname or .ip and filled in the two placeholders
+docker info >/dev/null && echo ok    # Docker is running *here*; the image and the registry are both local
+ssh YOUR-USER@YOUR-HOST docker ps    # key-based SSH, and that user is in the docker group
+```
+
+Then:
+
 ```sh
 bin/kamal setup
 ```
 
-That installs Docker's prerequisites if needed, pushes the image, boots the
-container, and runs `db:prepare`. Subsequent deploys are:
+That starts the local registry, builds and pushes the image to it, installs
+Docker's prerequisites on the server if needed, boots the container, and runs
+`db:prepare`. The first run is slow — it is a full image build.
+
+Subsequent deploys are:
 
 ```sh
 bin/kamal deploy
