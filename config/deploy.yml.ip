@@ -2,7 +2,7 @@
 service: webtrans26
 
 # Name of the container image (use your-user/app-name on external registries).
-image: your-user/webtrans26
+image: webtrans26
 
 # Deploy to these servers.
 servers:
@@ -35,14 +35,14 @@ registry:
   #
   # localhost:5555 below is for a registry running on your own machine; comment
   # it out unless that is what you have. See docs/DEPLOYMENT.md.
-  # server: localhost:5555
+  server: localhost:5555
 
   # Needed for authenticated registries.
-  username: your-user
+  # username: your-user
 
   # Always use an access token rather than real password when possible.
-  password:
-    - KAMAL_REGISTRY_PASSWORD
+  # password:
+  #   - KAMAL_REGISTRY_PASSWORD
 
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
 env:
