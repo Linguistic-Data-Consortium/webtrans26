@@ -55,44 +55,44 @@ annotator's browser, not on the server.
 cloud-init config installs Docker and adds the login user to the `docker` group,
 and its security groups open 80 and 443 while restricting SSH.
 
-## First: make your own master key
+## First: make your own credentials
 
-**A fresh clone cannot boot, and this is the step nothing warns you about.**
-`config/credentials.yml.enc` *is* in the repository, but the key that decrypts
-it is not — `config/master.key` is gitignored and belongs to whoever built the
-image you cloned. So the file you have is somebody else's, and you need your
-own.
-
-That matters beyond getting the app to start. The one value inside it is
-`secret_key_base`, which signs every session cookie. **It has to be different
-for every instance**: if two deployments shared one, a cookie minted by either
-would be accepted by both.
+**A fresh clone has no credentials and cannot boot until you make some.** This
+repository deliberately ships neither `config/credentials.yml.enc` nor
+`config/master.key`, so there is one command to run before anything else:
 
 ```sh
-rm config/credentials.yml.enc config/master.key
 bin/rails credentials:edit
 ```
 
-That generates a new key *and* a new credentials file holding a fresh
-`secret_key_base`. Keep `config/master.key` — it is gitignored, it never goes
-into the image, and `.kamal/secrets` reads it at deploy time. **If you lose it,
-nothing can decrypt that file again**, so put a copy in a password manager.
+That writes both files: a new `config/master.key` and a new
+`config/credentials.yml.enc` containing a freshly generated `secret_key_base`.
+Save the editor and you are done.
 
-The `rm` is the part to get right. Running `credentials:edit` against the
-inherited file instead gives you a key, appends a duplicate ignore rule to
-`.gitignore`, and then stops with
+**Why it isn't shipped.** `secret_key_base` signs every session cookie, so it
+has to differ between instances — if two deployments shared one, a cookie
+minted by either would be accepted by both. An encrypted file in a public
+repository could not give you that: everyone cloning would start from the same
+blob, and anyone holding the key could forge a session on every instance that
+kept it. So each deployment generates its own.
 
-```
-Couldn't decrypt config/credentials.yml.enc. Perhaps you passed the wrong key?
-```
+**Then look after the key.**
 
-which is misleading: you did not pass the wrong key, the file simply is not
-yours. Delete both and start again.
+| | |
+| --- | --- |
+| `config/master.key` | **never commit it.** `/config/*.key` is already in `.gitignore`. `.kamal/secrets` reads the file at deploy time and Kamal injects it as an environment variable; it never goes into the image. **If you lose it, nothing can decrypt your credentials again** — put a copy in a password manager. |
+| `config/credentials.yml.enc` | untracked, because it is not ours to ship. In your own fork it is worth committing — that is the normal Rails arrangement, and it is useless to anyone without the key. |
+
+Add anything else the app can use to the same file, with the same command —
+`bin/rails credentials:edit` — in the shape
+[Configuration](CONFIGURATION.md) describes: `smtp`, `azure_storage`,
+`azure_speech`, `jwt_secret`, `cognito_pool_id`. All of them are optional and
+all are off when absent.
 
 ### Or skip credentials entirely
 
 Rails reads `ENV["SECRET_KEY_BASE"]` ahead of the credentials file, so you can
-leave the inherited `credentials.yml.enc` undecryptable and never make a key:
+run with no credentials and no master key at all:
 
 ```yaml
 # config/deploy.yml
@@ -102,24 +102,27 @@ env:
 ```
 
 ```sh
-# .kamal/secrets — replace the RAILS_MASTER_KEY line
+# .kamal/secrets — replace the RAILS_MASTER_KEY line with this
 SECRET_KEY_BASE=$SECRET_KEY_BASE
 ```
 
-with `export SECRET_KEY_BASE=$(openssl rand -hex 64)` in the shell you deploy
-from — kept somewhere, because changing it signs every existing session out.
-Without the key, every credential reads as `nil` rather than raising, so the
-app boots and runs.
+and `export SECRET_KEY_BASE=$(openssl rand -hex 64)` in the shell you deploy
+from. Keep that value somewhere: changing it signs every existing session out.
 
-The cost is that you then have nowhere to put the *other* secrets. SMTP, Azure
-storage and speech, and `jwt_secret` all come from credentials. SMTP and Azure
-simply stay off, which is their default anyway. `jwt_secret` is the one to
-know about: `/jwts` mints tokens for API clients and errors without it — no
-part of the app's own interface calls it, so nothing an annotator does
-notices, but it is a broken route rather than a disabled one.
+**Replace the line rather than leaving both.** `RAILS_MASTER_KEY=$(cat
+config/master.key)` with no such file prints `cat: config/master.key: No such
+file or directory` and passes an empty value through, which works but looks
+like a failure every deploy.
 
-Use the credentials route if you expect to need any of those, which is why it
-is the one above.
+With no credentials file, every credential reads as `nil` rather than raising,
+so the app boots and runs. What you give up is anywhere to put the *other*
+secrets. SMTP and Azure stay off, which is their default anyway. `jwt_secret`
+is the one to know about: `/jwts` mints tokens for API clients and errors
+without it — no part of the app's own interface calls it, so nothing an
+annotator does notices, but it is a broken route rather than a disabled one.
+
+Use `credentials:edit` if you expect to need any of those, which is why it is
+the one above.
 
 ## Choosing a `config/deploy.yml`
 
@@ -419,10 +422,17 @@ RAILS_MASTER_KEY=$(cat config/master.key)
 ```
 
 The master key is how the container gets to decrypt
-`config/credentials.yml.enc`. `config/master.key` is gitignored and **must
-exist locally — you create it yourself**, see [First: make your own master
-key](#first-make-your-own-master-key). Kamal reads it and injects it as an
-environment variable; it never goes into the image.
+`config/credentials.yml.enc`. Neither file is in the repository — **you create
+both with one command**, see
+[First: make your own credentials](#first-make-your-own-credentials).
+`config/master.key` is gitignored; Kamal reads the file and injects it as an
+environment variable, and it never goes into the image.
+
+If that file does not exist, `cat` fails, the secret resolves to an empty
+string, and the deploy carries on with `RAILS_MASTER_KEY=` — printing
+`cat: config/master.key: No such file or directory` on the way. Harmless if you
+meant to use `SECRET_KEY_BASE` instead, but then replace the line rather than
+leaving it.
 
 `KAMAL_REGISTRY_PASSWORD` is in the file too but **commented out**, because the
 deploy files use a local registry and there is nothing to log in to. Uncomment
@@ -466,7 +476,7 @@ Four things have to be true before this works, and three of them are easy to
 forget:
 
 ```sh
-ls config/master.key                 # you made one — "First: make your own master key"
+ls config/master.key                 # bin/rails credentials:edit made one — see "First: make your own credentials"
 ls config/deploy.yml                 # you copied .hostname or .ip and filled in the two placeholders
 docker info >/dev/null && echo ok    # Docker is running *here*; the image and the registry are both local
 ssh YOUR-USER@YOUR-HOST docker ps    # key-based SSH, and that user is in the docker group

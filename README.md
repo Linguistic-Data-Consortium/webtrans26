@@ -11,7 +11,10 @@ docker compose up
 ```
 
 The web container starts on http://localhost:3000 and the Vite dev server
-on http://localhost:3036.
+on http://localhost:3036. Nothing to configure first: in development Rails
+generates its own `secret_key_base`, so the credentials step under
+[Deployment](docs/DEPLOYMENT.md#first-make-your-own-credentials) is only needed
+when you put the app on a server.
 
 ## Deploying
 
@@ -31,8 +34,9 @@ users.
 
 - [Getting started](docs/GETTING_STARTED.md) — sign in, create a project
   and task, add a user, attach a demo audio kit, and start transcribing
-- [Deployment](docs/DEPLOYMENT.md) — what a deployment machine needs, choosing
-  a `config/deploy.yml`, secrets, SSL, persistence, and the first Kamal deploy
+- [Deployment](docs/DEPLOYMENT.md) — what a deployment machine needs, making
+  your own credentials, choosing a `config/deploy.yml`, the registry, SSL,
+  persistence, and the first Kamal deploy
 - [Input formats](docs/INPUT_FORMATS.md) — the two kinds of source you can
   give a kit: a plain audio file, or a JSON wrapper that also carries a
   transcript (with the wrapper schema and transcript file formats)

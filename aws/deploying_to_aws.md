@@ -288,27 +288,24 @@ env:
 On the IP route there is no point setting `APP_HOST` — there is nothing useful
 to put in a link.
 
-### 3. Make your own master key
+### 3. Make your own credentials
 
-**A fresh clone cannot boot without this.** `config/credentials.yml.enc` is in
-the repository but the key that decrypts it is not — it belongs to whoever you
-cloned from. The value inside is `secret_key_base`, which signs session
-cookies, so every instance needs its own regardless.
+**A fresh clone cannot boot without this.** Neither
+`config/credentials.yml.enc` nor `config/master.key` is in the repository —
+`secret_key_base` signs session cookies and has to differ between instances, so
+each deployment generates its own:
 
 ```sh
-rm config/credentials.yml.enc config/master.key
 bin/rails credentials:edit
 ```
 
-That writes a new `config/master.key` and a new credentials file with a fresh
-secret. `.kamal/secrets` already reads the key, so there is nothing to edit
-there — but keep a copy in a password manager, because **nothing can decrypt
-that file without it**.
+Save the editor and both files exist. `.kamal/secrets` already reads the key,
+so there is nothing to edit there — but **never commit `config/master.key`**
+(`/config/*.key` is already ignored) and keep a copy in a password manager,
+because nothing can decrypt your credentials without it.
 
-The `rm` matters: run `credentials:edit` against the inherited file and you get
-`Couldn't decrypt config/credentials.yml.enc. Perhaps you passed the wrong
-key?`, which sounds like your mistake and isn't. `docs/DEPLOYMENT.md` covers
-this, and the alternative of setting `SECRET_KEY_BASE` and skipping credentials
+`docs/DEPLOYMENT.md` covers what else can go in that file, and the alternative
+of setting `SECRET_KEY_BASE` in the environment and skipping credentials
 altogether.
 
 There is no registry password to set — the deploy uses a registry on your own
