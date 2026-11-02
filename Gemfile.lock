@@ -397,11 +397,6 @@ GEM
       websocket (~> 1.0)
     sequel (5.104.0)
       bigdecimal
-    solid_cable (3.0.12)
-      actioncable (>= 7.2)
-      activejob (>= 7.2)
-      activerecord (>= 7.2)
-      railties (>= 7.2)
     solid_cache (1.0.10)
       activejob (>= 7.2)
       activerecord (>= 7.2)
@@ -513,7 +508,6 @@ DEPENDENCIES
   secure_headers
   selenium-webdriver
   sequel
-  solid_cable
   solid_cache
   solid_queue
   sqlite3 (>= 2.1)

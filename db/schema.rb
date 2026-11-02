@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_20_210500) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
   create_table "actions", force: :cascade do |t|
     t.bigint "client_time"
     t.datetime "created_at", null: false
@@ -119,19 +119,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_210500) do
     t.datetime "created_at", null: false
     t.string "name"
     t.datetime "updated_at", null: false
-  end
-
-  create_table "guides", force: :cascade do |t|
-    t.boolean "active"
-    t.boolean "complete"
-    t.integer "currentstep"
-    t.boolean "dismissed"
-    t.integer "firststep"
-    t.string "misc"
-    t.string "name"
-    t.integer "nsteps"
-    t.datetime "updated_at"
-    t.integer "user_id"
   end
 
   create_table "imported_arcs", force: :cascade do |t|
