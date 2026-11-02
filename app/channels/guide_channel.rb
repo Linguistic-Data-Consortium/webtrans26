@@ -15,8 +15,12 @@ class GuideChannel < ApplicationCable::Channel
     broadcast_to(@guide, data)
   end
 
+  # What Guide#update_channel sends. Not user_id or name, which would move the
+  # row onto someone else's guide.
+  UPDATABLE = %w[ active complete currentstep dismissed firststep misc nsteps ]
+
   def update(data)
-    @guide.update(data.except("action")) if data
+    @guide.update(data.slice(*UPDATABLE)) if data
     @guide.update_attribute("updated_at", Time.zone.now);
   end
 
