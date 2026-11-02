@@ -1,4 +1,4 @@
-import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
+import { getp } from '../lib/ldcjs/getp'
 function get_open_tasks(x, open_tasks, b){
   let browse_tasks = [];
   console.log('open')

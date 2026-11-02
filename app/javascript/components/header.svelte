@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { btn } from "./buttons"
-  import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.3/src/getp.js'
+  import { getp } from '../lib/ldcjs/getp'
   import Spinner from './spinner.svelte'
   let {
       user,

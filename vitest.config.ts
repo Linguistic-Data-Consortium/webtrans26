@@ -7,10 +7,6 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: "$lib", replacement: path.resolve("app/javascript/src/lib") },
-      {
-        find: "https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.3/src/getp.js",
-        replacement: path.resolve("test/javascript/mocks/getp.ts"),
-      },
       // Stub heavy modules so focused component tests don't drag in AWS SDK / bits-ui.
       {
         find: /.*\/lib\/ldcjs\/getp(\.js)?$/,

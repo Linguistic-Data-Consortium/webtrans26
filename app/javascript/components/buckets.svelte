@@ -1,7 +1,7 @@
 <script>
     import { btn } from "./buttons"
     import { promise_bucket } from '../lib/ldcjs/service_config';
-    import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
+    import { getp } from '../lib/ldcjs/getp'
     import Help from './help.svelte'
     import Table from '../lib/ldcjs/work/table.svelte';
     import Bucket from './bucket.svelte'

@@ -1,5 +1,5 @@
 <script>
-    import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
+    import { getp } from '../lib/ldcjs/getp'
     import Table from '../lib/ldcjs/work/table.svelte';
     export const admin = false;
     let p = getp(window.location);

@@ -5,7 +5,6 @@
     import { CognitoIdentityClient } from "@aws-sdk/client-cognito-identity";
     import { TranscribeClient } from "@aws-sdk/client-transcribe";
     import { S3Client, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
-    // import { listObjectsV2params, getObject } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.10/src/aws_helper.js';
     import { listObjectsV2params, getObject } from '../lib/ldcjs/aws_helper.js';
     import { postp } from '../lib/ldcjs/getp'
     import Table from '../lib/ldcjs/work/table.svelte';

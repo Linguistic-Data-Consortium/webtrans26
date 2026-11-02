@@ -1,5 +1,5 @@
 <script>
-    import { listObjectsV2params } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.10/src/aws_helper.js';
+    import { listObjectsV2params } from '../lib/ldcjs/aws_helper.js';
     import { postp } from '../lib/ldcjs/getp'
     import Table from '../lib/ldcjs/work/table.svelte';
     import Spinner from './spinner.svelte'
