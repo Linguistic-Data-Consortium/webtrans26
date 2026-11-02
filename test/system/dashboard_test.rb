@@ -245,6 +245,27 @@ class DashboardTest < ApplicationSystemTestCase
     end
   end
 
+  # The work page hands the annotation tool its data in an inline script, which
+  # runs only because it carries the CSP nonce; the teardown in
+  # ApplicationSystemTestCase fails the test if anything was blocked. The tool
+  # itself needs Cognito to get further, so this stops at the data.
+  test "the work page's inline data script runs under the CSP" do
+    # Opening the kit builds its tree, which needs the kit type's node class.
+    tasks(:alpha_task_one).kit_type.update!(node_class: NodeClass.create!(name: "CspCheck:Root"))
+    Kit.create!(
+      task_id: tasks(:alpha_task_one).id,
+      kit_type_id: tasks(:alpha_task_one).kit_type_id,
+      state: "unassigned",
+      uid: "csp-kit-#{SecureRandom.hex(3)}"
+    )
+    sign_in_browser users(:alice)
+
+    tu = task_users(:alice_admin_alpha_task_one)
+    visit "/workflows/#{tu.id}/work/#{tu.task.workflow_id}"
+    assert_equal "object", evaluate_script("typeof window.ldc_work_work")
+    assert_equal "object", evaluate_script("typeof window.Guide")
+  end
+
   private
 
   def sign_in_browser(user, password: "password123")

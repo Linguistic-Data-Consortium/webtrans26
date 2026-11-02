@@ -62,4 +62,13 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   teardown do
     ActionController::Base.allow_forgery_protection = @_allow_forgery_protection_was
   end
+
+  # The CSP is enforced here as in production, and a blocked script usually
+  # shows only as a console message, not as a failure. So every page a test
+  # visits is also a check that the policy blocked nothing the app needs.
+  teardown do
+    logs = page.driver.browser.logs.get(:browser) rescue []
+    blocked = logs.map(&:message).grep(/Content Security Policy/)
+    assert_empty blocked, "the page logged CSP violations"
+  end
 end

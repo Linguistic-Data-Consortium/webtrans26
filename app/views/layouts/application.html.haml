@@ -2,10 +2,10 @@
 %html
   %head
     %title= "UA" #full_title(@title)
-    :javascript
-      console.log('test9')
-    :javascript
-      var Guide = {route: #{raw Rails.application.routes.recognize_path(request.url,method: request.env["REQUEST_METHOD"]).to_json}};
+    -# Inline scripts carry the request's CSP nonce; the policy admits no others.
+    = nonced_javascript_tag do
+      :plain
+        var Guide = {route: #{raw Rails.application.routes.recognize_path(request.url,method: request.env["REQUEST_METHOD"]).to_json}};
     -# = javascript_include_tag "application" #, 'data-turbolinks-track': 'reload'
     -# = stylesheet_link_tag "application", media: "all" #, 'data-turbolinks-track': 'reload'
     %link{ rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' }
@@ -20,13 +20,11 @@
     -# reaches S3 only through POST /token, so without Cognito and a region they
     -# are dead — and used to fail as a TypeError on undefined rather than saying so.
     %meta{ name: 's3-available', content: cognito_configured?.to_s }
-    = javascript_tag "var AUTH_TOKEN = '#{form_authenticity_token}';" if protect_against_forgery?
-    = javascript_include_tag 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.js'
-    = javascript_include_tag 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js'
-    = javascript_include_tag 'https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js'
-    = javascript_include_tag 'https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.1050.0/aws-sdk.min.js'
-    -# = javascript_include_tag 'https://cdnjs.cloudflare.com/ajax/libs/js-bson/2.0.8/bson.min.js'
-    -# = javascript_include_tag 'https://cdn.jsdelivr.net/npm/dsp.js@1.0.1'
+    -# Pinned by hash (cdnjs's published SRI) and by path in the CSP, so a
+    -# change on the CDN is refused rather than run. Changing a version means
+    -# changing both: config/initializers/secure_headers.rb lists the URLs.
+    = javascript_include_tag 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.js', integrity: 'sha512-n/4gHW3atM3QqRcbCn6ewmpxcLAHGaDjpEBu4xZd47N0W2oQ+6q7oc3PXstrJYXcbNU1OHdQ1T7pAP+gi5Yu8g==', crossorigin: 'anonymous'
+    = javascript_include_tag 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js', integrity: 'sha512-xQBQYt9UcgblF6aCMrwU1NkVA7HCXaSN2oq0so80KO+y68M+n64FOcqgav4igHe6D5ObBLIf68DWv+gfBowczg==', crossorigin: 'anonymous'
     - if Rails.env.development?
       = vite_client_tag
     = vite_javascript_tag 'application'
@@ -64,4 +62,6 @@
     -if false # Rails.env.development?
       .full
         =debug(params)
-    %script= yield :action_specific_js#allows for page specific javascript to be run after the body is loaded
+    -# page-specific javascript, run after the body is loaded
+    - if content_for?(:action_specific_js)
+      = nonced_javascript_tag { yield(:action_specific_js) }

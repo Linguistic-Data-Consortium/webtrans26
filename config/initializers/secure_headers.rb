@@ -8,9 +8,10 @@ SecureHeaders::Configuration.default do |config|
   # Stops browsers from guessing content types
   config.x_content_type_options = "nosniff"
 
-  # Enable XSS protection for older browsers
-  # Modern browsers use CSP instead, but this provides defense-in-depth
-  config.x_xss_protection = "1; mode=block"
+  # The legacy XSS auditor is off: modern browsers have dropped it, and where it
+  # survives its blocking mode could be abused to disable scripts selectively.
+  # The CSP is the protection.
+  config.x_xss_protection = "0"
 
   # Prevent downloads from opening automatically in Internet Explorer
   config.x_download_options = "noopen"
@@ -34,10 +35,24 @@ SecureHeaders::Configuration.default do |config|
   #     Loading the script 'blob:https://…' violates … "script-src 'self' …"
   # and the engine never starts.
   #
-  # It does widen script_src, but next to the 'unsafe-inline' and 'unsafe-eval'
-  # already here — both required by Vite and Svelte — a blob: script is not the
-  # weakest link in this policy.
-  script_sources = %w['self' 'unsafe-inline' 'unsafe-eval' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net]
+  #
+  # No 'unsafe-inline': the layout's inline scripts carry a per-request nonce
+  # (nonced_javascript_tag), which secure_headers adds here, so an injected
+  # <script> or onerror= handler doesn't run.
+  #
+  # 'unsafe-eval' stays for now. The onnxruntime build that local ASR loads
+  # (ort-wasm-simd-threaded.asyncify) compiles embind method callers with
+  # `new Function`, and its Worker, made from a blob:, inherits this policy.
+  # Nothing in app/javascript itself evaluates strings.
+  #
+  # The CDN scripts are named by exact path, not by host, so the rest of cdnjs
+  # (which includes libraries known to defeat a CSP) isn't admitted. The layout
+  # pins the same files by SRI hash.
+  CDN_SCRIPTS = %w[
+    https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.js
+    https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js
+  ]
+  script_sources = %w['self' 'unsafe-eval' blob:] + CDN_SCRIPTS
   script_sources << 'http://localhost:3036' if Rails.env.development?
 
   # Build style_src based on environment
@@ -52,14 +67,7 @@ SecureHeaders::Configuration.default do |config|
     # Default policy for all content types not explicitly listed
     default_src: %w['self'],
 
-    # Scripts: Allow from same origin + inline scripts + eval
-    # NOTE: 'unsafe-inline' and 'unsafe-eval' reduce security but are needed for:
-    # - Vite dev server hot module replacement
-    # - Svelte runtime compilation
-    # - Some legacy JS patterns in the app
-    # - CDN scripts (jQuery, JSZip, Marked, AWS SDK from cdnjs.cloudflare.com)
-    # - jsDelivr CDN (cdn.jsdelivr.net)
-    # TODO: Remove 'unsafe-eval' after verifying no eval statements remain in JS
+    # Scripts: see script_sources above.
     script_src: script_sources,
 
     # Styles: Allow from same origin + inline styles + Tailwind CDN
@@ -124,12 +132,4 @@ SecureHeaders::Configuration.default do |config|
   # Helps detect misissued certificates
   # Optional - only useful if you have CT monitoring set up
   # config.expect_ct = "max-age=86400, enforce"
-end
-
-# Test environment overrides (if needed)
-if Rails.env.test?
-  SecureHeaders::Configuration.override(:test) do |config|
-    # Disable CSP in tests to avoid conflicts with test frameworks
-    config.csp = SecureHeaders::OPT_OUT
-  end
 end
