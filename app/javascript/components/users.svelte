@@ -2200,7 +2200,7 @@
                         indexf={x => models.project.index = x}
                         columns={[
                             [ 'ID', 'id', 'col-1' ],
-                            [ 'Project', 'name', 'col-2', 'html' ],
+                            [ 'Project', 'name', 'col-2' ],
                             [ 'Task Count', 'task_count', 'col-1' ]
                         ]}
                         rows={v}

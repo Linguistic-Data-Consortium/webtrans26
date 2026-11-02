@@ -4,8 +4,8 @@
     export const admin = false;
     let p = getp(window.location);
     let columns = [
-        [ 'ID', 'id', 'col-1', 'html' ],
-        [ 'Name', 'name', 'col-2', 'html' ],
+        [ 'ID', 'id', 'col-1' ],
+        [ 'Name', 'name', 'col-2' ],
         [ 'Edit', 'edit', 'col-1', 'html' ],
         [ 'Reset Name', 'reset', 'col-1', 'html' ],
         [ 'Delete', 'delete', 'col-1', 'html' ]
