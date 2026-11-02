@@ -2,10 +2,6 @@
 %html
   %head
     %title= "UA" #full_title(@title)
-    -# Inline scripts carry the request's CSP nonce; the policy admits no others.
-    = nonced_javascript_tag do
-      :plain
-        var Guide = {route: #{raw Rails.application.routes.recognize_path(request.url,method: request.env["REQUEST_METHOD"]).to_json}};
     -# = javascript_include_tag "application" #, 'data-turbolinks-track': 'reload'
     -# = stylesheet_link_tag "application", media: "all" #, 'data-turbolinks-track': 'reload'
     %link{ rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' }
@@ -62,6 +58,7 @@
     -if false # Rails.env.development?
       .full
         =debug(params)
-    -# page-specific javascript, run after the body is loaded
+    -# page-specific javascript, run after the body is loaded. It carries the
+    -# request's CSP nonce; the policy admits no other inline script.
     - if content_for?(:action_specific_js)
       = nonced_javascript_tag { yield(:action_specific_js) }

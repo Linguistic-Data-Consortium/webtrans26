@@ -263,7 +263,6 @@ class DashboardTest < ApplicationSystemTestCase
     tu = task_users(:alice_admin_alpha_task_one)
     visit "/workflows/#{tu.id}/work/#{tu.task.workflow_id}"
     assert_equal "object", evaluate_script("typeof window.ldc_work_work")
-    assert_equal "object", evaluate_script("typeof window.Guide")
   end
 
   private

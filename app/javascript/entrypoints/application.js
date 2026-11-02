@@ -3,7 +3,6 @@ console.log('Vite ⚡️ Ruby + Svelte 5 + Tailwind CSS is running')
 
 // Import global CSS
 // import './application.css'
-import '../guides/guide.js'
 import '../src/app.css'
 import './custom.css'
 // import { mount } from 'svelte'

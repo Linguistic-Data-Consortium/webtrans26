@@ -36,7 +36,7 @@ SecureHeaders::Configuration.default do |config|
   # and the engine never starts.
   #
   #
-  # No 'unsafe-inline': the layout's inline scripts carry a per-request nonce
+  # No 'unsafe-inline': the layout's one inline script carries a per-request nonce
   # (nonced_javascript_tag), which secure_headers adds here, so an injected
   # <script> or onerror= handler doesn't run.
   #
