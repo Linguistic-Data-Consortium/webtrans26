@@ -14,6 +14,11 @@
 /config/master.key
 /config/credentials/*.key
 
+# TLS certificates and keys (docs/DEPLOYMENT.md puts them in config/): Kamal's
+# proxy serves them, so the image never needs them, and a pulled image shouldn't hand out the key.
+/config/*.pem
+/config/*.key
+
 # Ignore all logfiles and tempfiles.
 /log/*
 /tmp/*
