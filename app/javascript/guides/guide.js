@@ -871,15 +871,4 @@ const tte = function(text, ...args){
   return ttobj._target;
 };
 
-export const event = new EventTarget();
-event.dispatch = function(node,type){
-  event.dispatchEvent(new CustomEvent(type, {detail:node}));
-  return {
-    // update(){
-
-    // },
-    destroy() {
-      event.dispatchEvent(new CustomEvent('destroy_'+type, {detail: node}));
-    }
-  }
-}
+export { event } from '../lib/ldcjs/waveform/events';

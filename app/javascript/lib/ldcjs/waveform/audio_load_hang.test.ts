@@ -1,15 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { getp_wav } from "../../../../../test/javascript/mocks/ldcjs-getp";
 
-// helpers.js reaches modification1.js, which imports the guide module — and
-// that assigns to window.Guide at import time, which jsdom has nothing for.
-// Stubbing it is cheaper than loading the whole guide machinery to test a
-// promise's rejection.
-vi.mock("../../../guides/guide", () => ({
-  event: { dispatch: () => {}, listen: () => {} },
-  default: {}
-}));
-
 import { get_audio_buffer_info } from "./helpers";
 
 // get_audio_buffer_info used to wrap its whole chain in a `new Promise` with

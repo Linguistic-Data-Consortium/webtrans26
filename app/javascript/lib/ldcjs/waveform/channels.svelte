@@ -1,7 +1,7 @@
 <script>
     import { tick, createEventDispatcher, onMount, onDestroy } from 'svelte';
     import * as DropdownMenu from "$lib/components/ui/dropdown-menu"
-    import { event } from '../../../guides/guide';
+    import { event } from './events';
     import { mark_transcription } from '../../guide_state';
     import Channel from './channel.svelte';
     import { times, round_to_3_places, round_to_6_places } from './times';

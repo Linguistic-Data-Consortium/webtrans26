@@ -2,9 +2,6 @@ import { render } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-// The LDC guide module runs `window.Guide.reset = ...` at import time, which
-// throws under jsdom. channels.svelte only needs `event.dispatch` from it.
-vi.mock("../../../guides/guide", () => ({ event: { dispatch: vi.fn() } }));
 
 // The edge keys persist by re-timing an anchor: a change message naming the
 // anchor's N node. Capture the messages rather than the network.

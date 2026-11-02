@@ -8,7 +8,7 @@
     } from '../dialogs';
     import { fmap_helper } from '../helpers';
     import { key } from '../stores';
-    import { event } from '../../../../guides/guide';
+    import { event } from '../events';
     import { mark_transcription } from '../../../guide_state';
     import { asro, sado, run_asr4, run_sad } from '../asr.svelte';
     import { services_configured } from '../../service_config';

@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { event } from '../../../../guides/guide';
+    import { event } from '../events';
     import { mouse, key } from '../stores';
     let {
     } = $props();

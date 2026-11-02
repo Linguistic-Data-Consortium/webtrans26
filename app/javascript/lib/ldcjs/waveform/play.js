@@ -1,4 +1,4 @@
-import { event } from '../../../guides/guide';
+import { event } from './events';
 import { play_src_with_audio_id as plays } from '../audio/main';
 import { stop_playing as sp } from '../audio/main';
 let playing = false;

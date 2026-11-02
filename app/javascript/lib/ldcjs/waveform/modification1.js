@@ -2,7 +2,7 @@ import { add_message, add_message_listitem, submit_form, add_callback, setldc } 
 import { BATCH_SIZE, bulk_start, bulk_after_paint, bulk_done, bulk_end } from './bulk.svelte';
 import { sourceso, sourcesor } from './shared.svelte';
 import { touch_segments } from './transcript.svelte';
-import { event } from '../../../guides/guide';
+import { event } from './events';
 import { round_to_3_places } from './times';
 import { text_only_refuses } from './text_only';
 

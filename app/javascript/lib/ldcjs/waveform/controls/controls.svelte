@@ -1,6 +1,6 @@
 <script>
     import { tick, createEventDispatcher, onMount, onDestroy } from 'svelte';
-    import { event } from '../../../../guides/guide';
+    import { event } from '../events';
     import { btn, cbtn, dbtn, btn1 } from '../../work/buttons';
     import { ArrowUpFromLine, ArrowDownToLine, Check, X, House, Crosshair, Captions, Waypoints, MessageSquare, UserRound } from '@lucide/svelte';
     import * as Popover from "$lib/components/ui/popover";

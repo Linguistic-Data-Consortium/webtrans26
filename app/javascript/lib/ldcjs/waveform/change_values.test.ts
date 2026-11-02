@@ -22,7 +22,6 @@ vi.mock("./modification2", () => ({
 }));
 vi.mock("./shared.svelte", () => ({ sourceso: {}, sourcesor: {} }));
 vi.mock("./transcript.svelte", () => ({ touch_segments: vi.fn() }));
-vi.mock("../../../guides/guide", () => ({ event: { dispatch: vi.fn() } }));
 
 import { BATCH_SIZE, bulko } from "./bulk.svelte";
 import { change_values } from "./modification1";

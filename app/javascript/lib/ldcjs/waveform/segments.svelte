@@ -2,7 +2,7 @@
     import { tick, createEventDispatcher, onMount, onDestroy } from 'svelte';
     const dispatch = createEventDispatcher();
     import { ArrowUpFromLine, ArrowDownToLine, Check, X } from '@lucide/svelte';
-    import { event } from '../../../guides/guide';
+    import { event } from './events';
     import { mark_transcription } from '../../guide_state';
     import { settings } from './stores';
     import { transcript } from './transcript.svelte';

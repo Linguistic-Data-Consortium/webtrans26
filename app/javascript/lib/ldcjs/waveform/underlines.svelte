@@ -1,5 +1,5 @@
 <script>
-    import { event } from '../../../guides/guide';
+    import { event } from './events';
     import { activeo, sourceso, sourcesor } from './shared.svelte';
     let {
         i,

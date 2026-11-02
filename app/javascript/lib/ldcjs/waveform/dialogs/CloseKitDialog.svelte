@@ -1,7 +1,7 @@
 <script>
     import BaseDialog from './BaseDialog.svelte';
     import { btn, cbtn, dbtn, btn1 } from '../../work/buttons';
-    import { event } from '../../../../guides/guide';
+    import { event } from '../events';
     import {
         done,
         skip

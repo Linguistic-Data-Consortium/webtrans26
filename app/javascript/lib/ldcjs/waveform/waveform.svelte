@@ -15,7 +15,7 @@
     import { tick, createEventDispatcher, onMount, onDestroy } from 'svelte';
     const dispatch = createEventDispatcher();
     import { btn, cbtn, dbtn, btn1 } from '../work/buttons';
-    import { event } from '../../../guides/guide';
+    import { event } from './events';
     import { mark_transcription } from '../../guide_state';
     import { create_action } from '../../../work/controllers';
     import { settings, mouse, key } from './stores';
