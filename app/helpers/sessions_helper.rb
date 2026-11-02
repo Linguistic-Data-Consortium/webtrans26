@@ -197,19 +197,6 @@ module SessionsHelper
     signed_in? ? (@task.admin?(current_user) || project_admin?) : false
   end
 
-  def lead_annotator_user_kit_user
-    if params[:kit_uid]
-      kit = Kit.find_by_uid(params[:kit_uid])
-      user_id = kit.user_id
-      current_tasks = current_user.task_users.pluck(:task_id)
-      return if kit.task_id.in?([435,436]) and 445.in? current_tasks #current_user.task_users.pluck(:task_id)
-      return if kit.task_id.in? current_tasks #current_user.task_users.pluck(:task_id)
-    end
-    if user_id != current_user.id
-      redirect_to(root_path) unless lead_annotator?
-    end
-  end
-
   def name_change_helper(n, name)
     ncc = NodeClass.where(name: n).first
     if ncc

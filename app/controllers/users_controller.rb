@@ -119,20 +119,7 @@ class UsersController < ApplicationController
         end
       end
       bucket_test = 0 #bucket_size("#{ENV.fetch('ACTIVE_STORAGE_BUCKET')}/demo")
-      extra = { foo: 'bar' }
-      users = {}
-      User.where(id: TaskUser.where(task_id: 2).pluck(:user_id).select { |x| x == 7 or x == 14 or x > 15 }).map do |user|
-        users[user.id] = [ (user.name || 'empty'), user.email_address ]
-      end
-      tree_ids = Kit.where(task_id: 2, user_id: users.keys).pluck(:tree_id)
-      if current_user.id.in? [ 1, 7, 24 ]
-        extra[:list] = NodeDerivation.for_trees(tree_ids).flat_map do |_tree_id, derived|
-          derived.nodes.each_value.select { |node| node[:name] == 'File' }.map do |node|
-            file = derived.value_for(node)[:value].to_s
-            [ node[:user_id], users[node[:user_id]], (node[:iid] == 2 ? 'quick' : 'eloquent'), file.sub(/.+\//, '') ].flatten.join(' ')
-          end
-        end
-      end
+      extra = {}
           render json: {
             authenticated: authenticated?,
             user: current_user.name,
