@@ -331,7 +331,7 @@ A two-mode tab: a kits table on its own, then a per-kit detail panel once you se
 | **Create Kits (Text Input)** dialog — paste docids, parse, create | **Task admin**, enforced by `/create_kits_from_kits_tab` as well as by the trigger only rendering when `vv.task_admin_bool`. See below for what a line may say. |
 | **Create Kits (File Input)** dialog — upload a file of the same lines, parse, create | Task admin, same endpoint and the same line format as above. A file starting with `[` or `{` is read as JSON kit objects instead. |
 | **Bulk Reassign** dialog — change user/state on every filter-matched row | Task admin. |
-| **Download Transcript** dialog — generate a zip of TSV transcripts (one per kit) for the whole task | Task admin. Trigger gated on `vv.task_admin_bool`. The data-providing endpoint `/kits/all?task_id=…` has no admin gate server-side, but the dialog calls `Kit#snapshot` per-kit at request time, so a non-admin reaching the URL directly still gets data. |
+| **Download Transcript** dialog — generate a zip of TSV transcripts (one per kit) for the whole task | Task admin. Trigger gated on `vv.task_admin_bool`. The data-providing endpoint `/kits/all?task_id=…` checks the same thing server-side (task admin, or project manager), and calls `Kit#snapshot` per kit at request time. |
 
 ##### Creating kits from a list
 
@@ -356,7 +356,7 @@ A line naming a user who doesn't exist makes **no kit at all**, and is reported 
 | What | Role required |
 |---|---|
 | See the done-kits table (ID / UID / Source / User / Done Comment) | Project member. Header reads "All Done Kits" for task admins, "My Done Kits" otherwise; rows are server-filtered to `state == 'done'` but otherwise the same set. |
-| Click a UID to open the kit in **read-only** mode (`/workflows/<workflow_id>/read_only/<kit_uid>`) | Project member. The read-only viewer has its own access check (`task_users#read_only`) which currently allows anyone with a session. |
+| Click a UID to open the kit in **read-only** mode (`/workflows/<workflow_id>/read_only/<kit_uid>`) | Project member, for their own kits; task admin or project manager for anyone's. The read-only viewer (`task_users#read_only`) and the `/kits/*` endpoints it loads from check this themselves. |
 
 There's no Done-Kit-specific create/delete; this tab is read-only.
 

@@ -53,9 +53,6 @@ class TasksController < ApplicationController
         end
         render json: (
           if task_admin? # uses @task
-            if params[:force_kit_type]
-              Kit.where(task_id: @task.id).update_all(kit_type_id: @task.kit_type_id)
-            end
             @title = @task.name
             @states = @task.workflow ? @task.workflow_user_states.split(',') : []
             @kit_state_count_map = Hash.new
@@ -275,7 +272,8 @@ class TasksController < ApplicationController
         task = Task.find params[:id]
         uids = { success: [], error: [] }
         params[:uids].split(',').each do |uid|
-          kit = Kit.find_by_uid(uid)
+          # Only this task's kits: task_admin checked this task, not theirs.
+          kit = task.kits.find_by(uid: uid)
           if kit
             if params[:new_user]
               kit.user_id = params[:new_user].length > 0 ? User.find_by_name(params[:new_user]).id : nil

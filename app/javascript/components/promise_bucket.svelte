@@ -7,7 +7,7 @@
     import { S3Client, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
     // import { listObjectsV2params, getObject } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.10/src/aws_helper.js';
     import { listObjectsV2params, getObject } from '../lib/ldcjs/aws_helper.js';
-    import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.10/src/getp.js'
+    import { postp } from '../lib/ldcjs/getp'
     import Table from '../lib/ldcjs/work/table.svelte';
     import Spinner from './spinner.svelte'
     import { btn } from "./buttons"
@@ -91,8 +91,7 @@
         // console.log(open_tasks);
         let f = `s3://${bucket}/${object_id}`;
         let copen = 's3';
-        let path = `/kits_new?${copen}=${f}&task_id=${task.task_id}&filename=${f}`
-        let pp = getp(path);
+        let pp = postp('/kits_new', { [copen]: f, task_id: task.task_id, filename: f });
         // console.log(path);
         pp.then( () => {
             contents = null;

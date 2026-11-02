@@ -150,10 +150,12 @@ class TaskUsersController < ApplicationController
     end
   end
 
-  #this action allows read only viewing of any kit for task admins and greater
+  # Read-only viewing of a kit: any kit for task admins and greater, your own
+  # otherwise (the done-kits table links here).
   def read_only
     @workflow = Workflow.find params[:id]
     @kit = @workflow.read_only params[:kit_id]
+    return redirect_to(root_path, flash: { error: "You can't view that kit." }) unless kit_reader?(@kit)
     @task = @kit.task
     @project = @task.project
     @kit_type = @kit.kit_type

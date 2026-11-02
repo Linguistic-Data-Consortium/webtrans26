@@ -37,6 +37,7 @@ class KitsController < ApplicationController
   def undo
     respond_to do |format|
       format.json do
+        next deny_json unless kit_reader?(Kit.find_by_id(params[:id]))
         render json: Annotation.includes(:node_value).where(kit_id: params[:id]).order(:id).map { |x|
           {
             id: x.id,
@@ -87,6 +88,10 @@ class KitsController < ApplicationController
   def change_kit_state
     @newState = kit_params[:state]
     @kit = Kit.find_by_uid kit_params[:uid]
+    unless @kit && kit_task_admin?(@kit)
+      flash[:error] = "You must be a task admin to do that."
+      return redirect_back(fallback_location: root_path)
+    end
     originalState = @kit.state
     if @newState == 'broken'
       @kit.state = 'broken'
@@ -110,6 +115,7 @@ class KitsController < ApplicationController
 
   def get_time_spent
     @kit = Kit.find_by_uid params[:uid]
+    return deny_json unless kit_reader?(@kit)
     puts @kit.time_spent if @kit
     respond_to do |format|
       format.json do
@@ -123,6 +129,7 @@ class KitsController < ApplicationController
 
   def trouble
     @kit = Kit.find_by_uid params[:uid]
+    return deny_json unless kit_reader?(@kit)
     UserMailer.trouble(@kit, current_user).deliver_now
     respond_to do |format|
       format.json do
@@ -133,6 +140,7 @@ class KitsController < ApplicationController
 
   def change_time_spent
     @kit = Kit.find_by_uid params[:uid]
+    return deny_json unless @kit && (kit_holder?(@kit) || kit_task_admin?(@kit))
     if @kit
       @kit.time_spent = params[:time_spent].to_i
       @kit.save
@@ -155,12 +163,13 @@ class KitsController < ApplicationController
 
   def get
     @kit = Kit.find_by_uid(params[:uid])
+    return deny_json unless kit_reader?(@kit)
     add_meta_values_to_kit
     if params[:task_user_id] == 'readonly'
       elaborate_root_helper unless params[:mode] == 'two'
     else
       task_user = TaskUser.find params[:task_user_id]
-      raise 'wrong user' unless task_user.user == current_user or params[:editor] == 'true'
+      raise 'wrong user' unless task_user.user == current_user or (params[:editor] == 'true' and kit_task_admin?(@kit))
       elaborate_root_helper task_user, task_user.state unless params[:mode] == 'two'
     end
     respond_to do |format|
@@ -229,30 +238,9 @@ class KitsController < ApplicationController
     else
       @kit = Kit.find_by_id params[:id]
     end
+    return deny_json unless kit_reader?(@kit)
     @task_user = TaskUser.where( task_id: @kit.task_id, user_id: current_user.id).first
     @kit_types = KitType.all
-    # redirect_to "/workflows/workflows/#{task.workflow_id}/read_only/#{kit.uid}", :only_path => true
-    if params[:open]
-      source = Source.where(id: params[:open].to_i).first
-      @kit.source_uid = source.uid
-      @kit.source[:uid] = source.uid
-      @kit.source[:id] = source.uid
-      @kit.source[:filename] = params[:filename]
-      @kit.save!
-    end
-    if params[:s3]
-      uid = params[:s3]
-      @kit.source_uid = uid
-      @kit.source[:uid] = uid
-      @kit.source[:id] = uid
-      @kit.source[:filename] = params[:filename]
-      @kit.save!
-    end
-    if params[:goto]
-      @kit.destroy
-      Kit.find(params[:goto]).update(state: :assigned)
-      @task_user.update( state: 'needs_kit' )
-    end
     respond_to do |format|
       format.html
       format.json { render json: @kit }
@@ -262,6 +250,7 @@ class KitsController < ApplicationController
   def check
     id = params[:id]
     @kit = Kit.find_by_id params[:id]
+    return deny_json unless kit_reader?(@kit)
     if params[:check]
       tree_id = @kit.tree_id
       kit_id = @kit.id
@@ -283,6 +272,8 @@ class KitsController < ApplicationController
     if params[:open] or params[:s3]
       user_id = current_user.id
       task_id = params[:task_id].to_i
+      task = Task.find(task_id)
+      return deny_json unless task.member?(current_user) || task_admin_of?(task)
       kit = Kit.new
       kit.user_id = user_id
       kit.task_id = task_id 
@@ -310,6 +301,8 @@ class KitsController < ApplicationController
     end
     if params[:goto]
       kit = Kit.find(params[:goto])
+      # Taking a kit back for yourself, or a task admin taking one in their task.
+      return deny_json unless kit.user_id == current_user.id || kit_task_admin?(kit)
       kit.update(state: :unassigned, user_id: current_user.id)
       # @task_user.update( state: 'needs_kit' )
     end
@@ -334,9 +327,12 @@ class KitsController < ApplicationController
         @kit = Kit.find_by_id params[:id]
         @task = @kit.task
         render json: (
+          wanted = kit_update_params
           if not task_admin?
             { error: "Only a task admin can edit the kit." }
-          elsif @kit.update kit_params
+          elsif wanted[:user_id].present? && !@task.task_users.exists?(user_id: wanted[:user_id])
+            { error: "That user isn't a member of this task." }
+          elsif @kit.update wanted
             @kit
           else
             { error: @kit.errors.full_messages }
@@ -408,7 +404,7 @@ class KitsController < ApplicationController
           render json: { error: "no such kit" }
         elsif kit.tree_id.nil?
           render json: { error: "that kit has never been opened, so it has no annotations" }
-        elsif kit.user_id != current_user.id && !lead_annotator?
+        elsif !kit_reader?(kit)
           render json: { error: "permission denied" }
         else
           render json: kit.graph_snapshot
@@ -433,6 +429,7 @@ class KitsController < ApplicationController
           render json: { error: "no such kit" }
           next
         end
+        next deny_json unless kit_reader?(kit)
 
         tier = kit.kit_type&.constraints&.dig("transcribe_text_only")
         tier = ImportedGraph::DEFAULT_TIER if tier.blank? || tier == "transcribe_text_only"
@@ -468,7 +465,7 @@ class KitsController < ApplicationController
           render json: { error: "no such kit" }
         elsif kit.tree_id.nil?
           render json: { error: "that kit has never been opened, so it has no annotations" }
-        elsif kit.user_id != current_user.id && !lead_annotator?
+        elsif !kit_reader?(kit)
           render json: { error: "permission denied" }
         elsif GraphNode.by_tree(kit.tree_id).none? && GraphArc.by_tree(kit.tree_id).none?
           render json: { error: "no graph for that kit yet — build it first" }
@@ -484,6 +481,9 @@ class KitsController < ApplicationController
       format.json do
         o = []
         task_id = params[:task_id].to_i
+        # Every done transcript in the task: what a task admin downloads, and
+        # what a project manager's read access covers.
+        next deny_json unless project_manager? || task_admin_of?(Task.find_by(id: task_id))
         Kit.where(task_id: task_id).each do |x|
           x.snapshot
         end
@@ -522,6 +522,13 @@ class KitsController < ApplicationController
     end
   end
   private
+
+  # What a task admin may change on a kit from the Kits tab. Never tree_id or
+  # task_id: task_admin? is checked against the kit's task, so moving either
+  # would reach a tree or task that check never saw.
+  def kit_update_params
+    params.require(:kit).permit(:user_id, :state)
+  end
 
   def kit_params
     params.require(:kit).permit(:meta, :user_id, :task_id, :kit_type_id, :uid, :state, :source, :broken_comment, :tree_id, :kit_batch_id, :not_user_id, :time_spent)

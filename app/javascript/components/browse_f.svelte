@@ -10,7 +10,7 @@
     import { get_open_tasks } from './browse_helper';
     import Table2 from '../lib/ldcjs/work/table.svelte';
     import Help from './help.svelte';
-    import { getp } from "../lib/ldcjs/getp";
+    import { getp, postp } from "../lib/ldcjs/getp";
     import Buckets from './buckets.svelte';
 
   let {
@@ -91,8 +91,8 @@
     let object_index1 = $state();
     function create(){
         console.log(object_index1);
-        const path = `/kits_new?open=${object_index1[object_id1].source_id}&task_id=${object_index1[object_id1].task_id}&filename=${object_index1[object_id1].filename}`
-        getp(path).then( () => window.location = open_tasks[selected_task_id1].work_path );
+        const o = object_index1[object_id1];
+        postp('/kits_new', { open: o.source_id, task_id: o.task_id, filename: o.filename }).then( () => window.location = open_tasks[selected_task_id1].work_path );
     }
     let open_kit_uid1 = $state();
     let selected_task_id1 = $state();
@@ -117,7 +117,7 @@
         // getp("/kits_new?goto=" + object_index2[object_id2].id)
         // .then( () => window.location = work_paths[selected_task_id2] );
         if(allow_goto){
-            let pp = getp("/kits_new?goto=" + object_index2[object_id2].id);
+            let pp = postp('/kits_new', { goto: object_index2[object_id2].id });
         }
         ppp.then( console.log(open_tasks[selected_task_id2]) );
         ppp.then( () => window.location = open_tasks[selected_task_id2].work_path );

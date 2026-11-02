@@ -144,4 +144,39 @@ class ApplicationController < ActionController::Base
     @internal_server_error = false
   end
 
+  private
+
+  # Who may do what with one kit. The roles here are the ones task_admin? and
+  # friends check, but taken from the kit rather than from params[:id], so they
+  # can't be satisfied by naming some other task.
+  #
+  # Holding a kit: it's assigned to you, by user_id or by your task user's
+  # kit_oid (orderly assignment can leave user_id empty).
+  def kit_holder?(kit)
+    kit.user_id == current_user.id ||
+      TaskUser.exists?(task_id: kit.task_id, user_id: current_user.id, kit_oid: kit.uid)
+  end
+
+  # Administering a kit: task admin of its task, admin or owner of its project,
+  # or portal manager (which includes admins).
+  def kit_task_admin?(kit)
+    task_admin_of?(kit.task)
+  end
+
+  def task_admin_of?(task)
+    return false unless task
+    portal_manager? || task.admin?(current_user) ||
+      !!task.project&.admin?(current_user) || !!task.project&.owner?(current_user)
+  end
+
+  # Reading a kit (transcript, annotation log, audio): its holder, an admin of
+  # it, or a project manager, whose role is elevated read access (USER_GUIDE §1).
+  def kit_reader?(kit)
+    !!kit && (kit_holder?(kit) || project_manager? || kit_task_admin?(kit))
+  end
+
+  def deny_json(message = "Permission denied.")
+    render json: { error: message }, status: :forbidden
+  end
+
 end

@@ -112,7 +112,7 @@ Rails.application.routes.draw do
   # The imported graph covering this kit's audio, if one was imported for it —
   # what the transcribe_text_only mode transcribes against.
   post "/kits/imported", to: 'kits#imported'
-  get "/kits_new", to: 'kits#kits_new'
+  post "/kits_new", to: 'kits#kits_new'
   post "/create_kits_from_kits_tab", to: 'kits#create_kits_from_kits_tab'
   resource :kits do
     member do
@@ -122,14 +122,13 @@ Rails.application.routes.draw do
       post :get_time_spent
       get :get_time_spent
       post :change_time_spent
-      get :change_time_spent
       post :get_message_from_journal
       get ':id/show', :action => :show, :as => :show
       get ':id/check', :action => :check, :as => :check
       patch ':id/update', :action => :update, :as => :update
       get 'task/:id', :action => :task, :as => :task
       post :set_kits_done
-      get 'fix_floating_kits/:task/:new_state', :action => :fix_floating_kits, :as => :fix_floating_kits
+      patch 'fix_floating_kits/:task/:new_state', :action => :fix_floating_kits, :as => :fix_floating_kits
       get :management
       get :trouble
       get ':id/undo', action: :undo
