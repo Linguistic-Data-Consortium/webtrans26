@@ -47,9 +47,21 @@ class User < ApplicationRecord
     update_attribute(:remember_digest, User.digest(remember_token))
   end
 
+  # Links that act on the account without its password stop working after a
+  # week: an access link signs its holder in, and an invite lets them set the
+  # account up. Each is keyed to the column recording when it was issued.
+  TOKEN_LIFETIMES = {
+    access: [ :access_created_at, 7.days ],
+    invite: [ :invite_sent_at, 7.days ]
+  }
+
   def authenticated?(att, token)
     digest = send "#{att}_digest"
     return false if digest.nil?
+    if (issued_column, lifetime = TOKEN_LIFETIMES[att.to_sym])
+      issued = send(issued_column)
+      return false if issued.nil? || issued < lifetime.ago
+    end
     BCrypt::Password.new(digest).is_password?(token)
   end
 

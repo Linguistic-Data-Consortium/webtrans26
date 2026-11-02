@@ -41,4 +41,30 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert cookies[:session_id].blank?
   end
 
+
+  # ── idle timeout ─────────────────────────────────────────────────────────
+
+  test "a session unused for over two weeks is refused and deleted" do
+    alice = users(:alice)
+    sign_in_as alice
+    session = alice.sessions.order(:id).last
+    session.update_columns(updated_at: 15.days.ago)
+    get user_path(alice)
+    assert_redirected_to new_session_path
+    assert_not Session.exists?(session.id)
+  end
+
+  test "using a session pushes its expiry back, at most hourly" do
+    alice = users(:alice)
+    sign_in_as alice
+    session = alice.sessions.order(:id).last
+    session.update_columns(updated_at: 2.hours.ago)
+    get user_path(alice)
+    assert_operator session.reload.updated_at, :>, 1.minute.ago
+
+    session.update_columns(updated_at: 10.minutes.ago)
+    stamp = session.reload.updated_at
+    get user_path(alice)
+    assert_equal stamp, session.reload.updated_at
+  end
 end

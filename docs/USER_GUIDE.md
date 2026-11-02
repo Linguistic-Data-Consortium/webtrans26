@@ -235,6 +235,7 @@ the account and hands you a URL to pass on however you like — chat, phone, pap
 | **Create Link** (name + email) | Creates an inactive account with a random password nobody needs to know, and returns a link. `POST /access_links`, gated on `portal_manager?` (which includes admins). |
 | The link | `/access/<user id>/<token>`. Opening it activates the account, starts a session, and signs the person straight in — no password prompt. |
 | **Single use** | The click clears the stored digest, so the same URL won't work twice. A refresh, a second click, or a later sign-out all mean the user needs a new link. |
+| **Expiry** | A link not used within 7 days stops working; create another. Invitation links expire the same way. |
 | Re-issuing | Creating a link for an address that already exists doesn't make a second account — it issues a fresh link for that user and keeps their name. This is the recovery path for someone who signed out. |
 | **Who for** | A portal manager can create links for anyone except admins and other portal managers; only an admin can create those. A link signs its holder in as that user, so it would otherwise make a portal manager an admin. |
 | **Links not used yet** table | Name / Email / Created / By, for every account with an outstanding link. Rows disappear once the link is spent. |
@@ -263,6 +264,7 @@ Your own settings. Visible to every signed-in user.
 |---|---|
 | **Change password** (current password, new password, confirmation) | Requires your existing password, so a borrowed browser can't quietly change it. The new one must be at least 8 characters and match its confirmation. `PATCH /account/password`, which requires authentication and is rate-limited to 10 attempts per 3 minutes. |
 | Other devices | A successful change destroys every other session for your account and tells you how many — the current browser stays signed in. That's how you evict a device you no longer control, or retire a spent access link. |
+| Idle sign-out | A browser that hasn't used its session for 14 days is signed out. |
 
 Forgotten passwords are a different path: with outbound mail, use the reset
 flow (§2.1); without it, ask an administrator for an access link (§2.2.8).

@@ -27,8 +27,22 @@ module Authentication
       Current.session ||= find_session_by_cookie
     end
 
+    # A session nobody has used for this long is gone, so a cookie copied off a
+    # machine stops working. Use is recorded at most hourly, to keep a write off
+    # every request.
+    SESSION_IDLE_TIMEOUT = 14.days
+    SESSION_TOUCH_INTERVAL = 1.hour
+
     def find_session_by_cookie
-      Session.find_by(id: cookies.signed[:session_id]) if cookies.signed[:session_id]
+      return unless cookies.signed[:session_id]
+      session = Session.find_by(id: cookies.signed[:session_id])
+      return unless session
+      if session.updated_at < SESSION_IDLE_TIMEOUT.ago
+        session.destroy
+        return
+      end
+      session.touch if session.updated_at < SESSION_TOUCH_INTERVAL.ago
+      session
     end
 
     def request_authentication
@@ -50,6 +64,7 @@ module Authentication
     def terminate_session
       Current.session.destroy
       cookies.delete(:session_id)
+      reset_session # return_to and flash shouldn't outlive the sign-in
     end
 
     def cognito_init

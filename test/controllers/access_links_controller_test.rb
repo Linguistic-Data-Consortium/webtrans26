@@ -121,6 +121,20 @@ class AccessLinksControllerTest < ActionDispatch::IntegrationTest
     assert_nil user.access_digest, "the link is spent"
   end
 
+  test "a link more than a week old doesn't sign anyone in" do
+    sign_in_as @admin
+    url = mint_for("late@example.com", "late")["url"]
+    delete session_url
+
+    user = User.find_by(email_address: "late@example.com")
+    user.update_columns(access_created_at: 8.days.ago)
+    assert_no_difference -> { user.sessions.count } do
+      get url
+    end
+    assert_redirected_to new_session_path
+    assert_not user.reload.activated
+  end
+
   test "the link works only once" do
     sign_in_as @admin
     url = mint_for("oneshot@example.com", "oneshot")["url"]

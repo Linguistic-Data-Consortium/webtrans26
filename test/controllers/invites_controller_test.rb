@@ -44,6 +44,14 @@ class InvitesControllerTest < ActionDispatch::IntegrationTest
     assert_match(/activated/i, flash[:success])
   end
 
+  test "edit with an invite more than a week old does not activate" do
+    user = create_pending_invite(sender: users(:admin))
+    user.update_columns(invite_sent_at: 8.days.ago)
+    get edit_invite_url(user.invite_token, email: user.email_address)
+    assert_redirected_to root_url
+    assert_not user.reload.activated?
+  end
+
   test "edit with an invalid token does not activate and redirects to root" do
     pending = create_pending_invite(sender: users(:admin))
 
