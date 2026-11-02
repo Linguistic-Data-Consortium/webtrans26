@@ -17,8 +17,9 @@ class Rack::Attack
 
   # Throttle POST requests to /session by IP address
   # Limit: 5 attempts per 20 seconds
+  # POST /jwts checks a password too, so it is throttled as a login.
   throttle('logins/ip', limit: 5, period: 20.seconds) do |req|
-    if req.path == '/session' && req.post?
+    if %w[ /session /jwts ].include?(req.path) && req.post?
       req.ip
     end
   end
@@ -26,7 +27,7 @@ class Rack::Attack
   # Throttle POST requests to /session by email param
   # Limit: 5 attempts per 20 seconds per email
   throttle('logins/email', limit: 5, period: 20.seconds) do |req|
-    if req.path == '/session' && req.post?
+    if %w[ /session /jwts ].include?(req.path) && req.post?
       # Normalize email to prevent case bypasses
       req.params.dig('email_address').to_s.downcase.presence
     end

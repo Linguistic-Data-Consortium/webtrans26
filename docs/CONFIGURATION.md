@@ -54,13 +54,9 @@ User.find_by(email_address: "x@y.com").activate
 Two branches in `PasswordsController#create`:
 
 1. **`MAIL_ENABLED=true`** — the usual self-service flow. We send a signed-token reset link to the address; the recipient clicks it and sets a new password.
-2. **Mail disabled (the default)** — the user picks a new password right on the request form. On submit, we set the password on the matching account, deactivate it (`User#deactivate`, which also destroys all live sessions), and redirect with a notice telling them to ask an administrator to reactivate. After the admin verifies and flips `activated`, the user signs in with the password they just chose.
+2. **Mail disabled (the default)** — nothing is reset. Without mail there is no way to prove the requester owns the address, so the page and `POST /passwords` only tell the user to ask a portal manager or administrator for an access link (`/access_links`, see the User Guide). Once signed in through it, they set a new password on the Account tab.
 
-A few notes on branch 2:
-
-- **Enumeration safety.** Password validation (min length, confirmation match) runs *before* the email lookup, so the response shape doesn't depend on whether the address matched. An unknown email gets the same "if the address matched…" notice as a successful change.
-- **Lockout risk.** The endpoint can be used as a "lock this account" lever by anyone who knows an address — they'd submit a random password, the real user gets deactivated, and only the admin can reverse it. Admins should be ready to verify and reactivate quickly. Rate-limiting via `Rack::Attack` would make abuse harder; not configured here yet.
-- **Reactivation.** The admin reactivates with `User.find_by(email_address: "x@y.com").activate` in a console (or via a future admin UI).
+   Earlier versions set the submitted password and deactivated the account. That let anyone who knew an address lock its owner out, and choose the password an administrator would later reactivate.
 
 ## Where the config lives
 

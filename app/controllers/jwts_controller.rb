@@ -2,9 +2,17 @@ class JwtsController < ApplicationController
   
   skip_before_action :verify_authenticity_token
   allow_unauthenticated_access only: [ :create, :index ]
+  rate_limit to: 10, within: 3.minutes, only: :create,
+    with: -> { render json: { error: "Try again later." }, status: :too_many_requests }
+
+  ISSUER = "rails_jwt_api"
+  AUDIENCE = "rails_jwt_client"
 
   def create
-    if user = User.authenticate_by(params.permit(:email_address, :password))
+    # The same answer for an inactive account as for a wrong password: sign-in
+    # refuses inactive accounts, and so must this.
+    user = User.authenticate_by(params.permit(:email_address, :password))
+    if user&.activated?
       encoded_token = encode(user)
       render json: { token: encoded_token }, status: :ok
     else
@@ -23,8 +31,8 @@ class JwtsController < ApplicationController
         }, 
         exp: now + 3.minutes.to_i,
         iat: now,
-        iss: "rails_jwt_api",
-        aud: "rails_jwt_client",
+        iss: ISSUER,
+        aud: AUDIENCE,
         sub: "User",
         jti: SecureRandom.uuid,
         nbf: now + 1.second.to_i,
@@ -39,11 +47,14 @@ class JwtsController < ApplicationController
 
   def index
     begin
-      token = request.headers["Authorization"].split(" ").last
-      decoded = JWT.decode(token, Rails.application.credentials.jwt_secret, 'HS256')
-      user = decoded.first["data"].with_indifferent_access
-      if user
-        render json: { user: user, credentials: get_credentials_from_cognito(user['id']) }, status: :ok
+      token = request.headers["Authorization"].to_s.split(" ").last
+      decoded = JWT.decode(token, Rails.application.credentials.jwt_secret, true,
+        algorithm: "HS256", iss: ISSUER, verify_iss: true, aud: AUDIENCE, verify_aud: true)
+      # Looked up again rather than trusted from the payload, so an account
+      # deactivated after the token was issued gets nothing.
+      user = User.find_by(id: decoded.first.dig("data", "id"))
+      if user&.activated?
+        render json: { user: { id: user.id, email_address: user.email_address }, credentials: get_credentials_from_cognito(user.id) }, status: :ok
       else
         render json: { error: "Unauthorized" }, status: :unauthorized
       end

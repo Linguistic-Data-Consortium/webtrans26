@@ -3,26 +3,19 @@ require "application_system_test_case"
 class PasswordResetTest < ApplicationSystemTestCase
   setup { ActionMailer::Base.deliveries.clear }
 
-  test "with mail disabled (default), the user picks a new password and the account is deactivated" do
+  test "with mail disabled (default), the recovery page points at an access link and changes nothing" do
     alice = users(:alice)
-    assert alice.activated?
-    new_password = "fresh-new-pw"
+    digest = alice.password_digest
 
     visit new_session_url
     click_on "Username/password recovery"
 
     assert_current_path new_password_path
-    fill_in "Email address", with: alice.email_address
-    fill_in "New password", with: new_password
-    fill_in "Confirm new password", with: new_password
-    click_on "Set password & deactivate"
-
-    assert_current_path new_session_path
-    assert_text "deactivated"
-    assert_empty ActionMailer::Base.deliveries
+    assert_text "sign-in link"
+    assert_no_field "Email address"
     alice.reload
-    assert_not alice.activated?
-    assert alice.authenticate(new_password)
+    assert alice.activated?
+    assert_equal digest, alice.password_digest
   end
 
   test "with mail enabled, a user can reset their password via the email link" do

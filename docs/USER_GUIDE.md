@@ -242,8 +242,8 @@ Only the token's digest is stored, so the URL is shown exactly once, when you cr
 it — there's no way to look it up afterwards. If you lose it, create another.
 
 Treat a live link like a password: anyone holding it becomes that user on first
-click. The alternative to a new link is the ordinary password-reset flow
-(§2.1), which on a mail-less instance parks the account until an admin reactivates it.
+click. On an instance with outbound mail, the user can instead use the ordinary
+password-reset flow (§2.1); without mail, a link is the only recovery path.
 
 #### 2.2.9 Permissions
 
@@ -263,10 +263,8 @@ Your own settings. Visible to every signed-in user.
 | **Change password** (current password, new password, confirmation) | Requires your existing password, so a borrowed browser can't quietly change it. The new one must be at least 8 characters and match its confirmation. `PATCH /account/password`, which requires authentication and is rate-limited to 10 attempts per 3 minutes. |
 | Other devices | A successful change destroys every other session for your account and tells you how many — the current browser stays signed in. That's how you evict a device you no longer control, or retire a spent access link. |
 
-Forgotten passwords are a different path: sign out and use the reset flow (§2.1),
-which on an instance without outbound mail parks the account until an
-administrator reactivates it, or ask an administrator for an access link
-(§2.2.8).
+Forgotten passwords are a different path: with outbound mail, use the reset
+flow (§2.1); without it, ask an administrator for an access link (§2.2.8).
 
 ### 2.3 Project drill-in
 

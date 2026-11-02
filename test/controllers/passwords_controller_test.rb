@@ -3,78 +3,44 @@ require "test_helper"
 class PasswordsControllerTest < ActionDispatch::IntegrationTest
   setup { ActionMailer::Base.deliveries.clear }
 
-  test "GET /passwords/new renders the request-reset form" do
+  test "GET /passwords/new (default: mail off) shows the access-link notice and no form" do
     get new_password_path
     assert_response :success
-    assert_select "form[action=?]", passwords_path
-    assert_select "input[name='email_address']"
+    assert_select "form[action=?]", passwords_path, count: 0
+    assert_match(/sign-in link/i, response.body)
   end
 
-  test "POST /passwords (default: mail off) sets the new password, deactivates, kills sessions, sends no mail" do
+  test "GET /passwords/new with mail enabled renders the request-reset form" do
+    with_mail_enabled do
+      get new_password_path
+      assert_response :success
+      assert_select "form[action=?]", passwords_path
+      assert_select "input[name='email_address']"
+    end
+  end
+
+  # The mail-off branch used to set the submitted password and deactivate the
+  # account: a lockout lever for anyone who knew an address, and a way to choose
+  # the password an admin would later reactivate.
+  test "POST /passwords (default: mail off) changes nothing, whatever it is sent" do
     alice = users(:alice)
     alice.sessions.create!(user_agent: "test", ip_address: "127.0.0.1")
-    assert alice.activated?
-    assert alice.sessions.any?
-    new_password = "brand-new-pw"
+    digest = alice.password_digest
 
     assert_no_difference -> { ActionMailer::Base.deliveries.size } do
       post passwords_path, params: {
         email_address: alice.email_address,
-        password: new_password,
-        password_confirmation: new_password
+        password: "attacker-pw",
+        password_confirmation: "attacker-pw"
       }
     end
 
     alice.reload
-    assert_not alice.activated?
-    assert_empty alice.sessions
-    assert alice.authenticate(new_password), "new password should be set"
-    assert_redirected_to new_session_path
-    assert_match(/deactivated/i, flash[:notice])
-  end
-
-  test "POST /passwords (default: mail off) with an unknown email gives the same notice and changes nothing" do
-    before_digests = User.pluck(:password_digest)
-
-    assert_no_difference -> { ActionMailer::Base.deliveries.size } do
-      post passwords_path, params: {
-        email_address: "nobody@example.com",
-        password: "brand-new-pw",
-        password_confirmation: "brand-new-pw"
-      }
-    end
-
-    assert_redirected_to new_session_path
-    assert_match(/deactivated/i, flash[:notice])
-    assert_equal before_digests, User.pluck(:password_digest)
-  end
-
-  test "POST /passwords (default: mail off) rejects short passwords without leaking whether the email matched" do
-    alice = users(:alice)
     assert alice.activated?
-
-    post passwords_path, params: {
-      email_address: alice.email_address,
-      password: "short",
-      password_confirmation: "short"
-    }
-
-    assert_redirected_to new_password_path
-    assert_match(/at least 8/i, flash[:alert])
-    assert alice.reload.activated?, "validation failure must not deactivate"
-  end
-
-  test "POST /passwords (default: mail off) rejects mismatched confirmations" do
-    alice = users(:alice)
-    post passwords_path, params: {
-      email_address: alice.email_address,
-      password: "brand-new-pw",
-      password_confirmation: "different-pw"
-    }
-
-    assert_redirected_to new_password_path
-    assert_match(/doesn.t match/i, flash[:alert])
-    assert alice.reload.activated?
+    assert alice.sessions.any?
+    assert_equal digest, alice.password_digest
+    assert_redirected_to new_session_path
+    assert_match(/sign-in link/i, flash[:notice])
   end
 
   test "POST /passwords with mail enabled and a known email sends a reset email and redirects" do
@@ -128,6 +94,16 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     users(:alice).reload
     assert users(:alice).authenticate("brand-new-pw")
     assert_not users(:alice).authenticate("password123")
+  end
+
+  test "PATCH /passwords/:token signs out the account's existing sessions" do
+    alice = users(:alice)
+    alice.sessions.create!(user_agent: "elsewhere", ip_address: "10.0.0.1")
+    patch password_path(alice.password_reset_token), params: {
+      password: "brand-new-pw",
+      password_confirmation: "brand-new-pw"
+    }
+    assert_empty alice.reload.sessions
   end
 
   test "PATCH /passwords/:token with mismatched confirmation redirects back with alert" do

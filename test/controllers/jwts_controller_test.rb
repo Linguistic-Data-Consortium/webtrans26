@@ -45,4 +45,46 @@ class JwtsControllerTest < ActionDispatch::IntegrationTest
     body = JSON.parse(@response.body)
     assert body["error"].present?
   end
+
+  test "POST /jwts refuses an account that isn't activated, with the bad-password answer" do
+    user = users(:unactivated)
+    user.update!(password: "password123", password_confirmation: "password123")
+    post jwts_url, params: { email_address: user.email_address, password: "password123" }, as: :json
+    assert_response :unauthorized
+    assert_equal "Invalid email or password", JSON.parse(@response.body)["error"]
+  end
+
+  test "GET /jwts without an Authorization header returns 401, not 500" do
+    get jwts_url, as: :json
+    assert_response :unauthorized
+  end
+
+  test "GET /jwts refuses a validly signed token for a deactivated account" do
+    alice = users(:alice)
+    token = JWT.encode({ data: { id: alice.id }, exp: 1.minute.from_now.to_i,
+      iss: JwtsController::ISSUER, aud: JwtsController::AUDIENCE }, @stub_secret, "HS256")
+    alice.update_columns(activated: false)
+    get jwts_url, headers: { "Authorization" => "Bearer #{token}" }, as: :json
+    assert_response :unauthorized
+  end
+
+  test "GET /jwts refuses a token signed for another audience" do
+    token = JWT.encode({ data: { id: users(:alice).id }, exp: 1.minute.from_now.to_i,
+      iss: JwtsController::ISSUER, aud: "someone-else" }, @stub_secret, "HS256")
+    get jwts_url, headers: { "Authorization" => "Bearer #{token}" }, as: :json
+    assert_response :unauthorized
+  end
+
+  test "GET /jwts accepts a valid token for an active account" do
+    alice = users(:alice)
+    token = JWT.encode({ data: { id: alice.id }, exp: 1.minute.from_now.to_i,
+      iss: JwtsController::ISSUER, aud: JwtsController::AUDIENCE }, @stub_secret, "HS256")
+    JwtsController.class_eval { alias_method :__real_creds, :get_credentials_from_cognito; define_method(:get_credentials_from_cognito) { |id| { stub: id } } }
+    get jwts_url, headers: { "Authorization" => "Bearer #{token}" }, as: :json
+    assert_response :success
+    assert_equal alice.id, JSON.parse(@response.body).dig("credentials", "stub")
+  ensure
+    JwtsController.class_eval { alias_method :get_credentials_from_cognito, :__real_creds; remove_method :__real_creds }
+  end
 end
+
