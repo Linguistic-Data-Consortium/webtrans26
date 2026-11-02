@@ -39,7 +39,9 @@ class AccessLinksController < ApplicationController
         email = params[:email_address].to_s.strip
         name = params[:name].to_s.strip
         user = User.find_by(email_address: email.downcase)
-        if user
+        if user && outranks_caller?(user)
+          { error: "Only an administrator can create a link for #{user.name}.", status: 403 }
+        elsif user
           mint user
         else
           create_and_mint name, email
@@ -64,6 +66,14 @@ class AccessLinksController < ApplicationController
   end
 
   private
+
+  # A link signs its holder in as that user, so minting one is acting as them.
+  # A portal manager may do that for anyone below them, not for a peer or an
+  # admin: that would turn the portal manager role into admin.
+  def outranks_caller?(user)
+    return false if admin?
+    user.admin? || user.portal_manager?
+  end
 
   def create_and_mint(name, email)
     password = User.new_token

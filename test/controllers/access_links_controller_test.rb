@@ -34,6 +34,36 @@ class AccessLinksControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "a portal manager cannot create a link for an admin" do
+    sign_in_as @pat
+    body = mint_for(@admin.email_address, @admin.name)
+    assert_response :forbidden
+    assert_nil body["url"]
+    assert_nil @admin.reload.access_digest
+  end
+
+  test "a portal manager cannot create a link for another portal manager" do
+    other = users(:charlie)
+    GroupUser.create!(group: groups(:portal_managers), user: other)
+    sign_in_as @pat
+    mint_for(other.email_address, other.name)
+    assert_response :forbidden
+    assert_nil other.reload.access_digest
+  end
+
+  test "a portal manager can still create a link for an ordinary user" do
+    sign_in_as @pat
+    body = mint_for(@alice.email_address, @alice.name)
+    assert_response :success
+    assert body["url"].present?
+  end
+
+  test "an admin can create a link for a portal manager" do
+    sign_in_as @admin
+    body = mint_for(@pat.email_address, @pat.name)
+    assert body["url"].present?
+  end
+
   test "an ordinary user cannot create a link" do
     sign_in_as @alice
     assert_no_difference -> { User.count } do

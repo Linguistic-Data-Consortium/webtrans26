@@ -236,6 +236,7 @@ the account and hands you a URL to pass on however you like — chat, phone, pap
 | The link | `/access/<user id>/<token>`. Opening it activates the account, starts a session, and signs the person straight in — no password prompt. |
 | **Single use** | The click clears the stored digest, so the same URL won't work twice. A refresh, a second click, or a later sign-out all mean the user needs a new link. |
 | Re-issuing | Creating a link for an address that already exists doesn't make a second account — it issues a fresh link for that user and keeps their name. This is the recovery path for someone who signed out. |
+| **Who for** | A portal manager can create links for anyone except admins and other portal managers; only an admin can create those. A link signs its holder in as that user, so it would otherwise make a portal manager an admin. |
 | **Links not used yet** table | Name / Email / Created / By, for every account with an outstanding link. Rows disappear once the link is spent. |
 
 Only the token's digest is stored, so the URL is shown exactly once, when you create
