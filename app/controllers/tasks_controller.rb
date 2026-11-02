@@ -267,58 +267,6 @@ class TasksController < ApplicationController
   end
 
   #action that displays a kit creation dialog, which is defined for each kit type
-  def kit_creator
-    @task = Task.find(params[:id])
-    @task.help_video = 'help'
-    @task.save!
-    @kit_type = @task.kit_type
-    # if @kit_type.respond_to? 'kit_generation_options'
-    #   @tabs = @kit_type.kit_generation_options(@task)
-    # else
-    #   flash[:info] = "No Kit generation code exists for this task and kit type"
-    #   redirect_back fallback_location: root_path
-    # end
-  end
-  
-  #action that uploads a file and stores in a directory specific to the project / task
-  def file_upload
-    task = Task.find params[:id]
-    
-    fileprefix = Rails.application.config.public_path
-    publicpath = "#{fileprefix}/#{task.project_name}/#{task.name}"
-    uploadedString = params['new_file'].read.force_encoding "utf-8"
-    uploadedString.encode("utf-16le")
-    uploadFile = StringIO.new uploadedString
-
-    serverFileName = "#{publicpath}/#{Time.now}-#{params['new_file'].original_filename}";
-    serverFile = File.open(serverFileName, "w+:utf-8") #need read and write.
-    serverFile.write(uploadFile.read())
-    serverFile.rewind #reading from it below.
-    serverFile.close
-    
-    redirect_back fallback_location: root_path
-  end
-  
-  #action that reassigns a single kit to a user, which means marking it as unassigned and adding the user_id into the kit
-  def reassign_kit
-    task = Task.find params[:id]
-    kit = Kit.find_by_uid params[:kit]
-    if kit.state == 'assigned'
-      taskuser = TaskUser.kit_taskuser(kit.uid).first
-      taskuser.update( kit_oid: '', state: 'needs_kit' ) if taskuser
-    end
-    
-    if params[:user][:id].blank?
-      kit.update(state: 'unassigned', user_id: nil)
-    else
-      user_id = params[:user][:id].to_i
-      kit.update(state: 'unassigned', user_id: user_id)
-    end
-    
-    flash[:success] = "kit: #{kit.uid} has been moved to unassigned and given user_id: #{user_id}"
-    redirect_to project_task_path(task.project, task)
-  end
-
   def reassign_many_kits
     respond_to do |format|
       format.json do

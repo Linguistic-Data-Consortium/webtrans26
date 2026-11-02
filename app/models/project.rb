@@ -13,6 +13,8 @@ class Project < ActiveRecord::Base
 
   validates( :name, :presence => true,
   :uniqueness => { :case_sensitive => false })
+  # Names were once joined into filesystem paths; keep them unable to be one.
+  validates :name, format: { without: %r{[/\\]|\.\.|[[:cntrl:]]}, message: "can't contain slashes, '..' or control characters" }
 
   has_many :project_users, :dependent => :destroy
   has_many :users, :through => :project_users

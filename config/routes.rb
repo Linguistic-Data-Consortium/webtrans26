@@ -66,7 +66,6 @@ Rails.application.routes.draw do
   post 'tasks/respond_with_task', :to => 'tasks#respond_with_task'
   get 'tasks/recreate', :to => 'tasks#recreate'
 
-  post 'add_user_to_project_and_task/:project_id/:task_id', :to => 'projects#add_user_to_project_and_task', :as => 'add_user_to_project_and_task'
 
 
   resources :node_classes
@@ -83,13 +82,10 @@ Rails.application.routes.draw do
         # A drawing of everything this task's kits have annotated: the graph
         # tables, snapshotted from the log and laid out on a timeline.
         get :graph
-        get :kit_creator
-        post :file_upload
         post :kit_generation_preview
         post :generate_kits
         post :process_kits
         post :process_kits_preview
-        get :reassign_kit
         get :kit_processor
         patch :reassign_many_kits
       end

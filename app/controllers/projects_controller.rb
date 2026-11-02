@@ -148,31 +148,6 @@ class ProjectsController < ApplicationController
     end
   end
 
-  def add_user_to_project_and_task
-    if current_user
-      @project = Project.find(params[:project_id])
-      @task = Task.find(params[:task_id])
-      @kits_available_by_task = Kit.where( state: :unassigned, user_id: [ current_user.id, nil ] ).group(:task_id).count
-      # check here if more permissions would be needed in the future
-      if true
-        if !@project.users.include?(current_user)
-          @project.users << current_user
-        end
-        if !@task.users.include?(current_user)
-          @task.users << current_user
-        end
-        tuser = TaskUser.where(task: @task, user: current_user).first
-        if new_kits_available?(tuser) or tuser.has_kit_oid? or @task.workflow.name == 'OnTheFly'
-          redirect_to "/workflows/#{tuser.id}/work/#{@task.workflow_id}"
-        else
-          redirect_back(fallback_location: root_path)
-        end
-      end
-    else
-      redirect_back(fallback_location: root_path)
-    end
-  end
-
   private
 
   def project_params
