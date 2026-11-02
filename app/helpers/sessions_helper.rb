@@ -207,49 +207,4 @@ module SessionsHelper
     end
   end
 
-  def build_azure_blob_sas_url(account_name, access_key, container, blob_name, expiry_minutes: 60)
-    signed_version = '2022-11-02'
-    signed_resource = 'b'
-    signed_permissions = 'r'
-    signed_protocol = 'https'
-    signed_start = (Time.now.utc - 5 * 60).strftime('%Y-%m-%dT%H:%M:%SZ')
-    signed_expiry = (Time.now.utc + expiry_minutes * 60).strftime('%Y-%m-%dT%H:%M:%SZ')
-    canonical_resource = "/blob/#{account_name}/#{container}/#{blob_name}"
-
-    string_to_sign = [
-      signed_permissions,
-      signed_start,
-      signed_expiry,
-      canonical_resource,
-      '', # signed identifier
-      '', # signed IP
-      signed_protocol,
-      signed_version,
-      signed_resource,
-      '', # signed snapshot time
-      '', # signed encryption scope
-      '', # rscc
-      '', # rscd
-      '', # rsce
-      '', # rscl
-      ''  # rsct
-    ].join("\n")
-
-    decoded_key = Base64.decode64(access_key)
-    signature = Base64.strict_encode64(OpenSSL::HMAC.digest('sha256', decoded_key, string_to_sign))
-
-    query = {
-      'sv' => signed_version,
-      'sr' => signed_resource,
-      'sp' => signed_permissions,
-      'st' => signed_start,
-      'se' => signed_expiry,
-      'spr' => signed_protocol,
-      'sig' => signature
-    }.map { |k, v| "#{k}=#{CGI.escape(v)}" }.join('&')
-
-    encoded_blob = blob_name.split('/').map { |seg| CGI.escape(seg) }.join('/')
-    "https://#{account_name}.blob.core.windows.net/#{container}/#{encoded_blob}?#{query}"
-  end
-
 end

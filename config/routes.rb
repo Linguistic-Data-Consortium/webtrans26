@@ -24,12 +24,7 @@ Rails.application.routes.draw do
   get '/documentation/:slug', to: 'documentation#show',  as: :documentation_show, constraints: { slug: /[A-Za-z0-9_\-]+/ }
 
   get :echo, to: 'pages#echo'
-  get '/azure_audio_url', to: 'pages#azure_audio_url'
-  post '/azure_transcribe', to: 'pages#azure_transcribe'
 
-  # New async transcription endpoints
-  post '/azure_transcribe_async', to: 'azure_transcription#create'
-  get '/azure_transcribe/status/:job_id', to: 'azure_transcription#status'
   root 'pages#home'
   get '/signup', to: 'users#new'
   post '/signup', to: 'users#create'

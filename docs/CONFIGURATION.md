@@ -61,7 +61,7 @@ Two branches in `PasswordsController#create`:
 ## Where the config lives
 
 - `config/application.rb` — sets `config.x.mail_enabled`, `config.x.transcription_repl`, `config.x.hlt_endpoint` and `config.x.promise_bucket` from env vars
-- `config/credentials.yml.enc` — encrypted; `secret_key_base` plus optional SMTP / Azure / Cognito / `jwt_secret` entries. **Not in the repository**: `bin/rails credentials:edit` creates it and `config/master.key` together on a fresh clone — [Deployment](DEPLOYMENT.md#first-make-your-own-credentials). Worth committing in your own fork; the key never is
+- `config/credentials.yml.enc` — encrypted; `secret_key_base` plus optional SMTP / Cognito / `jwt_secret` entries. **Not in the repository**: `bin/rails credentials:edit` creates it and `config/master.key` together on a fresh clone — [Deployment](DEPLOYMENT.md#first-make-your-own-credentials). Worth committing in your own fork; the key never is
 - `config/deploy.yml` — Kamal deploy targets (servers, image, registry, SSL) and the `env.clear` list above. **Not in the repository**: copy `config/deploy.yml.hostname` or `config/deploy.yml.ip` to create it. Both default to a registry on your own machine. See [Deployment](DEPLOYMENT.md).
 - `.kamal/secrets` — passes `RAILS_MASTER_KEY` (and certs, if you add them) to Kamal at deploy time. `KAMAL_REGISTRY_PASSWORD` is there but commented out: the deploy files use a local registry, which needs no login
 
