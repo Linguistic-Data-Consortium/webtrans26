@@ -72,7 +72,9 @@ COPY Gemfile Gemfile.lock ./
 ### when changing the Gemfile, target lock in the compose file
 FROM gem AS lock
 RUN apt-get update -qq && apt-get install -y ca-certificates && update-ca-certificates
-RUN bundle config set --global ssl_verify_mode 0
+# Certificates are verified: this stage downloads every gem the lock names.
+# Behind a proxy that intercepts TLS, add its CA to the image rather than
+# turning verification off.
 RUN bundle install
 RUN bundle lock --add-platform x86_64-linux
 # end lock
