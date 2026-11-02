@@ -3,7 +3,7 @@ import { hlt_endpoint, promise_bucket, services_configured } from "./service_con
 
 // The SAD/ASR endpoint and its bucket come from meta tags the layout renders.
 //
-// This app is the public release, so unlike wta both default to **empty**: an
+// This app is the public release, so both default to **empty**: an
 // instance that has configured nothing must not fall back to LDC's own service
 // and send a stranger's audio to a host they have never heard of. The feature is
 // unavailable until the server sets HLT_ENDPOINT and PROMISE_BUCKET.

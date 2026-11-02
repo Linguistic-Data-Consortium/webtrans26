@@ -14,8 +14,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 // be dead ends showing a notice.
 //
 // Mocked rather than driven through meta tags, because the fallbacks differ
-// between the apps this file is copied into: wta defaults to LDC's service,
-// the public release defaults to none. The dialog's logic is the same either
+// between the apps this file is copied into: elsewhere they point at LDC's
+// service, while the public release defaults to none. The dialog's logic is the same either
 // way, and that is what is under test.
 
 const state = { services: true, local_audio: false, engine: true };

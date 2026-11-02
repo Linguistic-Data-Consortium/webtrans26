@@ -158,7 +158,7 @@ ENV RAILS_ENV="production" \
 # Copy built artifacts: gems, application
 # Create the runtime user *before* the copies, so ownership can be set as the
 # files are written. The generated Dockerfile does `chown -R rails:rails db log
-# storage tmp` after copying, which cost 68.4 MB measured on pmacs: chown
+# storage tmp` after copying, which cost 68.4 MB in one measured image: chown
 # rewrites metadata, so every touched file is duplicated into a new layer — and
 # tmp holds the bootsnap cache, which was therefore paid for twice.
 RUN groupadd --system --gid 1000 rails && \

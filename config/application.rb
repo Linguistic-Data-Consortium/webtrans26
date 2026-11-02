@@ -43,7 +43,7 @@ module Webtrans26
     # anywhere else. The client reads these from meta tags in the layout; see
     # app/javascript/lib/ldcjs/service_config.js.
     #
-    # Unlike wta, these default to empty rather than to LDC's own service:
+    # These default to empty rather than to LDC's own service:
     # this app is the public release, and an unconfigured instance must not
     # send a stranger's audio to a host they have never heard of. Speech
     # activity detection and ASR are simply unavailable until both are set.

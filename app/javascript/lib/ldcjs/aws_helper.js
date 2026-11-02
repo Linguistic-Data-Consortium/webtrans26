@@ -21,7 +21,7 @@ let s3;
 // request and a console error on every load, for a capability the page was never
 // going to exercise. Deferring costs nothing: the first caller pays the same
 // round trip it would have waited on anyway, and the result is cached exactly as
-// before. cloudrecorder's aws.js has always worked this way.
+// before.
 function refreshToken(x){
     f = x;
     // A later call re-registers and drops any cached client, which is what the

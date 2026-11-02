@@ -9,9 +9,8 @@
 // Why the work is split the way it is:
 //
 //   - Inference runs in a Worker because a run takes seconds to minutes, and
-//     on the main thread that is a frozen page. (`ugain` runs the same library
-//     on the main thread, which is survivable only because its clips are a few
-//     seconds long.)
+//     on the main thread that is a frozen page. (The same library can run on
+//     the main thread, but only for clips a few seconds long.)
 //   - Decoding does NOT run in the Worker, and cannot: the Web Audio API is
 //     exposed on Window only, so there is no AudioContext there to call
 //     decodeAudioData on. It costs nothing to decode here — decodeAudioData is

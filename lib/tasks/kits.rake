@@ -80,7 +80,7 @@ namespace :kits do
     arcs = graph[:arcs].map { |a| a[:iid] }
     # Only a group with an Arc child is claiming to span two anchors, so only
     # those can dangle. A group without one — groups.js is free to declare them,
-    # and ugain's ItemList and ThingList are exactly this shape — has no
+    # and list-of-items node classes are exactly this shape — has no
     # endpoints to be missing, and reporting it as broken buried the real signal:
     # a 64-item reading-theater tree read as "arcs missing an anchor: 64".
     spanning, unspanned = graph[:arcs].partition { |a| a[:arc_node_iid] }
