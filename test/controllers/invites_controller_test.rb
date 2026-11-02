@@ -74,4 +74,35 @@ class InvitesControllerTest < ActionDispatch::IntegrationTest
     # Same `valid_user` redirect with no flash set.
     assert_redirected_to root_url
   end
+
+  # ── create: which project and task ───────────────────────────────────────
+
+  test "create: a project manager can't add people to a project they don't administer" do
+    charlie = users(:charlie)
+    GroupUser.create!(group: groups(:project_managers), user: charlie)
+    sign_in_as charlie
+    post invites_url, params: { email: users(:bob).email_address, project_id: projects(:beta).id }, as: :json
+    assert_includes JSON.parse(@response.body)["errors"], "you're not an admin for the project"
+    assert_not projects(:beta).reload.member?(users(:bob))
+  end
+
+  test "create: a task from another project is refused, and the project isn't joined either" do
+    alice = users(:alice) # owner of alpha
+    GroupUser.create!(group: groups(:project_managers), user: alice)
+    sign_in_as alice
+    post invites_url, params: { email: users(:charlie).email_address,
+      project_id: projects(:alpha).id, task_id: tasks(:beta_task_one).id }, as: :json
+    assert_includes JSON.parse(@response.body)["errors"], "that task isn't in this project"
+    assert_not tasks(:beta_task_one).reload.member?(users(:charlie))
+    assert_not projects(:alpha).reload.member?(users(:charlie))
+  end
+
+  test "create: the project's admin can add someone to its project and task" do
+    alice = users(:alice)
+    GroupUser.create!(group: groups(:project_managers), user: alice)
+    sign_in_as alice
+    post invites_url, params: { email: users(:charlie).email_address,
+      project_id: projects(:alpha).id, task_id: tasks(:alpha_task_two).id }, as: :json
+    assert tasks(:alpha_task_two).reload.member?(users(:charlie))
+  end
 end

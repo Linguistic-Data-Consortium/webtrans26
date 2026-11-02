@@ -124,14 +124,21 @@ class InvitesController < ApplicationController
             found << "#{invite} was added as Portal Manager"
           end
           if params[:project_id]
+            # Admin of this project, not project manager of any: every caller
+            # here is already a project manager (see create).
             if ProjectUser.where(project_id: params[:project_id], user_id: current_user.id, admin: true).length == 1 or
                ProjectUser.where(project_id: params[:project_id], user_id: current_user.id, owner: true).length == 1 or
-               project_manager?
+               portal_manager?
               p = Project.find params[:project_id]
+              t = params[:task_id] && p.tasks.find_by(id: params[:task_id])
+              if params[:task_id] && t.nil?
+                found_error = true
+                found << "that task isn't in this project"
+                next
+              end
               p.users << new_user unless p.users.include? new_user
               found << "#{invite} was added to project"
-              if params[:task_id]
-                t = Task.find params[:task_id]
+              if t
                 t.users << new_user unless t.users.include? new_user
                 found << "#{invite} was added to task"
               # elsif p.name == "Personal"
