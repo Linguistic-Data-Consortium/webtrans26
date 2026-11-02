@@ -2,7 +2,9 @@ class ProjectsController < ApplicationController
 
   # before_action :authenticate
   before_action :admin_user, :only => :destroy
-  # before_action :project_manager_user, :only => [ :new, :create ]
+  # Creating a project makes you its owner and admin, and so admin of any task
+  # you then add to it, which is what most per-task checks ask about.
+  before_action :project_manager_json, :only => [ :create ]
   before_action :project_owner_user, :only => [ :update ]
   # before_action :project_admin, :only => [ :edit, :users_not_in_project ]
   after_action { flash.discard if request.xhr? }
@@ -170,6 +172,10 @@ class ProjectsController < ApplicationController
       @project = Project.find(params[:id])
     end
     redirect_to(root_path) unless project_admin?
+  end
+
+  def project_manager_json
+    render json: { error: "Permission denied." }, status: :forbidden unless project_manager?
   end
 
   #pl_user -> project level user

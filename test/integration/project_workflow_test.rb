@@ -1,7 +1,7 @@
 require "test_helper"
 
 # End-to-end flow from a user's perspective:
-#   1. Alice signs in and creates a new project (she becomes owner+admin)
+#   1. Alice, a project manager, signs in and creates a new project (she becomes owner+admin)
 #   2. Alice adds Bob to the project as a member
 #   3. Alice creates a task in the project
 #   4. Alice adds Bob as a task member
@@ -17,6 +17,7 @@ class ProjectWorkflowTest < ActionDispatch::IntegrationTest
   end
 
   test "a user can run the full create-project → add-task → assign-user → start-work → complete flow" do
+    GroupUser.create!(group: groups(:project_managers), user: @alice)
     sign_in_as @alice
 
     # 1. Create a project as Alice

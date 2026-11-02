@@ -119,7 +119,16 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
 
   # ── create ────────────────────────────────────────────────────────────────
 
+  test "create is refused to a user with no global role" do
+    sign_in_as @bob
+    assert_no_difference -> { Project.count } do
+      post projects_url, params: { project: { name: "bob_project" } }, as: :json
+    end
+    assert_response :forbidden
+  end
+
   test "create makes the creator owner+admin" do
+    GroupUser.create!(group: groups(:project_managers), user: @bob)
     sign_in_as @bob
     assert_difference -> { Project.count }, 1 do
       post projects_url, params: { project: { name: "bob_project" } }, as: :json
@@ -131,12 +140,22 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create rejects a duplicate name" do
+    GroupUser.create!(group: groups(:project_managers), user: @bob)
     sign_in_as @bob
     assert_no_difference -> { Project.count } do
       post projects_url, params: { project: { name: @alpha.name } }, as: :json
     end
     body = JSON.parse(@response.body)
     assert body["error"].present?
+  end
+
+  test "create rejects a name that could be a path" do
+    GroupUser.create!(group: groups(:project_managers), user: @bob)
+    sign_in_as @bob
+    assert_no_difference -> { Project.count } do
+      post projects_url, params: { project: { name: "../config" } }, as: :json
+    end
+    assert JSON.parse(@response.body)["error"].present?
   end
 
   # ── update ────────────────────────────────────────────────────────────────
