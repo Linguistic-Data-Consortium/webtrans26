@@ -3,8 +3,13 @@ services:
     build:
       context: .
       target: dev
+    # Published on this machine's loopback only. A bare "3000:3000" listens on
+    # every interface, which put a development server (open signup that signs
+    # you straight in, full error pages) on whatever network you're on, and on
+    # Linux past ufw, since Docker writes its own firewall rules. To reach it
+    # from another device for a while, use "0.0.0.0:3000:3000" and change it back.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - .:/rails
       # An anonymous volume, masking the host's node_modules on purpose: the
@@ -38,8 +43,12 @@ services:
     # entrypoint: ./docker-vite-entrypoint.sh
     # command: bunx --bun vite
     command: bun run dev -- --host --port 3036
+    # Loopback only, as for web above, and more so here: the Vite dev server can
+    # read the project directory, master key included, and has had file-read
+    # bugs. web reaches it as vite:3036 over the compose network, which
+    # published ports don't affect.
     ports:
-      - 3036:3036
+      - "127.0.0.1:3036:3036"
     volumes:
       - .:/rails
       # An anonymous volume, masking the host's node_modules on purpose: the
