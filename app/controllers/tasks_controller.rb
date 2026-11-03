@@ -52,7 +52,8 @@ class TasksController < ApplicationController
               @task.update(workflow_id: Workflow.find_by_name('OnTheFly').id)
             end
             if @task.kit_type_id.nil?
-              kt = KitType.where(name: "KitType for Task #{@task.id}").first_or_create
+              name = "KitType for Task #{@task.id}"
+              kt = KitType.find_by(name: name) || KitType.create_default!(name)
               @task.update(kit_type_id: kt.id)
             end
             @title = @task.name
@@ -154,11 +155,8 @@ class TasksController < ApplicationController
               task.workflow_id = Workflow.find_by_name('OnTheFly').id
             end
             if task.kit_type_id.nil?
-              id = NodeClass.where(name: 'ArcTranscription:Root').first.id
-              kt = KitType.where(name: "KitType for Task #{SecureRandom.hex(4)}", node_class_id: id).first_or_create
-              kt.constraints['web_audio'] = 'web_audio'
-              kt.constraints['show_source'] = 'show_source'
-              kt.save
+              # Named for the task once it has an id, below.
+              kt = KitType.create_default!("KitType for Task #{SecureRandom.hex(4)}")
               task.kit_type_id = kt.id
             end
             if task.save

@@ -38,6 +38,37 @@ class TasksControllerTest < ActionDispatch::IntegrationTest
     assert_nil @task1.reload.workflow_id
   end
 
+  test "show by the task admin fills in a missing kit type, a usable one" do
+    @task1.update_columns(kit_type_id: nil)
+    sign_in_as @alice
+    get task_url(@task1), as: :json
+    kit_type = @task1.reload.kit_type
+    assert_not_nil kit_type, "the task should have been given a kit type"
+    assert_equal "KitType for Task #{@task1.id}", kit_type.name
+    assert_equal "ArcTranscription:Root", kit_type.node_class.name
+    assert_equal %w[ show_source web_audio ], kit_type.constraints.keys.sort
+  end
+
+  test "show by the task admin reuses the task's own kit type if it already exists" do
+    existing = KitType.create_default!("KitType for Task #{@task1.id}")
+    @task1.update_columns(kit_type_id: nil)
+    sign_in_as @alice
+    assert_no_difference -> { KitType.count } do
+      get task_url(@task1), as: :json
+    end
+    assert_equal existing.id, @task1.reload.kit_type_id
+  end
+
+  test "create without a kit type gives the task its own, named for it" do
+    sign_in_as @alice
+    post project_tasks_url(project_id: @alpha.id), params: {
+      task: { name: "no_kit_type_task", workflow_id: @workflow.id }
+    }, as: :json
+    task = Task.find(JSON.parse(@response.body)["id"])
+    assert_equal "KitType for Task #{task.id}", task.kit_type.name
+    assert_equal %w[ show_source web_audio ], task.kit_type.constraints.keys.sort
+  end
+
   test "show by the task admin fills in a missing workflow" do
     @task1.update_columns(workflow_id: nil)
     sign_in_as @alice

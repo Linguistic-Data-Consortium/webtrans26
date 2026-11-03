@@ -29,6 +29,18 @@ class KitType < ActiveRecord::Base
   # with `NameError: Missing model class KitTypePackage`. Restore them once the models land.
 
   scope :sorted, -> { order('created_at DESC') }
+
+  # The kit type a task gets when it's made without one: an ArcTranscription
+  # tree with the audio and source panes on. Raises if it can't be made (on an
+  # instance whose seeds never ran, say), rather than leaving the task with no
+  # kit type and nothing to say why.
+  def self.create_default!(name)
+    create!(
+      name: name,
+      node_class: NodeClass.find_by!(name: 'ArcTranscription:Root'),
+      constraints: { 'web_audio' => 'web_audio', 'show_source' => 'show_source' }
+    )
+  end
   scope :all_newest_first, -> { order('created_at DESC') }
 
   def class_def
