@@ -13,7 +13,10 @@ class TaskUsersController < ApplicationController
     respond_to do |format|
       format.json do
         if task_admin? # uses @task
-          tu = TaskUser.find params[:id]
+          # Within the task that was checked: ?task_id= can name a task the
+          # caller administers while :id names a task user from anywhere.
+          tu = @task.task_users.find_by(id: params[:id])
+          next render(json: { error: 'permission denied' }) unless tu
           render json: history(tu)
         else
           render json: { error: 'permission denied' }

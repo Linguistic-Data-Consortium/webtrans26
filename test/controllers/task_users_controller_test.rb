@@ -9,6 +9,21 @@ class TaskUsersControllerTest < ActionDispatch::IntegrationTest
     @task2 = tasks(:alpha_task_two)
   end
 
+  # ── show ──────────────────────────────────────────────────────────────────
+
+  test "show returns the history of a task user in the task the caller administers" do
+    sign_in_as @alice
+    get task_user_url(task_users(:bob_on_alpha_task_one), task_id: @task1.id), as: :json
+    assert_nil JSON.parse(@response.body).try(:[], "error")
+  end
+
+  test "show won't read a task user from another task by naming one you administer" do
+    elsewhere = TaskUser.create!(task: tasks(:beta_task_one), user: @charlie, state: "needs_kit")
+    sign_in_as @alice # admin of alpha_task_one, not of beta_task_one
+    get task_user_url(elsewhere, task_id: @task1.id), as: :json
+    assert_equal "permission denied", JSON.parse(@response.body)["error"]
+  end
+
   # ── create ────────────────────────────────────────────────────────────────
 
   test "task admin can add a user to the task" do
