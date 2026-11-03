@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { btn } from "./buttons"
-  import { getp } from '../lib/ldcjs/getp'
+  import { postp } from '../lib/ldcjs/getp'
   import Spinner from './spinner.svelte'
   let {
       user,
@@ -26,7 +26,7 @@
   }
   // const data = document.getElementById('headerdata').dataset;
   function unlock(){
-    getp(`/kits/${kitid}/unlock_tree`).then( (x) => {
+    postp(`/kits/${kitid}/unlock_tree`, {}).then( (x) => {
       console.log(x);
       window.location.reload();
     } );

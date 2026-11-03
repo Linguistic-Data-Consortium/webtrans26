@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { tick } from "svelte";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { getp } from "../lib/ldcjs/getp";
+import { postp } from "../lib/ldcjs/getp";
 import Header from "./header.svelte";
 
 function seedOnMountDom() {
@@ -12,7 +12,7 @@ function seedOnMountDom() {
 describe("header.svelte", () => {
   beforeEach(() => {
     seedOnMountDom();
-    vi.mocked(getp).mockClear();
+    vi.mocked(postp).mockClear();
   });
 
   afterEach(() => {
@@ -44,8 +44,8 @@ describe("header.svelte", () => {
     expect(screen.queryByRole("button", { name: "unlock" })).toBeNull();
   });
 
-  test("renders the unlock button when kit is locked and clicking it calls getp", async () => {
-    (getp as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: true });
+  test("renders the unlock button when kit is locked and clicking it POSTs unlock_tree", async () => {
+    (postp as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: true });
     const reload = vi.fn();
     Object.defineProperty(window, "location", {
       configurable: true,
@@ -58,7 +58,7 @@ describe("header.svelte", () => {
     const unlock = screen.getByRole("button", { name: "unlock" });
     await fireEvent.click(unlock);
 
-    expect(getp).toHaveBeenCalledWith("/kits/42/unlock_tree");
+    expect(postp).toHaveBeenCalledWith("/kits/42/unlock_tree", {});
   });
 
   test("open button swaps to the input view, and the close (e) button returns to the nav view", async () => {

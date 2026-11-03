@@ -127,17 +127,6 @@ class KitsController < ApplicationController
     end
   end
 
-  def trouble
-    @kit = Kit.find_by_uid params[:uid]
-    return deny_json unless kit_reader?(@kit)
-    UserMailer.trouble(@kit, current_user).deliver_now
-    respond_to do |format|
-      format.json do
-        render :json => { :type => 'success', :message => "#{@kit.uid}"}
-      end
-    end
-  end
-
   def change_time_spent
     @kit = Kit.find_by_uid params[:uid]
     return deny_json unless @kit && (kit_holder?(@kit) || kit_task_admin?(@kit))
@@ -241,27 +230,6 @@ class KitsController < ApplicationController
     return deny_json unless kit_reader?(@kit)
     @task_user = TaskUser.where( task_id: @kit.task_id, user_id: current_user.id).first
     @kit_types = KitType.all
-    respond_to do |format|
-      format.html
-      format.json { render json: @kit }
-    end
-  end
-
-  def check
-    id = params[:id]
-    @kit = Kit.find_by_id params[:id]
-    return deny_json unless kit_reader?(@kit)
-    if params[:check]
-      tree_id = @kit.tree_id
-      kit_id = @kit.id
-      @kit = {}
-      @kit[:ns] = Kit.connection.exec_query("select * from Ns where tree_id = ?", "SQL", [[nil, tree_id]]).to_a
-      @kit[:segments] = Kit.connection.exec_query("select * from Segments where tree_id = ?", "SQL", [[nil, tree_id]]).to_a
-      @kit[:sections] = Kit.connection.exec_query("select * from Sections where tree_id = ?", "SQL", [[nil, tree_id]]).to_a
-      @kit[:segmentos] = Kit.connection.exec_query("select * from Segmentos where tree_id = ?", "SQL", [[nil, tree_id]]).to_a
-      @kit[:sectionos] = Kit.connection.exec_query("select * from Sectionos where tree_id = ?", "SQL", [[nil, tree_id]]).to_a
-      KitCheck.create(kit_id: kit_id, check: params[:check])
-    end
     respond_to do |format|
       format.html
       format.json { render json: @kit }

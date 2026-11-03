@@ -61,10 +61,10 @@ class KitAuthorizationTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
-  test "check: a stranger is refused" do
+  test "unlock_tree no longer answers GET" do
     sign_in_as @charlie
-    get "/kits/#{@kit.id}/check", as: :json
-    assert_response :forbidden
+    get "/kits/#{@kit.id}/unlock_tree", as: :json
+    assert_response :not_found
   end
 
   test "all: a task member who isn't its admin can't download every transcript" do
@@ -151,6 +151,14 @@ class KitAuthorizationTest < ActionDispatch::IntegrationTest
   end
 
   # ── removed endpoints ────────────────────────────────────────────────────
+
+  test "kits#check and kits#trouble are gone" do
+    sign_in_as @alice
+    get "/kits/#{@kit.id}/check", params: { check: 1 }, as: :json
+    assert_response :not_found
+    get "/kits/trouble", params: { uid: @kit.uid }, as: :json
+    assert_response :not_found
+  end
 
   test "file_upload, reassign_kit, kit_creator and add_user_to_project_and_task are gone" do
     sign_in_as @charlie

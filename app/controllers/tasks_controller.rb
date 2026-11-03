@@ -44,15 +44,17 @@ class TasksController < ApplicationController
     respond_to do |format|
       format.json do
         @task = params[:task_id].nil? ? Task.find(params[:id]) : Task.find(params[:task_id])
-        if @task.workflow_id.nil?
-          @task.update(workflow_id: Workflow.find_by_name('OnTheFly').id)
-        end
-        if @task.kit_type_id.nil?
-          kt = KitType.where(name: "KitType for Task #{@task.id}").first_or_create
-          @task.update(kit_type_id: kt.id)
-        end
         render json: (
           if task_admin? # uses @task
+            # Fill in a task that was made without these. Only for its admin:
+            # anyone else asking is refused, and shouldn't change it by asking.
+            if @task.workflow_id.nil?
+              @task.update(workflow_id: Workflow.find_by_name('OnTheFly').id)
+            end
+            if @task.kit_type_id.nil?
+              kt = KitType.where(name: "KitType for Task #{@task.id}").first_or_create
+              @task.update(kit_type_id: kt.id)
+            end
             @title = @task.name
             @states = @task.workflow ? @task.workflow_user_states.split(',') : []
             @kit_state_count_map = Hash.new

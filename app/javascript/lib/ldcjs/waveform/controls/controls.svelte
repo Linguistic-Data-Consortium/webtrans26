@@ -27,7 +27,7 @@
     import { settings, mouse, key } from '../stores';
     import { fmap_helper, display_docid } from '../helpers';
     import { activeo } from '../shared.svelte';
-    import { getp } from '../../getp';
+    import { postp } from '../../getp';
     let {
         redact_task,
         muted,
@@ -194,7 +194,7 @@
     
     const data = header_data;
   function unlock(){
-    getp(`/kits/${data.kitid}/unlock_tree`).then( (x) => {
+    postp(`/kits/${data.kitid}/unlock_tree`, {}).then( (x) => {
       console.log(x);
       window.location.reload();
     } );

@@ -79,7 +79,7 @@ class KitsControllerTest < ActionDispatch::IntegrationTest
     @kit.update!(tree_id: tree.id)
 
     sign_in_as @alice
-    get unlock_tree_kits_path(id: @kit.id), as: :json
+    post unlock_tree_kits_path(id: @kit.id), as: :json
 
     assert_response :success
     body = JSON.parse(@response.body)
@@ -93,7 +93,7 @@ class KitsControllerTest < ActionDispatch::IntegrationTest
     @kit.update!(tree_id: tree.id)
 
     sign_in_as @admin
-    get unlock_tree_kits_path(id: @kit.id), as: :json
+    post unlock_tree_kits_path(id: @kit.id), as: :json
 
     assert_response :success
     assert_equal "success", JSON.parse(@response.body)["done"]
@@ -106,7 +106,7 @@ class KitsControllerTest < ActionDispatch::IntegrationTest
     @kit.update!(tree_id: tree.id)
 
     sign_in_as @alice
-    get "/kits/#{@kit.id}/unlock_tree", as: :json
+    post "/kits/#{@kit.id}/unlock_tree", as: :json
 
     assert_response :success
     assert_equal "failure", JSON.parse(@response.body)["done"]

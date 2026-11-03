@@ -111,7 +111,7 @@ Rails.application.routes.draw do
   post "/create_kits_from_kits_tab", to: 'kits#create_kits_from_kits_tab'
   resource :kits do
     member do
-      get ':id/unlock_tree', action: :unlock_tree, as: :unlock_tree
+      post ':id/unlock_tree', action: :unlock_tree, as: :unlock_tree
       get :get
       patch :change_kit_state
       post :get_time_spent
@@ -119,13 +119,11 @@ Rails.application.routes.draw do
       post :change_time_spent
       post :get_message_from_journal
       get ':id/show', :action => :show, :as => :show
-      get ':id/check', :action => :check, :as => :check
       patch ':id/update', :action => :update, :as => :update
       get 'task/:id', :action => :task, :as => :task
       post :set_kits_done
       patch 'fix_floating_kits/:task/:new_state', :action => :fix_floating_kits, :as => :fix_floating_kits
       get :management
-      get :trouble
       get ':id/undo', action: :undo
     end
   end

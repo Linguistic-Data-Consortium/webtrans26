@@ -31,6 +31,20 @@ class TasksControllerTest < ActionDispatch::IntegrationTest
     assert_equal "you must be a task admin to do that", body["error"]
   end
 
+  test "show by a non-admin leaves an unconfigured task as it is" do
+    @task1.update_columns(workflow_id: nil)
+    sign_in_as @bob
+    get task_url(@task1), as: :json
+    assert_nil @task1.reload.workflow_id
+  end
+
+  test "show by the task admin fills in a missing workflow" do
+    @task1.update_columns(workflow_id: nil)
+    sign_in_as @alice
+    get task_url(@task1), as: :json
+    assert_equal workflows(:on_the_fly).id, @task1.reload.workflow_id
+  end
+
   # ── create ────────────────────────────────────────────────────────────────
 
   test "create lets a project admin add a task" do
