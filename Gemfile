@@ -73,6 +73,12 @@ end
 # Pinned to match the working pair: vite_rails 3.0.x + vite_ruby 3.9.x
 # accepts vite-plugin-ruby ^5.1.0 in package.json. vite_ruby 3.10+ enforces
 # a stricter compatibility check that rejects the v5 plugin.
+#
+# The check reads the range as written in package.json, not the installed
+# version, so it has to stay "^5.1.0". `bun update` rewrites it to the version
+# it installed ("^5.2.6"), and then the app refuses to boot ("vite-plugin-ruby@^5.2.6
+# might not be compatible with vite_ruby-3.9.2"). Put it back after updating;
+# any 5.x still installs.
 gem "vite_rails", "= 3.0.20"
 gem "vite_ruby",  "= 3.9.2"
 gem 'haml', '5.1.2'
