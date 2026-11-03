@@ -162,15 +162,15 @@ A Kit Type is the template that defines a Task's annotation tool, available cons
 |---|---|
 | See the Kit Types table (ID + Name) | Signed-in user. |
 | Open a Kit Type (drills into Info / Members sub-tabs) | Signed-in user (read access). |
-| Edit a Kit Type's name, description, JavaScript template, root NodeClass, etc. | Project manager (the patch endpoint requires `project_manager?` on the back end). |
+| Edit a Kit Type's name, description, JavaScript template, root NodeClass, etc. | Project manager who administers every task using the type, or portal manager. A kit type belongs to no project, so one can sit under several projects' tasks; the patch endpoint refuses a type used by any task you don't administer, whether as the task's type or through its kits. |
 | **Create Kit Type** | Project manager. Trigger gated on `lead_annotator`. |
-| **Delete Kit Type** (after selecting one) | System admin. Gated on `admin`. |
+| **Delete Kit Type** (after selecting one) | System admin in the interface (gated on `admin`). The endpoint applies the same rule as editing. |
 
 #### 2.2.5 Features
 
 A Feature is a named option (with a category, value, label, description) that can be attached to other entities — currently used for task-level toggles.
 
-Same gating as Kit Types:
+Who can do what:
 
 | What | Role required |
 |---|---|
@@ -188,7 +188,7 @@ A Workflow is the kit-assignment strategy a Task uses:
 - **`OnTheFly`** — a new kit is created from the task's own `docid` every time, so the same audio is worked over and over.
 - **`SameListForEveryone`** — the task carries a list of documents (the **Docid List** tab, §2.4.7) and every user of the task works that same list.
 
-Same gating as Kit Types:
+Who can do what:
 
 | What | Role required |
 |---|---|

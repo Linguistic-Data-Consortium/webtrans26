@@ -101,6 +101,8 @@ class KitTypesController < ApplicationController
          render json: (
            if not lead_annotator?
              { error: "Only a project manager can edit a kit type." }
+           elsif not may_change?(kit_type)
+             { error: SHARED_ERROR }
            elsif params[:node_class_id]
              kit_type.node_class_id = params[:node_class_id].to_i
              if kit_type.save
@@ -145,10 +147,12 @@ class KitTypesController < ApplicationController
     respond_to do |format|
       format.json do
         render json: (
+          kit_type = KitType.find(params[:id])
           if not lead_annotator?
             { error: "Only a project manager can delete a kit_type." }
+          elsif not may_change?(kit_type)
+            { error: SHARED_ERROR }
           else
-            kit_type = KitType.find(params[:id])
             kit_type.destroy
             { deleted: "kit_type: #{kit_type.name} has been deleted." }
           end
@@ -158,6 +162,21 @@ class KitTypesController < ApplicationController
   end
 
   private
+
+  SHARED_ERROR = "That kit type is used by tasks you don't administer.".freeze
+
+  # Kit types belong to no project: tasks point at them, so one type can sit
+  # under several projects' tasks. Being a project manager somewhere is
+  # therefore not enough to change one. You must administer every task that
+  # uses it, as the task's kit type or through its kits. A type no task uses yet
+  # (one just created) is anyone's to change. Portal managers and admins may
+  # change any.
+  def may_change?(kit_type)
+    return true if portal_manager?
+    tasks = Task.where(kit_type_id: kit_type.id)
+      .or(Task.where(id: Kit.where(kit_type_id: kit_type.id).select(:task_id)))
+    tasks.all? { |task| task_admin_of?(task) }
+  end
 
   def kit_type_params
     params.require(:kit_type).permit(:name, :node_class_id, :source_id, :config_id, :meta, :annotation_set_id, :constraints)
