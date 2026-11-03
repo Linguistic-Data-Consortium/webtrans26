@@ -78,6 +78,10 @@ env:
     # Log everything from Rails
     # RAILS_LOG_LEVEL: debug
 
+    # The names this instance answers to; any other Host gets a 403. Same value as
+    # proxy.host above. Unset, it answers any host. See docs/CONFIGURATION.md.
+    # ALLOWED_HOSTS: your-hostname
+
     # Where this app's S3 bucket lives. Needed for s3:// kit sources and the
     # Browse tab, which get credentials from Cognito via POST /token — the AWS
     # SDK raises MissingRegionError without it, before the credentials are even

@@ -88,14 +88,20 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
+  # Answer only requests addressed to this instance's own names. Rails builds
+  # every *_url and redirect from the request's Host header, so this keeps a
+  # forged one from ever shaping a link, and refuses DNS-rebinding requests.
   #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # ALLOWED_HOSTS is a comma-separated list (a hostname, the server's IP, or
+  # both), falling back to APP_HOST. With neither set, any host is answered, as
+  # before: an IP-only deployment has no name to list, and APP_HOST's
+  # example.com default would lock it out. /up is exempt so the proxy's health
+  # check works whatever host it sends.
+  allowed_hosts = ENV.fetch("ALLOWED_HOSTS", ENV.fetch("APP_HOST", "")).split(",").map(&:strip).reject(&:empty?)
+  if allowed_hosts.any?
+    config.hosts = allowed_hosts
+    config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  end
   config.cognito_identity_pool_id = ENV['COGNITO_POOL_ID']
   config.cognito_provider_name = ENV['COGNITO_PROVIDER_NAME']
 end
