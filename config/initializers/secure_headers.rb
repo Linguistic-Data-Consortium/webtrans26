@@ -63,8 +63,12 @@ SecureHeaders::Configuration.default do |config|
   #
   # Deliberately broad for now, as is media_src below: kit audio can be a
   # plain https URL on any host, fetched both as <audio> and for waveform
-  # ranges, and which hosts to allow hasn't been decided. See
-  # SECURITY_REVIEW.md (item 1) before narrowing either.
+  # ranges, and which hosts to allow hasn't been decided.
+  #
+  # The decision is open and it is not this app's alone -- the same policy is in
+  # the sibling apps. It is written up in claudeq/app_comparison, as
+  # surveys/open-security-questions.md (item 1). Read it before narrowing
+  # either list.
   connect_sources = %w['self' wss: https: *.amazonaws.com]
   connect_sources += %w[ws: http:] if Rails.env.development?
 
