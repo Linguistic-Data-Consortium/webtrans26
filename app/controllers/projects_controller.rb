@@ -143,13 +143,6 @@ class ProjectsController < ApplicationController
     end
   end
 
-  def respond_with_project
-    @project = Project.find(params[:project][:id])
-    respond_to do |format|
-      format.json { render json: { project: @project } }
-    end
-  end
-
   private
 
   def project_params

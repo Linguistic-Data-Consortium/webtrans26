@@ -50,14 +50,12 @@ Rails.application.routes.draw do
 
   resources :annotations
 
-  post 'projects/respond_with_project', :to => 'projects#respond_with_project'
   get 'projects/:id/research_team', :to => 'projects#research_team', :as => 'projects_research_team'
   get 'projects/:id/users_not_in_project', to: 'projects#users_not_in_project', :as => 'users_not_in_project'
   get 'groups/:id/users_not_in', to: 'groups#users_not_in', :as => 'users_not_in'
   get 'projects/:id/project_users', to: 'projects#project_users', :as => 'project_project_users'
   get 'tasks/:id/task_users', to: 'tasks#task_users', :as => 'task_task_users'
   get 'tasks/:id/users_not_in_task', to: 'tasks#users_not_in_task', :as => 'users_not_in_task'
-  post 'tasks/respond_with_task', :to => 'tasks#respond_with_task'
   get 'tasks/recreate', :to => 'tasks#recreate'
 
 
