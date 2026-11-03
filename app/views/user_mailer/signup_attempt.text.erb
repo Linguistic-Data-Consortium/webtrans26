@@ -1,0 +1,10 @@
+Hi <%= @user.name %>,
+
+Someone just tried to sign up with this email address, which already has an account.
+
+If it was you, there's no need for a second account: sign in at
+<%= new_session_url %>
+or, if you've forgotten your password, reset it at
+<%= new_password_url %>
+
+If it wasn't you, you can ignore this message. Nothing about your account has changed.

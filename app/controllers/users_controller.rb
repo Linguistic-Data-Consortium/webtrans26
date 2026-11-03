@@ -166,12 +166,37 @@ class UsersController < ApplicationController
         # flip the activation flag manually. See `awaiting_activation` view.
         redirect_to awaiting_activation_path(email: @user.email_address)
       end
+    elsif address_already_registered?
+      answer_as_if_new
     else
       render 'new'
     end
   end
 
   private
+
+  # The signup page mustn't say which addresses have accounts, so "Email address
+  # has already been taken" is never shown. When that is the only thing wrong,
+  # the visitor gets exactly the answer a new signup gets, nothing is created,
+  # and (with mail on) the owner is told. Any other error still shows, minus that
+  # one.
+  def address_already_registered?
+    return false unless @user.errors.of_kind?(:email_address, :taken)
+    @user.errors.delete(:email_address, :taken)
+    @user.errors.empty?
+  end
+
+  def answer_as_if_new
+    if Rails.application.config.x.mail_enabled
+      owner = User.find_by(email_address: @user.email_address)
+      # Sent now, as the activation email is, so the two answers take as long.
+      UserMailer.signup_attempt(owner).deliver_now if owner
+      flash[:info] = "Please check your email to activate your account."
+      redirect_to root_url
+    else
+      redirect_to awaiting_activation_path(email: @user.email_address)
+    end
+  end
 
   def user_params
     params.require(:user).permit(:name, :email_address, :password, :password_confirmation, profile_attributes: [:year_of_birth, :gender, :cities, :languages_known])
