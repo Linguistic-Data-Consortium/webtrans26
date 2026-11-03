@@ -7,9 +7,14 @@ class GroupsController < ApplicationController
     @model = Group
   end
 
+  # Candidates for the add-member dialog, so a list of every other user: only
+  # for those who can add one, which for groups is an admin.
   def users_not_in
     respond_to do |format|
-      format.json { render json: Group.find(params[:id]).users_not_in(params[:term]) }
+      format.json do
+        next deny_json unless admin?
+        render json: Group.find(params[:id]).users_not_in(params[:term])
+      end
     end
   end
 

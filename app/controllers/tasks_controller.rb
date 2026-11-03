@@ -14,8 +14,11 @@ class TasksController < ApplicationController
 
   # Lists users not currently on the task. Drives the "Add Member" candidate list in the
   # dashboard's task Members sub-tab (mirrors ProjectsController#users_not_in_project).
+  # Candidates for the add-member dialog: everyone not yet in the task, so only
+  # for someone who can add them.
   def users_not_in_task
     @task = Task.find(params[:id])
+    return deny_json unless task_admin_of?(@task)
     user_ids = @task.users.pluck(:id)
     term = params[:term].to_s
     candidates = User.all.order(:name).where("name LIKE ?", "%#{term}%").where.not(id: user_ids)

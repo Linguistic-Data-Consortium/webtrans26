@@ -12,8 +12,11 @@ class ProjectsController < ApplicationController
   include UsersHelper
   # include MarkdownAdapter
 
+  # Candidates for the add-member dialog: everyone not yet in the project, so
+  # only for someone who can add them.
   def users_not_in_project
     @project = Project.find(params[:id])
+    return deny_json unless project_admin?
     userids = @project.users.map{ |x| x.id }
     @users = User.all.order(:name).where("name LIKE ?", "%#{params[:term]}%").where.not(id: userids).map{ |x| {name: x.name, id: x.id, project_id: @project.id.to_s } }
     respond_to do |format|
