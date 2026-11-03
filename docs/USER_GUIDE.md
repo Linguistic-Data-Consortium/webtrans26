@@ -336,6 +336,22 @@ A two-mode tab: a kits table on its own, then a per-kit detail panel once you se
 | **Bulk Reassign** dialog — change user/state on every filter-matched row | Task admin. |
 | **Download Transcript** dialog — generate a zip of TSV transcripts (one per kit) for the whole task | Task admin. Trigger gated on `vv.task_admin_bool`. The data-providing endpoint `/kits/all?task_id=…` checks the same thing server-side (task admin, or project manager), and calls `Kit#snapshot` per kit at request time. |
 
+##### Opening a downloaded transcript in a spreadsheet
+
+The TSV files are written exactly as the annotators typed them, because the tool
+reads the same format back in. Text that begins with `=`, `+`, `-` or `@` is
+therefore left as it is, and Excel, Numbers and Google Sheets treat such a cell
+as a **formula** when the file is opened directly. A segment typed as
+`=HYPERLINK("https://…"&A2,"…")` becomes a live link that can send the
+neighbouring cells, other transcript text, to whoever wrote it.
+
+So **import** a transcript rather than opening it. In Excel use *Data → From
+Text/CSV* and set every column to *Text*; in Google Sheets use *File → Import*
+and turn off *Convert text to numbers, dates, and formulas*. The only change the
+export makes to the text is to turn a tab or line break inside a segment into a
+space, since either would otherwise shift that row's columns. This applies to
+the in-tool ⬇ download (§2.5) too.
+
 ##### Creating kits from a list
 
 One kit per line. The line starts with the docid — whatever this task's kits use as their source, an `s3://` url, a path or a bare name — and may then say who the kit is for:
@@ -510,7 +526,7 @@ These four header buttons are individually feature-flagged on the **kit type's**
 | Button | Always visible? | Gate |
 |---|---|---|
 | **⬆ Upload transcript** | Only if visible | `constraint_import_transcript` is set on the kit type, **or** the viewer is a project manager. Opens the upload-transcript dialog (paste TSV / load from file / auto-import via service). |
-| **⬇ Download transcript** | Only if visible | The kit type has `constraint_export_transcript` set, **or** the viewer is a project manager, **or** (`constraint_export_transcript_to_task_admin` is set AND viewer is a task admin). Opens the in-tool download dialog (filename + Include Headers / Speaker / Section checkboxes → Create Preview → Download File). |
+| **⬇ Download transcript** | Only if visible | The kit type has `constraint_export_transcript` set, **or** the viewer is a project manager, **or** (`constraint_export_transcript_to_task_admin` is set AND viewer is a task admin). Opens the in-tool download dialog (filename + Include Headers / Speaker / Section checkboxes → Create Preview → Download File). Import the file into a spreadsheet as text rather than opening it — see *Opening a downloaded transcript in a spreadsheet* (§2.4). |
 | **✓ Close kit** | Always visible | No role gate beyond being the kit's assignee. The dialog flavour depends on `constraint_audit`: with audit, a popover with "Done comment Yes/No/Maybe" radios; without audit, a modal with "✓ Done", optional comment textarea, and "Skip / Broken" radios. |
 | **💬 Comments** | Only if visible | The kit type has the `comments` constraint set. Shows or hides the comments panel under the transcript — see §2.5.6. |
 | **Keyboard / Home** | Always | Help & navigation. |
