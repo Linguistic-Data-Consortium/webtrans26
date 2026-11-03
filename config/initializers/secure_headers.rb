@@ -60,6 +60,11 @@ SecureHeaders::Configuration.default do |config|
   style_sources << 'http://localhost:3036' if Rails.env.development?
 
   # Build connect_src based on environment
+  #
+  # Deliberately broad for now, as is media_src below: kit audio can be a
+  # plain https URL on any host, fetched both as <audio> and for waveform
+  # ranges, and which hosts to allow hasn't been decided. See
+  # SECURITY_REVIEW.md (item 1) before narrowing either.
   connect_sources = %w['self' wss: https: *.amazonaws.com]
   connect_sources += %w[ws: http:] if Rails.env.development?
 
