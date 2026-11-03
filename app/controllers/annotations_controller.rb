@@ -78,7 +78,9 @@ class AnnotationsController < ApplicationController
       logger.debug "kit_oid #{task_user.kit_oid}"
       current_user.update_current_task_user task_user
       logger.debug "kit_oid #{task_user.kit_oid}"
-      @kit = Kit.find_by_uid(params[:qc] ? params[:kit_id] : task_user.kit_oid)
+      # The kit this task user holds, and no other: a ?qc= override once
+      # named any kit here, from any task.
+      @kit = Kit.find_by_uid(task_user.kit_oid)
       @tree = @kit.tree
       @last_ann = Annotation.where(tree_id: @tree.id).last
       @response = if current_user.id != @kit.user_id #or current_user.id != @tree.user_id

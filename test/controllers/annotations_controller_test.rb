@@ -182,4 +182,27 @@ class AnnotationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ 10, 11, 12, 13 ], nodes.keys.sort
     assert_equal "some words", NodeDerivation.for_tree(@tree.id).value_for(nodes[12])[:value]
   end
+
+  # ?qc= used to replace the task user's kit with any kit the caller owned, from
+  # any task, so rows labelled with this task landed on another task's tree.
+  test "qc can't point the write at a kit from another task" do
+    other_task = tasks(:alpha_task_two)
+    other_tree = Tree.create!(uid: "ann-ctl-other-#{SecureRandom.hex(3)}", class_def: @class_def, version: 2)
+    other_kit = Kit.create!(
+      task_id: other_task.id, kit_type_id: other_task.kit_type_id, tree_id: other_tree.id,
+      user_id: @user.id, state: "assigned", uid: "ann-ctl-other-#{SecureRandom.hex(3)}"
+    )
+    Annotation.create!(tree_id: other_tree.id, task_id: other_task.id, user_id: @user.id,
+      kit_id: other_kit.id, message: "new", last_iid: 0)
+
+    assert_no_difference -> { Annotation.where(tree_id: other_tree.id).count } do
+      post annotations_url, params: {
+        task_user_id: @task_user.id, qc: 1, kit_id: other_kit.uid,
+        json: { kit_uid: other_kit.uid, client_time: 1, messages: [
+          { node: 0, message: "add", value: { value: "1:SegmentListItem,2:Arc,3:Text,4:Speaker" } }
+        ] }.to_json
+      }, as: :json
+    end
+  end
 end
+
