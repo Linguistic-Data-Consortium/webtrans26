@@ -67,13 +67,30 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "GET /passwords/:token/edit with a valid token renders the update form" do
-    token = users(:alice).password_reset_token
+  # Open the emailed link: it stashes the token and redirects to a URL without it.
+  def open_reset_link(token)
     get edit_password_path(token)
+    assert_redirected_to reset_password_path
+    follow_redirect!
+  end
+
+  def submit_reset(password, confirmation = password)
+    patch reset_password_path, params: { password: password, password_confirmation: confirmation }
+  end
+
+  test "the emailed link moves the token out of the URL and renders the form" do
+    open_reset_link(users(:alice).password_reset_token)
     assert_response :success
-    assert_select "form[action=?]", password_path(token)
+    assert_select "form[action=?]", reset_password_path
     assert_select "input[name='password']"
     assert_select "input[name='password_confirmation']"
+    assert_no_match users(:alice).password_reset_token, response.body
+  end
+
+  test "the reset form without a token in the session sends you back" do
+    get reset_password_path
+    assert_redirected_to new_password_path
+    assert_match(/invalid or has expired/i, flash[:alert])
   end
 
   test "GET /passwords/:token/edit with an invalid token redirects" do
@@ -84,10 +101,8 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
 
   test "PATCH /passwords/:token updates the password with a valid token" do
     token = users(:alice).password_reset_token
-    patch password_path(token), params: {
-      password: "brand-new-pw",
-      password_confirmation: "brand-new-pw"
-    }
+    open_reset_link(token)
+    submit_reset("brand-new-pw", "brand-new-pw")
     assert_redirected_to new_session_path
     assert_match(/updated/i, flash[:notice])
 
@@ -99,41 +114,33 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
   test "PATCH /passwords/:token signs out the account's existing sessions" do
     alice = users(:alice)
     alice.sessions.create!(user_agent: "elsewhere", ip_address: "10.0.0.1")
-    patch password_path(alice.password_reset_token), params: {
-      password: "brand-new-pw",
-      password_confirmation: "brand-new-pw"
-    }
+    open_reset_link(alice.password_reset_token)
+    submit_reset("brand-new-pw")
     assert_empty alice.reload.sessions
   end
 
   test "PATCH /passwords/:token with mismatched confirmation redirects back with alert" do
     token = users(:alice).password_reset_token
-    patch password_path(token), params: {
-      password: "brand-new-pw",
-      password_confirmation: "different"
-    }
-    assert_redirected_to edit_password_path(token)
+    open_reset_link(token)
+    submit_reset("brand-new-pw", "different")
+    assert_redirected_to reset_password_path
     assert flash[:alert].present?
     assert users(:alice).reload.authenticate("password123"), "password should be unchanged"
   end
 
   test "PATCH /passwords/:token with too-short password is rejected" do
     token = users(:alice).password_reset_token
-    patch password_path(token), params: {
-      password: "short",
-      password_confirmation: "short"
-    }
-    assert_redirected_to edit_password_path(token)
+    open_reset_link(token)
+    submit_reset("short", "short")
+    assert_redirected_to reset_password_path
     assert_match(/Password/i, flash[:alert])
     assert users(:alice).reload.authenticate("password123"), "password should be unchanged"
   end
 
   test "reset token cannot be reused after the password is changed (salt rotates)" do
     token = users(:alice).password_reset_token
-    patch password_path(token), params: {
-      password: "brand-new-pw",
-      password_confirmation: "brand-new-pw"
-    }
+    open_reset_link(token)
+    submit_reset("brand-new-pw", "brand-new-pw")
     assert_redirected_to new_session_path
 
     # The reset token is scoped to the old password_salt — after a successful reset the token invalidates.
@@ -141,4 +148,13 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_password_path
     assert_match(/invalid or has expired/i, flash[:alert])
   end
+
+  test "a finished reset can't be submitted again from the same browser" do
+    open_reset_link(users(:alice).password_reset_token)
+    submit_reset("brand-new-pw")
+    submit_reset("second-try-pw")
+    assert_redirected_to new_password_path
+    assert users(:alice).reload.authenticate("brand-new-pw")
+  end
 end
+

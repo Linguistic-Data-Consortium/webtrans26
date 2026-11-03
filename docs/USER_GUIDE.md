@@ -107,7 +107,7 @@ The auth surface is small and entirely available to anyone (signed in or not), s
 | What | Where | Notes |
 |---|---|---|
 | Request a reset link | "Username/password recovery" link on `/session/new`, or `/passwords/new` directly (form POSTs to `/passwords` → `passwords#create`) | Sends `PasswordsMailer.reset` to the email address *if* one matches, but the page always shows the same notice (*"Password reset instructions sent (if user with that email address exists)."*) regardless — so an attacker can't enumerate users. |
-| Set a new password | Click the reset link in the email → `/passwords/<token>/edit` (form PUTs to `/passwords/<token>` → `passwords#update`) | The form lets you update **password + password confirmation** *and* the **username**. Token is single-signed and expires; an invalid/expired token redirects back to `/passwords/new` with *"Password reset link is invalid or has expired."* |
+| Set a new password | Click the reset link in the email → `/passwords/<token>/edit`, which moves the token into the session and redirects to `/passwords/reset`; the form PATCHes there (`passwords#reset`), so the token isn't in any URL after the first | The form lets you update **password + password confirmation** *and* the **username**. Token is single-signed and expires; an invalid/expired token redirects back to `/passwords/new` with *"Password reset link is invalid or has expired."* |
 
 #### View own profile / dashboard ([signed-in user only])
 

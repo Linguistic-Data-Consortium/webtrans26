@@ -52,7 +52,10 @@ class InvitesController < ApplicationController
           if @user.authenticated?(:invite, params[:id])
             @user.activate
             flash[:success] = "Your account has been activated, please set your user name and password"
-            redirect_to edit_password_url(@user.password_reset_token)
+            # Into the session rather than the redirect's URL, which the log
+            # records (see PasswordsController#edit).
+            session[:password_reset_token] = @user.password_reset_token
+            redirect_to reset_password_url
           else
             flash[:danger] = "Invalid invitation link"
             redirect_to root_url

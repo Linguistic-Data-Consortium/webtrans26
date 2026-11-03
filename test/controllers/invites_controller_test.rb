@@ -38,10 +38,13 @@ class InvitesControllerTest < ActionDispatch::IntegrationTest
     get edit_invite_path(pending.invite_token, email: pending.email_address)
     pending.reload
     assert pending.activated?, "invite click should activate the user"
-    follow_redirect!
-    # The redirect target includes the password_reset_token, which is the user's regular reset flow.
-    assert_match %r{/passwords/[^/]+/edit}, request.fullpath
+    # On to the regular reset form, with the reset token held in the session
+    # rather than in the redirect's URL.
+    assert_redirected_to reset_password_url
     assert_match(/activated/i, flash[:success])
+    follow_redirect!
+    assert_response :success
+    assert_select "form[action=?]", reset_password_path
   end
 
   test "edit with an invite more than a week old does not activate" do

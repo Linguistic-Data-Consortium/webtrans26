@@ -1,6 +1,10 @@
 Rails.application.routes.draw do
   resource :session
-  resources :passwords, param: :token
+  # The reset form works from a token held in the session, not one in the path:
+  # see PasswordsController#edit.
+  get "/passwords/reset", to: "passwords#reset_form", as: :reset_password
+  patch "/passwords/reset", to: "passwords#reset"
+  resources :passwords, param: :token, only: %i[ new create edit ]
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
