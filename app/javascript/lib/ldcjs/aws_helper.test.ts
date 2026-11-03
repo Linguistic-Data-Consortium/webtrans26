@@ -54,8 +54,23 @@ describe("the Cognito token is fetched when it is needed, not when imported", ()
     refreshToken(sdk);
     await gets3();
 
-    expect(fetchMock).toHaveBeenCalledWith("/token", { method: "POST" });
+    expect(fetchMock).toHaveBeenCalledWith("/token", { method: "POST", headers: {} });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("it sends the page's CSRF token", async () => {
+    const meta = document.createElement("meta");
+    meta.name = "csrf-token";
+    meta.content = "tok-123";
+    document.head.appendChild(meta);
+    try {
+      refreshToken(sdk);
+      await gets3();
+      expect(fetchMock).toHaveBeenCalledWith("/token",
+        { method: "POST", headers: { "X-CSRF-Token": "tok-123" } });
+    } finally {
+      meta.remove();
+    }
   });
 
   test("and it is asked once, however many uses follow", async () => {

@@ -22,6 +22,13 @@ let s3;
 // going to exercise. Deferring costs nothing: the first caller pays the same
 // round trip it would have waited on anyway, and the result is cached exactly as
 // before.
+// /token is a POST on the session cookie, so it carries the page's CSRF token
+// like every other write (getp.js reads the same meta tag).
+function csrf_headers(){
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? { 'X-CSRF-Token': meta.content } : {};
+}
+
 function refreshToken(x){
     f = x;
     // A later call re-registers and drops any cached client, which is what the
@@ -39,7 +46,7 @@ function client(){
   if(!s3_configured()){
     return Promise.reject(new Error('S3 is not configured on this server'));
   }
-  s3 = fetch("/token", { method: "POST" })
+  s3 = fetch("/token", { method: "POST", headers: csrf_headers() })
   .then(res => res.json())
   .then( r => {
     const { tok, region } = r;

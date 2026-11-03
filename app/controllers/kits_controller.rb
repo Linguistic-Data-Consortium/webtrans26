@@ -4,7 +4,6 @@ class KitsController < ApplicationController
 
   # before_action :authenticate
   # before_action :task_admin, :only => [ :get_message_from_journal, :fix_floating_kits, :create_kits_from_kits_tab ]
-  skip_before_action :verify_authenticity_token, only: [ :get_time_spent, :create_kits_from_kits_tab ]
   # before_action :authenticate, except: [ :create_kits_from_kits_tab ]
   # allow_unauthenticated_access only: %i[ create_kits_from_kits_tab ]
   before_action :task_admin, :only => [ :fix_floating_kits ]

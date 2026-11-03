@@ -1,7 +1,5 @@
 class CognitoTokenController < ApplicationController
 
-  skip_before_action :verify_authenticity_token
-
   # get a cognito token linked to the currently logged in user
   def get_credentials
     respond_to do |format|

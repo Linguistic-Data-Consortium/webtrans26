@@ -5,7 +5,6 @@
 # workflow ignores the list. The tab says so rather than hiding, since a list
 # is usually entered before the workflow is switched over.
 class TaskDocidsController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [ :replace ]
   # Reading is gated as well as writing: the tab is offered to a task's admins,
   # and the endpoint behind it shouldn't be looser than the tab.
   before_action :task_admin, only: [ :index, :replace ]
