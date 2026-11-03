@@ -19,7 +19,7 @@ class PasswordsController < ApplicationController
     return redirect_to(new_session_path, notice: MAILLESS_NOTICE) if !Rails.application.config.x.mail_enabled
 
     if user = User.find_by(email_address: params[:email_address])
-      PasswordsMailer.reset(user).deliver_now
+      PasswordsMailer.reset(user).deliver_later
     end
 
     redirect_to new_session_path, notice: "Password reset instructions sent (if user with that email address exists)."

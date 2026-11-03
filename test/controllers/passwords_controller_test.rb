@@ -46,7 +46,7 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
   test "POST /passwords with mail enabled and a known email sends a reset email and redirects" do
     with_mail_enabled do
       assert_difference -> { ActionMailer::Base.deliveries.size }, 1 do
-        post passwords_path, params: { email_address: users(:alice).email_address }
+        perform_enqueued_jobs { post passwords_path, params: { email_address: users(:alice).email_address } }
       end
       assert_redirected_to new_session_path
       assert_match(/Password reset instructions sent/i, flash[:notice])
@@ -54,6 +54,18 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
       mail = ActionMailer::Base.deliveries.last
       assert_equal [users(:alice).email_address], mail.to
       assert_match(/Reset your password/i, mail.subject)
+    end
+  end
+
+  # Sent in the background, so a known address answers as fast as an unknown one:
+  # the time the request took can't say whether the address has an account.
+  test "POST /passwords with mail enabled queues the reset email rather than sending it in the request" do
+    with_mail_enabled do
+      assert_enqueued_emails 1 do
+        assert_no_difference -> { ActionMailer::Base.deliveries.size } do
+          post passwords_path, params: { email_address: users(:alice).email_address }
+        end
+      end
     end
   end
 
@@ -155,7 +167,7 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
 
   test "the reset email's link carries the token in the fragment, not the path" do
     with_mail_enabled do
-      post passwords_path, params: { email_address: users(:alice).email_address }
+      perform_enqueued_jobs { post passwords_path, params: { email_address: users(:alice).email_address } }
       body = ActionMailer::Base.deliveries.last.body.encoded
       url, fragment = body[%r{\S*/passwords/\S+}].split("#", 2)
       assert_equal "/passwords/reset", URI(url).path, "nothing secret in the path"

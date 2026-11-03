@@ -1,6 +1,7 @@
 require "application_system_test_case"
 
 class PasswordResetTest < ApplicationSystemTestCase
+  include ActiveJob::TestHelper # the reset email is sent in the background
   setup { ActionMailer::Base.deliveries.clear }
 
   test "with mail disabled (default), the recovery page points at an access link and changes nothing" do
@@ -29,10 +30,11 @@ class PasswordResetTest < ApplicationSystemTestCase
 
       assert_current_path new_password_path
       fill_in "Email address", with: user.email_address
-      click_on "Send reset instructions"
-
-      assert_current_path new_session_path
-      assert_text "Password reset instructions sent"
+      perform_enqueued_jobs do
+        click_on "Send reset instructions"
+        assert_current_path new_session_path
+        assert_text "Password reset instructions sent"
+      end
 
       # Step 2: grab the reset URL out of the delivered email
       mail = ActionMailer::Base.deliveries.last

@@ -6,7 +6,7 @@ This app deliberately avoids hard-coded infra. The defaults are chosen so a fres
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `MAIL_ENABLED` | unset (treated as `false`) | When `"true"`, signups send an activation email. Otherwise, signups land on `/awaiting_activation`. |
+| `MAIL_ENABLED` | unset (treated as `false`) | When `"true"`, signups send an activation email. Otherwise, signups land on `/awaiting_activation`. The password-reset email is sent by a background job, so with mail on something has to run jobs: `SOLID_QUEUE_IN_PUMA=true`, which both deploy templates set, runs them inside the web server. |
 | `RAILS_MASTER_KEY` | from `config/master.key` | Decrypts `config/credentials.yml.enc`. **Neither file is in the repository — `bin/rails credentials:edit` creates both**, once, on a fresh clone. `.kamal/secrets` then reads the key at deploy time. See [Deployment](DEPLOYMENT.md#first-make-your-own-credentials). |
 | `SECRET_KEY_BASE` | from credentials | Signs session cookies. Normally it lives in `credentials.yml.enc`, but this env var takes precedence — which lets you deploy with no master key at all. **It must differ between instances**: a cookie signed with one is accepted by any instance sharing it. |
 | `APP_HOST` | `example.com` | The hostname used in links in activation and password-reset email. Irrelevant until you turn email on, and meaningless without a hostname. Also the default for `ALLOWED_HOSTS`. |
@@ -54,7 +54,7 @@ User.find_by(email_address: "x@y.com").activate
 
 Two branches in `PasswordsController#create`:
 
-1. **`MAIL_ENABLED=true`** — the usual self-service flow. We send a signed-token reset link to the address; the recipient clicks it and sets a new password.
+1. **`MAIL_ENABLED=true`** — the usual self-service flow. We send a signed-token reset link to the address; the recipient clicks it and sets a new password. The email goes out from a background job, so a known address and an unknown one answer equally fast and the response time can't tell anyone which addresses have accounts.
 2. **Mail disabled (the default)** — nothing is reset. Without mail there is no way to prove the requester owns the address, so the page and `POST /passwords` only tell the user to ask a portal manager or administrator for an access link (`/access_links`, see the User Guide). Once signed in through it, they set a new password on the Account tab.
 
    Earlier versions set the submitted password and deactivated the account. That let anyone who knew an address lock its owner out, and choose the password an administrator would later reactivate.
