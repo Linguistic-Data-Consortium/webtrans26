@@ -1,0 +1,39 @@
+<%# The emailed reset link is /passwords/reset#<token>. The fragment never
+    reaches the server, so this page's script reads it, removes it from the
+    address bar and history, and posts it in the body (PasswordsController#claim).
+    Without a fragment, or without JavaScript, there is nothing to claim. %>
+<div class="min-h-screen bg-gray-50 py-1 sm:px-6 lg:px-8">
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center">
+      <h2 class="text-2xl font-bold tracking-tight text-gray-900">Password reset</h2>
+
+      <%= form_with url: claim_password_reset_path, method: :post, local: true, id: "reset-claim" do |form| %>
+        <%= form.hidden_field :token, value: "", id: "reset-claim-token" %>
+      <% end %>
+
+      <p id="reset-claim-waiting" class="mt-4 text-sm text-gray-600">Opening your reset link…</p>
+      <p id="reset-claim-missing" class="mt-4 text-sm text-gray-600" hidden>
+        This page needs the full link from your reset email.
+        <%= link_to "Request a new one", new_password_path, class: "font-medium text-indigo-600 hover:text-indigo-500" %>.
+      </p>
+      <noscript>
+        <p class="mt-4 text-sm text-gray-600">Resetting a password needs JavaScript turned on.</p>
+      </noscript>
+    </div>
+  </div>
+</div>
+
+<%= nonced_javascript_tag do %>
+  (function () {
+    var token = window.location.hash.replace(/^#/, "");
+    // Out of the address bar and the history entry either way.
+    if (window.location.hash) history.replaceState(null, "", window.location.pathname);
+    if (!token) {
+      document.getElementById("reset-claim-waiting").hidden = true;
+      document.getElementById("reset-claim-missing").hidden = false;
+      return;
+    }
+    document.getElementById("reset-claim-token").value = token;
+    document.getElementById("reset-claim").submit();
+  })();
+<% end %>

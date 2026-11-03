@@ -4,6 +4,7 @@ Rails.application.routes.draw do
   # see PasswordsController#edit.
   get "/passwords/reset", to: "passwords#reset_form", as: :reset_password
   patch "/passwords/reset", to: "passwords#reset"
+  post "/passwords/reset", to: "passwords#claim", as: :claim_password_reset
   resources :passwords, param: :token, only: %i[ new create edit ]
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 

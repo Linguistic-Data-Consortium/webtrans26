@@ -1,7 +1,7 @@
 class PasswordsController < ApplicationController
   allow_unauthenticated_access
   before_action :set_user_by_token, only: %i[ edit ]
-  before_action :set_user_from_session, only: %i[ reset_form reset ]
+  before_action :set_user_from_session, only: %i[ reset ]
 
   MAILLESS_NOTICE = "This instance doesn't send email, so passwords can't be reset here. " \
     "Ask a portal manager or administrator for a sign-in link, then change your password on the Account tab."
@@ -25,18 +25,32 @@ class PasswordsController < ApplicationController
     redirect_to new_session_path, notice: "Password reset instructions sent (if user with that email address exists)."
   end
 
-  # The emailed link, /passwords/:token/edit. The token is moved into the
-  # session and the browser sent on to a URL without it, so the form, its
-  # submission and any redirect after it never put a live reset token in a path,
-  # where request logs would record it. The invite flow hands one over the same
-  # way (InvitesController#edit).
+  # A reset token must never be in a URL path, where the app's log and any
+  # proxy's log would record it while it is still live. The emailed link is
+  # /passwords/reset#<token>: a browser never sends the fragment, so the first
+  # request carries no token, and the claim page's script posts it (see
+  # #claim). From there the token lives in the session. The invite flow hands
+  # one over the same way (InvitesController#edit).
+  #
+  # /passwords/:token/edit is the older form of the link. It is kept so that a
+  # link already sent still works, and it moves its token into the session at
+  # once. Those links are dead within 15 minutes of being sent.
   def edit
     session[:password_reset_token] = params[:token]
     redirect_to reset_password_path
   end
 
+  # The form when the session holds a token, the claim page when it doesn't.
   def reset_form
-    render :edit
+    return render(:claim) if session[:password_reset_token].blank?
+    set_user_from_session
+    render :edit unless performed?
+  end
+
+  # The claim page's script posts the fragment's token here, in the body.
+  def claim
+    session[:password_reset_token] = params[:token].to_s
+    redirect_to reset_password_path
   end
 
   def reset

@@ -39,12 +39,17 @@ class PasswordResetTest < ApplicationSystemTestCase
       assert_not_nil mail
       assert_equal [user.email_address], mail.to
 
-      edit_path = mail.body.encoded[%r{/passwords/[^\s]+/edit}]
-      assert_not_nil edit_path, "email body should include an edit-password URL"
+      # The token rides in the fragment, which the browser never sends; the
+      # claim page's script posts it.
+      link = mail.body.encoded[%r{/passwords/reset#\S+}]
+      assert_not_nil link, "email body should include a /passwords/reset#token link"
+      edit_path = link
 
       # Step 3: follow the link and submit a new password
       visit edit_path
       assert_text "Update your password"
+      assert_equal "", evaluate_script("window.location.hash"), "the token is gone from the address bar"
+      assert_current_path reset_password_path
 
       fill_in "New password", with: new_password
       fill_in "Confirm password", with: new_password

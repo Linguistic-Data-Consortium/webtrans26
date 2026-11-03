@@ -31,4 +31,16 @@ class SecretPathLoggingTest < ActionDispatch::IntegrationTest
     assert_includes log, "Redirected to http://www.example.com/passwords/reset"
     assert_not_includes log, token
   end
+
+  test "the emailed link's claim never logs its token: no path, and a filtered body" do
+    token = users(:alice).password_reset_token
+    log = logged do
+      get reset_password_path
+      post claim_password_reset_path, params: { token: token }
+    end
+    assert_includes log, %(Started GET "/passwords/reset")
+    assert_includes log, %("token" => "[FILTERED]")
+    assert_not_includes log, token
+  end
 end
+

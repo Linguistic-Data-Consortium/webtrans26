@@ -78,19 +78,13 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     patch reset_password_path, params: { password: password, password_confirmation: confirmation }
   end
 
-  test "the emailed link moves the token out of the URL and renders the form" do
+  test "the older link form, /passwords/:token/edit, moves its token out of the URL" do
     open_reset_link(users(:alice).password_reset_token)
     assert_response :success
     assert_select "form[action=?]", reset_password_path
     assert_select "input[name='password']"
     assert_select "input[name='password_confirmation']"
     assert_no_match users(:alice).password_reset_token, response.body
-  end
-
-  test "the reset form without a token in the session sends you back" do
-    get reset_password_path
-    assert_redirected_to new_password_path
-    assert_match(/invalid or has expired/i, flash[:alert])
   end
 
   test "GET /passwords/:token/edit with an invalid token redirects" do
@@ -155,6 +149,42 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     submit_reset("second-try-pw")
     assert_redirected_to new_password_path
     assert users(:alice).reload.authenticate("brand-new-pw")
+  end
+
+  # ── the link as emailed: /passwords/reset#<token> ─────────────────────────
+
+  test "the reset email's link carries the token in the fragment, not the path" do
+    with_mail_enabled do
+      post passwords_path, params: { email_address: users(:alice).email_address }
+      body = ActionMailer::Base.deliveries.last.body.encoded
+      url, fragment = body[%r{\S*/passwords/\S+}].split("#", 2)
+      assert_equal "/passwords/reset", URI(url).path, "nothing secret in the path"
+      # Tokens embed their expiry, so compare whose it is rather than the string.
+      assert_equal users(:alice), User.find_by_password_reset_token(fragment)
+    end
+  end
+
+  test "with no token held, /passwords/reset is the claim page, not the form" do
+    get reset_password_path
+    assert_response :success
+    assert_select "form[action=?]", claim_password_reset_path
+    assert_select "input[name='password']", count: 0
+  end
+
+  test "claiming the fragment's token holds it in the session and opens the form" do
+    post claim_password_reset_path, params: { token: users(:alice).password_reset_token }
+    assert_redirected_to reset_password_path
+    follow_redirect!
+    assert_select "input[name='password']"
+    submit_reset("brand-new-pw")
+    assert users(:alice).reload.authenticate("brand-new-pw")
+  end
+
+  test "claiming a bad token sends you back to request a new link" do
+    post claim_password_reset_path, params: { token: "not-a-token" }
+    follow_redirect!
+    assert_redirected_to new_password_path
+    assert_match(/invalid or has expired/i, flash[:alert])
   end
 end
 
