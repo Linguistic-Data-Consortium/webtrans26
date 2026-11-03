@@ -152,6 +152,14 @@ class KitAuthorizationTest < ActionDispatch::IntegrationTest
 
   # ── removed endpoints ────────────────────────────────────────────────────
 
+  test "the kit_batches endpoints are gone" do
+    sign_in_as @charlie
+    get "/kit_batches", as: :json
+    assert_response :not_found
+    post "/kit_batches", params: { kit_batch: { task_id: @task.id, user_id: @alice.id } }, as: :json
+    assert_response :not_found
+  end
+
   test "kits#check and kits#trouble are gone" do
     sign_in_as @alice
     get "/kits/#{@kit.id}/check", params: { check: 1 }, as: :json

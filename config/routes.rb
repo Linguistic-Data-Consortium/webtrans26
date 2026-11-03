@@ -47,7 +47,6 @@ Rails.application.routes.draw do
   resources :account_activations, only: [:edit]
   resources :password_resets,     only: [:new, :create, :edit, :update]
 
-  resources :kit_batches, only: [ :index, :show, :new, :create ]
 
   resources :annotations
 
@@ -69,7 +68,6 @@ Rails.application.routes.draw do
   resources :node_values
   resources :nde_values
   resources :constants
-  resources :kit_batches, only: [ :index, :show, :new, :create ]
   resources :tasks, :except => [:new, :create]#if the task already exists, we can infer the project, for new/create it must be specified
   resources :projects, except: [ :new, :edit ] do
     resources :tasks, except: [ :new, :edit, :index ] do
