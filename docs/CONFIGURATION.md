@@ -13,15 +13,19 @@ This app deliberately avoids hard-coded infra. The defaults are chosen so a fres
 | `ALLOWED_HOSTS` | `APP_HOST` if set, otherwise unset | Comma-separated hostnames and/or IP addresses this instance answers to, e.g. `app.example.org` or `203.0.113.25`. Any other `Host` header gets a 403, which keeps a forged one from shaping the links and redirects Rails builds, and refuses DNS-rebinding requests; `/up` is exempt so health checks still work. **Unset, any host is answered** — set it once you know the name or address people use. |
 | `SSL` | unset (treated as **`true`**) | Sets `assume_ssl` and `force_ssl` in production: HTTP redirects to HTTPS and cookies are marked secure. **On by default** — every deployment in [Deployment](DEPLOYMENT.md) serves HTTPS, either with a Let's Encrypt certificate if the machine has a hostname or a self-signed one for its IP if not. Set `SSL=false` only for a deliberate plain-HTTP deployment, and note that passwords then cross the network in the clear. |
 | `AWS_REGION` | unset | The region for Cognito and S3. **Required for `s3://` kit sources and the Browse tab** — the AWS SDK refuses to build a client without it, so until it is set those features report themselves unavailable. |
-| `HLT_ENDPOINT` | unset | The speech-activity-detection / ASR service. Unset, SAD and ASR are unavailable and say so. |
-| `PROMISE_BUCKET` | unset | The S3 bucket that service exchanges work through. Needed together with `HLT_ENDPOINT`; one without the other is not enough. |
+| `HLT_ENDPOINT` | unset | The **hosted** speech-activity-detection / ASR service. **Nothing reachable reads this in this app.** The hosted entries were removed from the Services menu — they would send the annotator's audio to a service this app does not ship — so setting it has no visible effect. The row is kept because the send paths are still in the code, unreachable; a fork that wants the hosted services back needs this variable *and* has to restore the menu entries. The speech services this app does offer run in the annotator's own browser and need no configuration. |
+| `PROMISE_BUCKET` | unset | The S3 bucket that service exchanges work through. Needed together with `HLT_ENDPOINT`; one without the other is not enough — and, with the hosted entries removed, neither is read by anything reachable. Same caveat as above. |
 | `GUIDELINES_URL` | unset | The annotation guidelines document, opened by `h` then `5` in the transcription tool. Any URL a browser can open. **Unset, the tool says no guidelines are configured** rather than opening a blank window — this app deliberately ships no document of its own. |
 | `TRANSCRIPTION_REPL` | unset | Set to `1` by `bin/repl` and the scripted harnesses. Suppresses the training-guide popup so a scripted run isn't blocked by it. |
 
 Every one of these is optional. A deployment that sets none of them runs, signs
-people in, and transcribes audio from plain `http(s)` URLs; what it cannot do is
-send email, read `s3://` sources, or run speech services — and in each case the
-app says so rather than failing obscurely.
+people in, and transcribes audio from plain `http(s)` URLs — **including with
+speech recognition and sound-level segmentation, which run in the annotator's
+own browser and need no configuration at all** (the Services menu — `h` then
+`4` — entries 5, 6 and 7; the first run downloads a model). What it cannot do is send email or read
+`s3://` sources, and in each case the app says so rather than failing
+obscurely. The *hosted* speech services are not offered here at all — see
+`HLT_ENDPOINT` above.
 
 The two `config/deploy.yml.*` files list the deployment-relevant ones as
 comments under `env.clear`, which is where to uncomment them — in the copy you

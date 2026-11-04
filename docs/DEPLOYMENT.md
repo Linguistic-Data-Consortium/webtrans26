@@ -451,9 +451,15 @@ two together. The IP route's two certificate secrets are the case to watch:
 ## Application configuration
 
 The app runs with no external dependencies by default: no SMTP, no cloud
-credentials, no speech services. Each is opt-in through an environment variable
-set under `env.clear` in `deploy.yml`, where they are listed as comments with
-what they do. See [Configuration](CONFIGURATION.md) for the full table.
+credentials, no hosted speech services. Each is opt-in through an environment
+variable set under `env.clear` in `deploy.yml`, where they are listed as
+comments with what they do. See [Configuration](CONFIGURATION.md) for the full
+table.
+
+Speech recognition itself is not one of those opt-ins: it runs in the
+annotator's own browser, is on by default, and needs nothing configured. The
+hosted engines — the ones `HLT_ENDPOINT` points at — are not offered in this
+app at all.
 
 The two worth knowing about before a first deploy:
 
