@@ -3,6 +3,7 @@
     import { services_configured } from '../../service_config';
     import { local_audio_active } from '../../local_audio';
     import { local_asr_available } from '../../local_asr';
+    import { energy_available } from '../energy_run';
 
     let {
         dialogRef = $bindable(),
@@ -18,11 +19,13 @@
     //             it? No for a local_audio kit, no for an instance with no
     //             HLT_ENDPOINT / PROMISE_BUCKET.
     //   local   — can this browser run a model itself?
+    //   energy  — can it decode audio, to find segments from the sound level?
     //
-    // Either one alone is a usable menu. Only when both are false is there
+    // Any one alone is a usable menu. Only when all are false is there
     // nothing to offer, and that is the one case that shows a notice.
     const hosted = () => services_configured() && !local_audio_active();
     const local  = () => local_asr_available();
+    const energy = () => energy_available();
 </script>
 
 <BaseDialog bind:dialogRef={dialogRef} size="sm:max-w-2xl" title="Available Services" {onKeydown} showClose={false}>
@@ -30,7 +33,7 @@
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div use:focus tabindex="0" onkeydown={onKeydown} class="p-6 outline-none">
-            {#if !hosted() && !local()}
+            {#if !hosted() && !local() && !energy()}
             {#if local_audio_active()}
                 <!-- The audio is a file on the annotator's computer, and every
                      service here works by sending it away. -->
@@ -67,17 +70,17 @@
             </div>
 
             {#if !hosted()}
-                <!-- The menu is not empty, but only the in-browser option is
+                <!-- The menu is not empty, but only what runs in the browser is
                      in it, and an annotator who expected SAD and ASR deserves
                      to know which of the two reasons applies. -->
                 <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 text-sm text-amber-900">
                     {#if local_audio_active()}
                         This kit's audio is a file on your computer and it stays
                         there, so the services that would send it away are not
-                        available. Recognition that runs in this browser is.
+                        available. What runs in this browser is.
                     {:else}
                         No hosted speech services are configured on this server,
-                        so only recognition that runs in this browser is available.
+                        so only what runs in this browser is available.
                     {/if}
                 </div>
             {/if}
@@ -136,6 +139,39 @@
                             Runs on your computer — the audio is not sent anywhere.
                             Slower and less accurate, and the first run downloads
                             the model.
+                        </div>
+                    </div>
+                </div>
+                {/if}
+
+                {#if energy()}
+                <div class="flex items-center p-4 bg-gradient-to-r from-slate-50 to-gray-50 rounded-lg border border-slate-200 hover:border-gray-300 transition-colors">
+                    <div class="flex-shrink-0 w-10 h-10 bg-slate-600 text-white rounded-lg flex items-center justify-center font-bold text-lg mr-4 shadow-sm">
+                        6
+                    </div>
+                    <div>
+                        <div class="font-semibold text-gray-900 text-lg">Segments from sound level</div>
+                        <div class="text-sm text-gray-600">
+                            Empty segments wherever the sound rises above the
+                            background, in the gaps between existing ones. Runs
+                            on your computer; nothing to download.
+                        </div>
+                    </div>
+                </div>
+                {/if}
+
+                {#if local()}
+                <div class="flex items-center p-4 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-200 hover:border-emerald-300 transition-colors">
+                    <div class="flex-shrink-0 w-10 h-10 bg-teal-700 text-white rounded-lg flex items-center justify-center font-bold text-lg mr-4 shadow-sm">
+                        7
+                    </div>
+                    <div>
+                        <div class="font-semibold text-gray-900 text-lg">ASR into empty segments (in this browser)</div>
+                        <div class="text-sm text-gray-600">
+                            Fills each segment that has no text yet, one at a
+                            time; nothing is added or moved. To see suggestions
+                            as you go instead, turn on ASR suggestions in the
+                            toolbar.
                         </div>
                     </div>
                 </div>

@@ -1,5 +1,5 @@
 <script>
-    import { tick, createEventDispatcher, onMount, onDestroy } from 'svelte';
+    import { tick, untrack, createEventDispatcher, onMount, onDestroy } from 'svelte';
     const dispatch = createEventDispatcher();
     import { ArrowUpFromLine, ArrowDownToLine, Check, X } from '@lucide/svelte';
     import { event } from './events';
@@ -8,6 +8,7 @@
     import { transcript } from './transcript.svelte';
     import { add_source_audio_collision } from './sources_stores';
     import { play_src_with_audio_id, redactions, redactf } from './play';
+    import { is_playing } from '../audio/main';
     import { btn, cbtn, dbtn, btn1 } from '../work/buttons';
     import {
         add_audio_to_list,
@@ -33,10 +34,17 @@
     import { bulko } from './bulk.svelte';
     import { activeo, get_reference_text } from './shared.svelte';
     import { text_only_forbidden } from './bindings';
+    import { toast } from 'svelte-sonner';
+    import { is_empty_segment, rows_to_transcribe, summarize, download_tracker, rows_ahead, suggestion_key } from './segment_asr';
+    import { preview, want as want_suggestions, suggestion_for } from './asr_preview.svelte';
+    import { run_segment_asr } from './segment_asr_run';
+    import { local_asr_available } from '../local_asr';
+    import { bulk_start, bulk_total as set_bulk_total, bulk_done as set_bulk_done, bulk_end } from './bulk.svelte';
     let {
         ldc,
         debug,
         docids,
+        source_uid_channels = [],
         set_active_transcript_line_helper,
         play_head,
         constraint_rtl,
@@ -499,7 +507,12 @@
         if(x) mark_transcription('segment_deleted');
     }
 
+    // Keeps the line being played in view while audio plays. Only while it
+    // plays: the play head stays where playback stopped, so its line keeps the
+    // playing-transcript-line class, and this used to pull the list back to it
+    // every second for as long as the annotator was scrolling elsewhere.
     setInterval(()=>{
+        if(!is_playing()) return;
         let nnn = document.querySelector('.playing-transcript-line');
         if(nnn) nnn = nnn.offsetTop;
         else return;
@@ -582,6 +595,110 @@
 
     let redact;
     export function redactcb(x){ redact.redactcb(x); }
+
+    // ── In-browser ASR, a segment at a time (segment_asr.js) ──────────────
+    //
+    // Text is written only where there is none, checked when the text arrives
+    // rather than when it was asked for: the annotator may have typed in the
+    // meantime. The active segment's text lives in the textarea until its
+    // debounced save, so for that one the textarea is checked too.
+    //
+    // Saved at once, never left to the textarea's debounce: moving to another
+    // row cancels a pending save (t_init clears t_timeout), so a result handed
+    // only to the textarea could be lost — and until it was saved the
+    // transcript still showed the segment empty, so a batch run took it for
+    // empty and transcribed it again. The textarea is shown the text too, with
+    // t_previous saying it's already sent, so its own save doesn't repeat it.
+    function write_if_empty(row, text){
+        const now = transcript.segments.find( (r) => r.iid === row.iid );
+        if(!now || !is_empty_segment(now)) return false;
+        const iid = row.iid + 2;
+        if(t_iid === iid){
+            if(String(t_value ?? '').trim() !== '') return false;
+            t_previous.set(iid, text);
+            t_value = text;
+        }
+        change_value(iid, text, update_segments);
+        return true;
+    }
+
+    let segment_asr_running = false;
+
+    // ── ASR suggestions (asr_preview.svelte.js), while the mode is on ──────
+    //
+    // How many empty segments, from the active one on, to have suggestions
+    // ready for. Enough to stay ahead of an annotator reading along; few
+    // enough that moving on doesn't leave much work done for nothing.
+    const SUGGEST_AHEAD = 5;
+
+    // Keep the queue on what's coming up. Not while a batch run has the list.
+    // Untracked: queueing reads the suggestions and marks one pending, which
+    // would otherwise re-run this for every suggestion that changes.
+    $effect(() => {
+        if(!preview.on || bulko.label) return;
+        const i = find_active_i();
+        const rows = rows_ahead(segs, i ?? 0, SUGGEST_AHEAD);
+        untrack( () => want_suggestions(rows, { ldc, docids, source_uid_channels }) );
+    });
+
+    // A suggestion becomes the segment's text when the segment is selected
+    // while still empty — or, if it's still being worked out then, when it
+    // arrives while the segment is still selected and empty. Once per segment:
+    // text the annotator deletes isn't put back.
+    const suggestion_applied = new Set();
+    $effect(() => {
+        if(!preview.on) return;
+        const i = find_active_i();
+        const row = i == null ? null : segs[i];
+        if(!row) return;
+        const s = suggestion_for(row);
+        if(s?.status !== 'ready') return;
+        const k = suggestion_key(row);
+        if(suggestion_applied.has(k)) return;
+        suggestion_applied.add(k);
+        // After the textarea for this row is in place (t_init), so the write
+        // sees it and fills it too.
+        tick().then( () => write_if_empty(row, s.text) );
+    });
+
+    // Every empty segment that fits inside `span`. The list is hidden while it
+    // runs, as for any bulk operation, which also keeps the annotator from
+    // typing into a segment a moment before its text arrives. Cancel stops
+    // after the segment in hand; what was written stays written.
+    export async function transcribe_empty_segments(span){
+        if(!local_asr_available()){ toast.error('This browser cannot run speech recognition itself.'); return; }
+        if(segment_asr_running){ toast.info('Already transcribing.'); return; }
+        const rows = rows_to_transcribe(transcript.segments, span);
+        if(rows.length == 0){ toast.info('There are no empty segments in that stretch.'); return; }
+        segment_asr_running = true;
+        const ac = new AbortController();
+        const label = 'Transcribing segments in this browser';
+        const pct = download_tracker();
+        bulk_start('Loading the speech model', 0, () => ac.abort());
+        try {
+            const r = await run_segment_asr(rows, {
+                ldc, docids, source_uid_channels, write: write_if_empty, signal: ac.signal,
+                onstage: (m) => {
+                    // The panel counts segments, so the download goes in the
+                    // label rather than the total.
+                    const p = pct(m);
+                    if(p != null && p < 100) set_bulk_total(0, `Loading the speech model (${p}%)`);
+                },
+                onprogress: (done, total) => {
+                    set_bulk_total(total, label);
+                    set_bulk_done(done);
+                }
+            });
+            (r.failed.length ? toast.warning : toast.success)(summarize(r));
+        }
+        catch(e){
+            if(!ac.signal.aborted) toast.error(`Couldn't transcribe: ${e?.message || e}`);
+        }
+        finally {
+            segment_asr_running = false;
+            bulk_end();
+        }
+    }
     function save_redactionf(value, redact_iid, redact_edit){
         // dialog.close();
         // const value = redact_text;
@@ -612,6 +729,7 @@
     const bulk_label = $derived(bulko.label);
     const bulk_total = $derived(bulko.total);
     const bulk_count = $derived(bulko.done);
+    const bulk_cancel = $derived(bulko.cancel);
 </script>
 
 <style>
@@ -677,7 +795,7 @@
 {/if}
 
 {#if bulk_running}
-    <div class="h-full flex flex-col items-center justify-center text-gray-500 select-none">
+    <div class="h-full flex flex-col items-center justify-center text-gray-500 select-none" data-testid="bulk-panel">
         <div class="text-sm">
             {#if bulk_total}
                 {bulk_label} — {bulk_total} segment{bulk_total === 1 ? '' : 's'}…
@@ -693,6 +811,9 @@
             <div class="w-48 h-1 mt-2 bg-gray-200 rounded overflow-hidden">
                 <div class="h-full bg-indigo-500 transition-all" style="width: {Math.round(100 * bulk_count / bulk_total)}%"></div>
             </div>
+        {/if}
+        {#if bulk_cancel}
+            <button type="button" class="{btn} mt-3 text-xs" onclick={bulk_cancel} data-testid="bulk-cancel">Cancel</button>
         {/if}
     </div>
 {:else}
@@ -772,6 +893,24 @@
                         onkeydown={ (e) => t_keydown(e, x) }
                         use:t_init={x}
                     ></textarea>
+                {:else if !x.text && preview.on && suggestion_for(x)}
+                    <!-- An ASR suggestion: shown, not saved. Selecting the
+                         segment while it's empty saves it as the text. -->
+                    <div class="pl-1 transcript italic text-gray-400" data-testid="asr-suggestion"
+                         title="ASR suggestion, not saved — selecting this segment uses it">
+                        {#if suggestion_for(x).status == 'ready'}{suggestion_for(x).text}
+                        {:else if suggestion_for(x).status == 'pending'}…
+                        {:else if suggestion_for(x).status == 'none'}(no speech recognised)
+                        {:else if suggestion_for(x).status == 'error'}
+                            <!-- There was no branch for this, so a failed
+                                 segment rendered an empty row: the ellipsis
+                                 appeared, vanished, and said nothing. The
+                                 message is the only clue to why. -->
+                            <span class="text-amber-700" title={suggestion_for(x).message}>
+                                (ASR failed — hover for why)
+                            </span>
+                        {/if}
+                    </div>
                 {:else}
                     <div class="pl-1 transcript">{x.text}</div>
                 {/if}

@@ -24,6 +24,7 @@
 
 import { round_to_6_places } from './waveform/times';
 import { local_file_for } from './local_audio';
+import { language_code } from './whisper_languages';
 
 // Whisper wants 16 kHz mono, and asking the AudioContext for that rate lets
 // the browser resample during decode rather than us doing it badly afterwards.
@@ -44,9 +45,112 @@ function meta(name, fallback){
     return (v && v.length) ? v : fallback;
 }
 
-// Which model to run. A deployment that wants `whisper-small.en`, or a
-// multilingual model, says so here rather than in the code.
-export function asr_model(){ return meta('asr-model', DEFAULT_MODEL); }
+// Which model to run, from a size and a language.
+//
+// English runs the English-only model of the size, which is better at English
+// than the multilingual one; any other language runs the multilingual model,
+// told which language it is — the library can't detect one, and given none it
+// transcribes as English. A size and a language can each be chosen for this
+// browser (the Downloaded resources dialog); otherwise the server's asr-model
+// gives the size and its asr-language the language. A server model that isn't
+// one of these is used as named: a deployment's own choice.
+export function asr_model(){
+    return model_for({ server: server_model(), size: chosen_size(), language: asr_language() });
+}
+export function server_model(){ return meta('asr-model', DEFAULT_MODEL); }
+
+const STANDARD = /^onnx-community\/whisper-(tiny|base|small)(\.en)?$/;
+
+export function model_for({ server, size = null, language = 'en' }){
+    const m = STANDARD.exec(server);
+    if(!size && !m) return server;
+    const s = size ?? m[1];
+    return language === 'en' ? `onnx-community/whisper-${s}.en` : `onnx-community/whisper-${s}`;
+}
+
+// English-only models refuse to be told a language; the others need telling.
+export function is_english_only(model){
+    return /\.en$/.test(model);
+}
+
+// The language a run tells the model, or null for an English-only one.
+export function run_language(model = asr_model()){
+    return is_english_only(model) ? null : asr_language();
+}
+
+// "Whisper base (multilingual)" for onnx-community/whisper-base.
+export function model_label(id){
+    const m = STANDARD.exec(id);
+    if(!m) return id;
+    return `Whisper ${m[1]} (${m[2] ? 'English' : 'multilingual'})`;
+}
+
+// What the dialog offers. All have the quantised (q8) weights asr_dtype asks
+// for; sizes are what the host reports once downloaded, not listed here.
+export const ASR_SIZES = Object.freeze([
+    { id: 'tiny',  label: 'Tiny',  note: 'smallest and fastest, least accurate' },
+    { id: 'base',  label: 'Base',  note: 'the default balance' },
+    { id: 'small', label: 'Small', note: 'about four times base: slowest, most accurate' }
+]);
+
+const SIZE_KEY = 'asr_size';
+const LANGUAGE_KEY = 'asr_language';
+
+export function chosen_size(){
+    try {
+        const v = localStorage.getItem(SIZE_KEY);
+        return ASR_SIZES.some( (x) => x.id == v ) ? v : null;
+    }
+    catch(e){ return null; }
+}
+
+// null goes back to the server's.
+export function choose_size(size){
+    try {
+        if(size) localStorage.setItem(SIZE_KEY, size);
+        else     localStorage.removeItem(SIZE_KEY);
+    }
+    catch(e){}
+}
+
+export function server_language(){
+    return language_code(meta('asr-language', 'en')) ?? 'en';
+}
+
+export function chosen_language(){
+    try { return language_code(localStorage.getItem(LANGUAGE_KEY)); } catch(e){ return null; }
+}
+
+export function asr_language(){
+    return chosen_language() ?? server_language();
+}
+
+// A code, or null to go back to the server's. Anything Whisper doesn't know
+// is refused rather than kept.
+export function choose_language(code){
+    const c = code == null ? null : language_code(code);
+    if(code != null && c == null) throw new Error(`Whisper doesn't know the language "${code}"`);
+    try {
+        if(c) localStorage.setItem(LANGUAGE_KEY, c);
+        else  localStorage.removeItem(LANGUAGE_KEY);
+    }
+    catch(e){}
+}
+
+// One pass of the model per window, skipping Whisper's seek loop
+// (asr_windows.js, pipeline_options): experimental, per browser, for
+// whole-file runs.
+const SINGLE_PASS_KEY = 'asr_single_pass';
+export function single_pass_on(){
+    try { return localStorage.getItem(SINGLE_PASS_KEY) === 'on'; } catch(e){ return false; }
+}
+export function set_single_pass(on){
+    try {
+        if(on) localStorage.setItem(SINGLE_PASS_KEY, 'on');
+        else   localStorage.removeItem(SINGLE_PASS_KEY);
+    }
+    catch(e){}
+}
 
 // How heavily the weights are quantised, which decides the download. For
 // whisper-base.en, measured from the model repo:
@@ -125,16 +229,19 @@ export function chunks_to_segments(chunks, opts = {}){
 }
 
 // Audio in, 16 kHz mono samples out. `bytes` is an ArrayBuffer.
-async function decode_to_samples(bytes){
+//
+// `channel` picks one channel of a stereo file. Never a mix of them: a mix
+// makes one transcript of two speakers talking over each other.
+export async function decode_to_samples(bytes, channel = 0){
     const Ctx = audio_context_class();
     if(!Ctx) throw new Error('no AudioContext: this browser cannot decode audio here');
     const ctx = new Ctx({ sampleRate: SAMPLE_RATE });
     try {
         const buffer = await ctx.decodeAudioData(bytes);
-        // Channel 0 only. A stereo kit is transcribed one channel per run, the
-        // way the service path iterates source_uid_channels — mixing the two
-        // would make one transcript of two speakers talking over each other.
-        return { samples: buffer.getChannelData(0), duration: buffer.duration };
+        // A whole-file run uses channel 0 and is run once per channel, the way
+        // the service path iterates source_uid_channels.
+        const c = Math.min(channel, buffer.numberOfChannels - 1);
+        return { samples: buffer.getChannelData(c), duration: buffer.duration };
     }
     finally {
         if(typeof ctx.close === 'function') await ctx.close();
@@ -221,8 +328,10 @@ export async function run_local_asr(audio, opts = {}){
         onprogress = null,
         signal = null,
         model = asr_model(),
+        language = run_language(model),
         base = asr_model_base(),
         dtype = asr_dtype(),
+        single_pass = single_pass_on(),
         decode = decode_to_samples,
         worker_factory = default_worker
     } = opts;
@@ -242,7 +351,11 @@ export async function run_local_asr(audio, opts = {}){
             worker.onmessage = (e) => {
                 const m = e.data || {};
                 if(m.type === 'progress') onprogress?.(m);
-                else if(m.type === 'done') resolve(chunks_to_segments(m.chunks, { duration, channel, speaker }));
+                else if(m.type === 'done'){
+                    // Which backend ran it, for whoever is timing the run.
+                    onprogress?.({ stage: 'done', device: m.device, timing: m.timing });
+                    resolve(chunks_to_segments(m.chunks, { duration, channel, speaker }));
+                }
                 else if(m.type === 'error') reject(new Error(m.message || 'local ASR failed'));
             };
             // A Worker that dies — a missing model, an import that fails —
@@ -257,13 +370,87 @@ export async function run_local_asr(audio, opts = {}){
 
             // The samples are transferred, not copied: a long recording is
             // tens of megabytes and this is the one place that matters.
-            worker.postMessage({ type: 'run', samples, model, base, dtype, webgpu: webgpu_available() }, [ samples.buffer ]);
+            worker.postMessage({ type: 'run', samples, model, base, dtype, webgpu: webgpu_available(), single_pass, language }, [ samples.buffer ]);
         });
     }
     finally {
         if(signal && on_abort) signal.removeEventListener('abort', on_abort);
         worker.terminate();
     }
+}
+
+// What a segment's recognised text is worth keeping as. Whisper describes what
+// it hears when it hears no speech — "[BLANK_AUDIO]", "(upbeat music)",
+// "[Music]" — and those are not words anyone said, so they go, and a segment
+// that was nothing else comes back empty. Everything else is left as the model
+// wrote it.
+export function clean_segment_text(text){
+    return String(text ?? '')
+        .replace(/\[[^\]]*\]|\([^)]*\)/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+// One Worker kept for a run of short transcriptions — segment after segment —
+// so the model is loaded once rather than once each, which would cost seconds
+// a segment. The Worker already keeps its pipeline between messages
+// (local_asr_worker.js); run_local_asr simply never asks it twice.
+//
+//   const session = await open_local_asr_session({ onprogress });
+//   const text = await session.transcribe(samples);   // 16 kHz mono
+//   session.close();
+//
+// Requests are queued, one at a time: the Worker answers 'done' without saying
+// which request it is answering. A failed request rejects its own promise and
+// leaves the session usable for the next.
+export async function open_local_asr_session(opts = {}){
+    const {
+        onprogress = null,
+        model = asr_model(),
+        language = run_language(model),
+        base = asr_model_base(),
+        dtype = asr_dtype(),
+        worker_factory = default_worker
+    } = opts;
+    const worker = await worker_factory();
+    let queue = Promise.resolve();
+    let closed = false;
+    // The request in flight, so closing can end it: a terminated Worker never
+    // answers, and a promise waiting on it would wait for ever.
+    let in_flight = null;
+
+    // `timestamps: false` asks for text alone, which is less for the model to
+    // produce; the default keeps the timestamps a whole-file run needs.
+    function run(samples, { timestamps = true } = {}){
+        if(closed) return Promise.reject(new Error('cancelled'));
+        return new Promise((resolve, reject) => {
+            in_flight = reject;
+            worker.onmessage = (e) => {
+                const m = e.data || {};
+                if(m.type === 'progress') onprogress?.(m);
+                else if(m.type === 'done'){
+                    const text = m.text ?? (m.chunks || []).map( (c) => c?.text ?? '' ).join(' ');
+                    resolve(clean_segment_text(text));
+                }
+                else if(m.type === 'error') reject(new Error(m.message || 'local ASR failed'));
+            };
+            worker.onerror = (e) => reject(new Error(worker_failure_message(e)));
+            worker.postMessage({ type: 'run', samples, model, base, dtype, webgpu: webgpu_available(), timestamps, language }, [ samples.buffer ]);
+        });
+    }
+
+    return {
+        transcribe(samples, opts){
+            const p = queue.then( () => run(samples, opts) );
+            queue = p.catch( () => {} );
+            return p;
+        },
+        close(){
+            closed = true;
+            worker.terminate();
+            in_flight?.(new Error('cancelled'));
+        }
+    };
 }
 
 // The audio the waveform is already drawing, as something fetchable.
@@ -298,5 +485,6 @@ export async function run_local_asr_for(docid, ldc, opts = {}){
 
 export default {
     run_local_asr, run_local_asr_for, audio_url_for, chunks_to_segments,
+    open_local_asr_session, clean_segment_text, decode_to_samples, run_language,
     local_asr_available, webgpu_available, asr_model, asr_model_base, asr_dtype
 };

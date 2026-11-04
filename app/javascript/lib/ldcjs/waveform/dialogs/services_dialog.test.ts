@@ -13,12 +13,12 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 // instance with no HLT service at all that can still transcribe. Both used to
 // be dead ends showing a notice.
 //
-// Mocked rather than driven through meta tags, because the fallbacks differ
-// between the apps this file is copied into: elsewhere they point at LDC's
-// service, while the public release defaults to none. The dialog's logic is the same either
-// way, and that is what is under test.
+// Mocked rather than driven through meta tags: this app defaults to no service
+// at all, so a test that relied on the fallback would assert the absence of
+// everything. The dialog's logic is what is under test, and it is the same
+// whatever the fallback is.
 
-const state = { services: true, local_audio: false, engine: true };
+const state = { services: true, local_audio: false, engine: true, energy: true };
 
 vi.mock("../../service_config", () => ({
   services_configured: () => state.services,
@@ -28,6 +28,7 @@ vi.mock("../../service_config", () => ({
 }));
 vi.mock("../../local_audio", () => ({ local_audio_active: () => state.local_audio }));
 vi.mock("../../local_asr", () => ({ local_asr_available: () => state.engine }));
+vi.mock("../energy_run", () => ({ energy_available: () => state.energy }));
 
 import ServicesDialog from "./ServicesDialog.svelte";
 
@@ -41,6 +42,7 @@ beforeEach(() => {
   state.services = true;
   state.local_audio = false;
   state.engine = true;
+  state.energy = true;
 });
 
 describe("ServicesDialog", () => {
@@ -73,9 +75,10 @@ describe("ServicesDialog", () => {
     expect(screen.getByText(/No hosted speech services are configured/)).toBeTruthy();
   });
 
-  test("with neither, the notice is shown and nothing is offered", async () => {
+  test("with none, the notice is shown and nothing is offered", async () => {
     state.services = false;
     state.engine = false;
+    state.energy = false;
     await mount();
 
     expect(screen.queryByText("SAD")).toBeNull();
@@ -83,9 +86,10 @@ describe("ServicesDialog", () => {
     expect(screen.getByText(/No speech services are configured on this server/)).toBeTruthy();
   });
 
-  test("a local_audio kit in a browser that cannot run a model keeps the old dead end", async () => {
+  test("a local_audio kit in a browser that can do nothing itself keeps the old dead end", async () => {
     state.local_audio = true;
     state.engine = false;
+    state.energy = false;
     await mount();
 
     expect(screen.queryByText("ASR (in this browser)")).toBeNull();
@@ -98,5 +102,42 @@ describe("ServicesDialog", () => {
 
     expect(screen.getByText("SAD")).toBeTruthy();
     expect(screen.queryByText("ASR (in this browser)")).toBeNull();
+  });
+
+  test("segments from sound level are offered wherever the browser can decode audio", async () => {
+    await mount();
+    expect(screen.getByText("Segments from sound level")).toBeTruthy();
+  });
+
+  test("including a local_audio kit, since nothing is sent", async () => {
+    state.local_audio = true;
+    await mount();
+    expect(screen.getByText("Segments from sound level")).toBeTruthy();
+    expect(screen.queryByText("SAD")).toBeNull();
+  });
+
+  test("and alone they are enough to make a menu rather than a notice", async () => {
+    state.services = false;
+    state.engine = false;
+    await mount();
+    expect(screen.getByText("Segments from sound level")).toBeTruthy();
+    expect(screen.queryByText(/No speech services are configured on this server/)).toBeNull();
+  });
+
+  test("a browser that cannot decode audio is not offered them", async () => {
+    state.energy = false;
+    await mount();
+    expect(screen.queryByText("Segments from sound level")).toBeNull();
+  });
+
+  test("filling empty segments is offered with the in-browser ASR", async () => {
+    await mount();
+    expect(screen.getByText("ASR into empty segments (in this browser)")).toBeTruthy();
+  });
+
+  test("and not without it", async () => {
+    state.engine = false;
+    await mount();
+    expect(screen.queryByText("ASR into empty segments (in this browser)")).toBeNull();
   });
 });

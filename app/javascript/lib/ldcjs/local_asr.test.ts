@@ -145,15 +145,44 @@ describe("run_local_asr", () => {
     expect(w2.terminated).toBe(true);
   });
 
+  // The library can't detect a language, so a run tells a multilingual model
+  // which; an English-only one is told none.
+  test("the language goes to the Worker for a multilingual model, and none for an English-only one", async () => {
+    const p1 = run({ model: "onnx-community/whisper-base" });
+    await vi.waitUntil(() => worker.sent.length > 0);
+    expect(worker.sent[0].language).toBe("en");
+    worker.reply({ type: "done", chunks: [] });
+    await p1;
+    worker = fake_worker();
+    const p2 = run({ model: "onnx-community/whisper-base.en" });
+    await vi.waitUntil(() => worker.sent.length > 0);
+    expect(worker.sent[0].language).toBeNull();
+    worker.reply({ type: "done", chunks: [] });
+    await p2;
+  });
+
+  // Experimental, per browser: sent with the run for the Worker to apply.
+  test("one pass per window goes to the Worker when it's on in this browser", async () => {
+    localStorage.setItem("asr_single_pass", "on");
+    const p1 = run();
+    await vi.waitUntil(() => worker.sent.length > 0);
+    expect(worker.sent[0].single_pass).toBe(true);
+    worker.reply({ type: "done", chunks: [] });
+    await p1;
+    localStorage.removeItem("asr_single_pass");
+  });
+
   test("progress is reported, decoding first", async () => {
-    const seen: string[] = [];
-    const p = run({ onprogress: (m: any) => seen.push(m.stage) });
+    const seen: any[] = [];
+    const p = run({ onprogress: (m: any) => seen.push(m) });
     await vi.waitUntil(() => worker.sent.length > 0);
     worker.reply({ type: "progress", stage: "downloading", loaded: 1, total: 2 });
-    worker.reply({ type: "progress", stage: "transcribing" });
-    worker.reply({ type: "done", chunks: [] });
+    worker.reply({ type: "progress", stage: "transcribing", device: "wasm", done: 0, total: 4 });
+    worker.reply({ type: "done", chunks: [], device: "wasm", timing: { windows: [800, 900], merge: 50 } });
     await p;
-    expect(seen).toEqual([ "decoding", "downloading", "transcribing" ]);
+    expect(seen.map((m) => m.stage)).toEqual([ "decoding", "downloading", "transcribing", "done" ]);
+    // which backend ran it, and how long each part took, for timing the run
+    expect(seen[3]).toMatchObject({ device: "wasm", timing: { windows: [800, 900], merge: 50 } });
   });
 
   test("a worker that dies rejects rather than hanging for ever", async () => {

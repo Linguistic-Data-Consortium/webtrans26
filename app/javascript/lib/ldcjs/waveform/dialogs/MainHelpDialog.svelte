@@ -1,20 +1,22 @@
 <script>
-    import { toast } from 'svelte-sonner';
     import BaseDialog from './BaseDialog.svelte';
     import {
         AsrSpanDialog,
+        EnergySegmentDialog,
         ServicesDialog,
-        ASRDialog,
         KeyboardCheatSheetDialog
     } from '../dialogs';
     import { fmap_helper } from '../helpers';
     import { key } from '../stores';
     import { event } from '../events';
     import { mark_transcription } from '../../../guide_state';
-    import { asro, sado, run_asr4, run_sad } from '../asr.svelte';
+    import { run_asr4, run_sad } from '../asr.svelte';
     import { services_configured, guidelines_url } from '../../service_config';
     import { local_audio_active } from '../../local_audio';
     import { local_asr_available } from '../../local_asr';
+    import { energy_available } from '../energy_run';
+    import { preview_energy } from '../energy_preview';
+    import { toast } from 'svelte-sonner';
     import { modes, home_keys, waveform_map, input_map, playback_map, modifier_label, text_only_forbidden } from '../bindings';
     import { settings } from '../stores';
     let {
@@ -25,32 +27,24 @@
         // transcribe_text_only: the keys that change the transcript's shape
         // don't do anything, so the sheet shows them struck through rather
         // than promising something that won't happen.
-        text_only = false
+        text_only = false,
+        // Fill every empty segment in a stretch with in-browser ASR
+        // (segments.svelte's transcribe_empty_segments).
+        transcribe_segments = null
     } = $props();
 
     let dialog_main = $state();
     let dialog_services = $state();
     let dialog_span = $state();
     let span_dialog = $state();
-    let dialog_asr = $state();
+    let dialog_energy = $state();
+    let energy_dialog = $state();
+    let dialog_fill = $state();
+    let fill_dialog = $state();
     let dialog_keyboard = $state();
-    // 'local' is an ASR run too. These two conditions are what open the
-    // response dialog and put ServiceResponse inside it, and /asr/ does not
-    // match 'local' — so without this a local run would proceed with no
-    // dialog, reporting its progress to a panel nobody opened.
-    const asr_run = (type) => Boolean(type?.match(/^(asr|local)/));
-
-    let add_which = $derived.by(() => {
-        if(sado.status) return 'asr';
-        if(asr_run(asro.type)) return 'asr';
-        return '';
-    });
-
-    $effect(() => {
-        if(sado.status || asr_run(asro.type)){
-            dialog_asr.showModal();
-        }
-    });
+    // A run shows its progress where the transcript is (bulk.svelte.js) and
+    // says how it went in a toast (asr.svelte.js). There used to be a dialog
+    // over the page for that, opened whenever a run started.
 
     function focus(x) { x.focus(); }
 
@@ -152,30 +146,55 @@
         mark_transcription('help_opened');
     }
 
-    // With the asr_range constraint on, choosing an ASR service asks which
-    // stretch of audio it may fill and the run is bounded by the answer. Off —
-    // the default — a run adds the whole transcript the service returns, which
-    // is how ASR behaved before the prompt existed. SAD is not an ASR run and
-    // never asks.
-    const constraint_asr_range = ldc.get_constraint('asr_range');
+    // Every run that makes segments — SAD, hosted ASR, in-browser ASR — asks
+    // first: over which stretch, and whether to preview what it finds (a span
+    // layer under the waveform, saved as nothing; the default) or add it as
+    // segments. The pair sound-level segmentation has. The stretch used to be
+    // asked only with the asr_range constraint on; it's the same dialog now
+    // for everyone, prefilled from the selection, blank for all of it.
     let pending_asr_type = null;
+    const RUN_TITLES = {
+        sad: 'Speech activity detection over which stretch?',
+        local: 'In-browser ASR over which stretch?'
+    };
+    let span_title = $state('Run ASR over which stretch?');
 
     function start_asr_run(type){
-        if(constraint_asr_range) ask_for_span(type);
-        else                     run_asr4(type, docids, ldc, source_uid_channels);
+        ask_for_span(type);
     }
 
     function ask_for_span(type){
         pending_asr_type = type;
+        span_title = RUN_TITLES[type] ?? 'Run ASR over which stretch?';
         span_dialog.prefill_from_selection();
         dialog_span.showModal();
     }
 
-    function start_asr(span){
+    function run_pending(span, preview){
         const type = pending_asr_type;
         pending_asr_type = null;
         if(!type) return;
-        run_asr4(type, docids, ldc, source_uid_channels, span);
+        if(type == 'sad') run_sad(docids, ldc, source_uid_channels, span, { preview });
+        else              run_asr4(type, docids, ldc, source_uid_channels, span, null, { preview });
+    }
+    const start_asr = (span) => run_pending(span, false);
+    const preview_asr = (span) => run_pending(span, true);
+
+    function start_energy(span, params){
+        run_asr4('energy', docids, ldc, source_uid_channels, span, params);
+    }
+
+    // The same measurement as a preview layer: shown, not added.
+    async function start_energy_preview(span, params){
+        const id = toast.loading('Measuring the sound level for a preview…');
+        try {
+            const layer = await preview_energy({ span, params, ldc, docids, source_uid_channels });
+            toast.success(`Preview: ${layer.segments.length} span${layer.segments.length == 1 ? '' : 's'}${layer.note ? ` (${layer.note})` : ''}. Shown under the waveform; nothing was added.`, { id });
+        }
+        catch(e){
+            toast.error(`Couldn't make the preview: ${e?.message || e}`, { id });
+        }
+        controls.keyboard_focus();
     }
 
     function cancel_asr(){
@@ -187,7 +206,7 @@
     // still performs the keystroke's default action after this runs — and where
     // an ASR option opens the span dialog, whose first field takes focus, the
     // digit landed in it: the span began as "06".
-    const SERVICES_KEYS = new Set([ 'h', '1', '2', '3', '4', '5', '6' ]);
+    const SERVICES_KEYS = new Set([ 'h', '1', '2', '3', '4', '5', '6', '7' ]);
 
     // Which keys do anything depends on what the dialog is actually showing,
     // and the two halves are independent: 1-4 need a hosted service the audio
@@ -195,9 +214,13 @@
     // entry the dialog did not render must do nothing — dispatching it would
     // start a run against an empty endpoint, or one this browser cannot do.
     const LOCAL_KEY = '5';
+    const ENERGY_KEY = '6';
+    const FILL_KEY = '7';
     function key_allowed(k){
         if(k === 'h') return true;
         if(k === LOCAL_KEY) return local_asr_available();
+        if(k === FILL_KEY) return local_asr_available() && !!transcribe_segments;
+        if(k === ENERGY_KEY) return energy_available();
         return services_configured() && !local_audio_active();
     }
 
@@ -210,7 +233,7 @@
                 show_main();
                 break;
             case '1':
-                run_sad(docids, ldc, source_uid_channels);
+                ask_for_span('sad');
                 break;
             case '2':
                 start_asr_run('asr4');
@@ -223,6 +246,16 @@
                 break;
             case '5':
                 start_asr_run('local');
+                break;
+            case '6':
+                // Asks for its own settings, which include the stretch, so
+                // it doesn't go through the asr_range span dialog.
+                energy_dialog.prefill();
+                dialog_energy.showModal();
+                break;
+            case '7':
+                fill_dialog.prefill_from_selection();
+                dialog_fill.showModal();
                 break;
         }
     }
@@ -373,18 +406,36 @@
     onKeydown={dialog_services_keydown}
 />
 
-<ASRDialog
-    bind:dialogRef={dialog_asr}
-    addWhich={add_which}
-/>
 
 <KeyboardCheatSheetDialog
     bind:dialogRef={dialog_keyboard}
+/>
+
+<EnergySegmentDialog
+    bind:this={energy_dialog}
+    bind:dialogRef={dialog_energy}
+    onRun={start_energy}
+    onPreview={start_energy_preview}
+    onCancel={cancel_asr}
+/>
+
+<AsrSpanDialog
+    bind:this={fill_dialog}
+    bind:dialogRef={dialog_fill}
+    onRun={(span) => transcribe_segments?.(span)}
+    onCancel={cancel_asr}
+    title="Transcribe empty segments in which stretch?"
+    description="Every segment with no text that fits entirely inside this span is transcribed in this browser. Segments with text are left alone."
+    run_label="Transcribe"
 />
 
 <AsrSpanDialog
     bind:this={span_dialog}
     bind:dialogRef={dialog_span}
     onRun={start_asr}
+    onPreview={preview_asr}
     onCancel={cancel_asr}
+    title={span_title}
+    description="Preview shows what it finds under the waveform and adds nothing; Add segments puts it in the transcript. Only what fits entirely inside the stretch is kept."
+    run_label="Add segments"
 />

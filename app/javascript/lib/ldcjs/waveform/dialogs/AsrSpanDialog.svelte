@@ -15,10 +15,20 @@
     import { activeo } from '../shared.svelte';
     import { round_to_3_places } from '../times';
 
+    // The wording is the caller's: the same question ("which stretch?") is
+    // asked before a run that adds segments and before one that fills them.
+    //
+    // `onPreview`, when given, is a second way out and the default one (Enter):
+    // the run made a span layer under the waveform rather than segments — the
+    // pair sound-level segmentation's dialog has.
     let {
         dialogRef = $bindable(),
         onRun,
-        onCancel = null
+        onPreview = null,
+        onCancel = null,
+        title = 'Run ASR over which stretch?',
+        description = 'Only segments that fit entirely inside this span are added.',
+        run_label = 'Run ASR'
     } = $props();
 
     let beg_value = $state('');
@@ -53,12 +63,12 @@
         return { span: { beg, end } };
     }
 
-    function run(){
+    function run(preview = false){
         const x = parsed();
         if(x.error){ error = x.error; return; }
         error = null;
         dialogRef.close();
-        onRun(x.span);
+        (preview ? onPreview : onRun)(x.span);
     }
 
     function cancel(){
@@ -67,7 +77,7 @@
     }
 
     function onKeydown(e){
-        if(e.key === 'Enter'){ e.preventDefault(); e.stopPropagation(); run(); }
+        if(e.key === 'Enter'){ e.preventDefault(); e.stopPropagation(); run(!!onPreview); }
         else if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); cancel(); }
         else e.stopPropagation(); // digits are menu shortcuts elsewhere; not here
     }
@@ -75,12 +85,12 @@
     function focus(x){ setTimeout( () => x.focus(), 50 ); }
 </script>
 
-<BaseDialog bind:dialogRef={dialogRef} size="sm:max-w-lg" title="Run ASR over which stretch?" showClose={false}>
+<BaseDialog bind:dialogRef={dialogRef} size="sm:max-w-lg" {title} showClose={false}>
     {#snippet children({ dialog })}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="p-6" onkeydown={onKeydown}>
             <p class="text-sm text-gray-600 mb-4">
-                Only segments that fit entirely inside this span are added.
+                {description}
                 Leave a field blank for the start or the end of the recording.
             </p>
 
@@ -115,11 +125,17 @@
 
             <div class="mt-6 flex justify-end gap-2">
                 <button type="button" class={btn} onclick={cancel}>Cancel</button>
-                <button type="button" class={cbtn} onclick={run}>Run ASR</button>
+                {#if onPreview}
+                    <button type="button" class={btn} onclick={() => run(false)} data-testid="span-run">{run_label}</button>
+                    <button type="button" class={cbtn} onclick={() => run(true)} data-testid="span-preview"
+                            title="Show what it finds under the waveform, without adding segments">Preview</button>
+                {:else}
+                    <button type="button" class={cbtn} onclick={() => run(false)} data-testid="span-run">{run_label}</button>
+                {/if}
             </div>
 
             <p class="mt-4 text-xs text-gray-500">
-                <kbd class="px-1.5 py-0.5 bg-gray-100 rounded font-mono">Enter</kbd> to run,
+                <kbd class="px-1.5 py-0.5 bg-gray-100 rounded font-mono">Enter</kbd> to {onPreview ? 'preview' : 'run'},
                 <kbd class="px-1.5 py-0.5 bg-gray-100 rounded font-mono">Esc</kbd> to cancel.
             </p>
         </div>

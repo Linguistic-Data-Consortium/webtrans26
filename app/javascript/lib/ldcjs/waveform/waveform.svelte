@@ -26,7 +26,7 @@
     import { apply_message, begin_batch, apply_batched, end_batch, new_group } from './graph_write';
     import { groups } from './groups';
     import { get } from 'svelte/store';
-    import { activeo, sourceso, set_reference_text, clear_reference_text } from './shared.svelte';
+    import { activeo, sourceso, sourcesor, set_reference_text, clear_reference_text } from './shared.svelte';
     import parse_tsv0 from './parse_tsv';
     import { times, round_to_3_places, round_to_6_places } from './times';
     import { sources_object_add_node } from './sources_stores';
@@ -73,7 +73,6 @@
     import parse_tdf from './parse_tdf';
     import { create_transcript } from './download_transcript_helper';
     import { Keyboard } from './keyboard';
-    import ServiceResponse from './service_response.svelte';
     import { fromCognitoIdentity } from "@aws-sdk/credential-provider-cognito-identity";
     import { CognitoIdentityClient } from "@aws-sdk/client-cognito-identity";
     import { TranscribeClient } from "@aws-sdk/client-transcribe";
@@ -115,6 +114,10 @@
     import { bulko } from './bulk.svelte';
     import Sections from './sections.svelte';
     import Comments from './comments.svelte';
+    import PreviewLane from './PreviewLane.svelte';
+    import SelectionStatsDialog from './dialogs/SelectionStatsDialog.svelte';
+    import { run_selection_stats } from './energy_run';
+    import { remembered_params } from './energy_segments';
     import Controls from './controls/controls.svelte';
     import HelpScreen from './help_screen.svelte';
     import InputScreen from './input_screen.svelte';
@@ -171,6 +174,21 @@
         } )
         .finally( () => graph_loading = false );
     }
+    // Statistics on the waveform selection (the toolbar's chart button).
+    let dialog_stats = $state();
+    let stats_dialog = $state();
+    function show_selection_stats(){
+        const o = activeo.wave_selection_offset;
+        const l = activeo.wave_selection_length;
+        if(!(o != null && l > 0)){
+            toast.info('Select a stretch of audio on the waveform first.');
+            return;
+        }
+        const span = { beg: o, end: o + l };
+        const params = remembered_params();
+        stats_dialog.show(span, () => run_selection_stats({ ...span, ldc, docids, source_uid_channels, params }), params);
+    }
+
     function show_graph(){
         graph_open = true;
     }
@@ -2242,6 +2260,21 @@
         }
     }
 
+    // The underlines' spans (sourcesor, which channels.svelte draws from, and
+    // its plain twin sourceso), keyed by docid and then the segment's Arc iid.
+    // Added to in refold_graph as a segment's times arrive or move, and
+    // forgotten there when its span leaves the graph — so the underlines
+    // follow the graph however a segment went: delete all, the stereo delete,
+    // a merge, one at a time. Only the single delete used to clear its entry;
+    // every other way left the blue underline on the waveform.
+    function forget_source(row){
+        if(row?.src_key == null) return;
+        for(const store of [ sourceso.srcs, sourcesor.srcs ]){
+            if(store[row.src_docid]?.[row.src_key]) delete store[row.src_docid][row.src_key];
+        }
+        row.src_key = row.src_docid = null;
+    }
+
     function sources_object_add_node_helper(id, x){
         const data = {
             meta: {
@@ -2441,13 +2474,18 @@
             if(c1.beg != null && (was.beg !== c1.beg || was.end !== c1.end || was.docid !== c1.docid)){
                 // The Arc child's iid names the playable span. The fallback is
                 // the legacy group layout — Arc sits at list item + 1.
-                sources_object_add_node_helper(`${arc.arc_node_iid ?? arc.iid + 1}`, c1);
+                const key = `${arc.arc_node_iid ?? arc.iid + 1}`;
+                // Moved to another channel: its old underline goes.
+                if(c1.src_docid != null && (c1.src_docid !== c1.docid || c1.src_key !== key)) forget_source(c1);
+                sources_object_add_node_helper(key, c1);
+                c1.src_key = key;
+                c1.src_docid = c1.docid;
             }
         }
 
         // A span that's gone from the graph — deleted, or merged away — takes
         // its row with it.
-        for(const k of [ ...segmap.keys() ]) if(!live.segments.has(k)) segmap.delete(k);
+        for(const k of [ ...segmap.keys() ]) if(!live.segments.has(k)){ forget_source(segmap.get(k)); segmap.delete(k); }
         for(const k of [ ...secmap.keys() ]) if(!live.sections.has(k)) secmap.delete(k);
         for(const k of [ ...cmtmap.keys() ]) if(!live.comments.has(k)) cmtmap.delete(k);
     }
@@ -2583,6 +2621,8 @@
     {btn1}
 />
 
+<SelectionStatsDialog bind:this={stats_dialog} bind:dialogRef={dialog_stats} />
+
 <MainHelpDialog
     {controls}
     {source_uid_channels}
@@ -2628,6 +2668,7 @@
     {update_segments2_with_blanks}
     {add_save_asr}
     {show_graph}
+    {show_selection_stats}
     {kit_id}
     {kit_source_uid}
     bind:follow_active_segment
@@ -2661,6 +2702,14 @@
     {wmap}
     {source_uid_channels}
     {segmentsc}
+/>
+<!-- Preview segments: shown here, never saved unless added. -->
+<PreviewLane
+    {width}
+    {kit_id}
+    {docids}
+    {set_current_selection}
+    {play_current_span}
 />
 {:catch e}
     <!-- The audio load used to hang here rather than fail: every error in

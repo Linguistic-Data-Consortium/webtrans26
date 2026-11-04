@@ -55,7 +55,11 @@ const bulko = $state({
     // moves in steps rather than smoothly.
     done: 0,
     // How many there are in total, or 0 if that isn't known yet.
-    total: 0
+    total: 0,
+    // Set by an operation that can be stopped part-way; the panel shows a
+    // Cancel button that calls it. Most can't — a half-applied delete is worse
+    // than a finished one — so this is null unless the operation says so.
+    cancel: null
 });
 
 // Hand the browser a chance to paint before starting work.
@@ -76,10 +80,11 @@ function bulk_after_paint(f){
     else f();
 }
 
-function bulk_start(label, total = 0){
+function bulk_start(label, total = 0, cancel = null){
     bulko.label = label;
     bulko.done = 0;
     bulko.total = total;
+    bulko.cancel = cancel;
 }
 
 // The count becoming known part-way through, and the label usually changing
@@ -103,6 +108,7 @@ function bulk_end(){
     bulko.label = null;
     bulko.done = 0;
     bulko.total = 0;
+    bulko.cancel = null;
 }
 
 export { BATCH_SIZE, bulko, bulk_start, bulk_after_paint, bulk_total, bulk_done, bulk_end };

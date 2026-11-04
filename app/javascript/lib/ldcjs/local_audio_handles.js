@@ -41,8 +41,19 @@ function in_store(mode, f){
 export const handle_store = {
     get:    (uid)         => in_store('readonly',  (s) => s.get(uid)),
     put:    (uid, handle) => in_store('readwrite', (s) => s.put(handle, uid)),
-    delete: (uid)         => in_store('readwrite', (s) => s.delete(uid))
+    delete: (uid)         => in_store('readwrite', (s) => s.delete(uid)),
+    clear:  ()            => in_store('readwrite', (s) => s.clear())
 };
+
+// Every kept handle as { uid, name }, for the Downloaded resources dialog.
+// Opening the database creates it, empty, in a browser that never kept one —
+// harmless, and the same as the first kept handle would do.
+export async function list_handles(){
+    if(typeof indexedDB === 'undefined') return [];
+    const uids = await in_store('readonly', (s) => s.getAllKeys());
+    const handles = await in_store('readonly', (s) => s.getAll());
+    return uids.map( (uid, i) => ({ uid, name: handles[i]?.name ?? '' }) );
+}
 
 // Read the file behind a handle and check it's still the kit's. A handle
 // that no longer works — the file moved, was deleted, or now differs — is

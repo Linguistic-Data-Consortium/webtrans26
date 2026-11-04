@@ -2,7 +2,9 @@
     import { tick, createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { event } from '../events';
     import { btn, cbtn, dbtn, btn1 } from '../../work/buttons';
-    import { ArrowUpFromLine, ArrowDownToLine, Check, X, House, Crosshair, Captions, Waypoints, MessageSquare, UserRound } from '@lucide/svelte';
+    import { ArrowUpFromLine, ArrowDownToLine, Check, X, House, Crosshair, Captions, Waypoints, MessageSquare, UserRound, Sparkles, HardDrive, ChartColumn } from '@lucide/svelte';
+    import { preview, init_preview, set_preview } from '../asr_preview.svelte';
+    import { local_asr_available } from '../../local_asr';
     import * as Popover from "$lib/components/ui/popover";
     import * as Card from "$lib/components/ui/card";
     import * as RadioGroup from "$lib/components/ui/radio-group";
@@ -19,7 +21,8 @@
         CloseKitDialog,
         UploadTranscriptDialog,
         DownloadTranscriptDialog,
-        DeleteAllDialog
+        DeleteAllDialog,
+        ResourcesDialog
     } from '../dialogs';
     import {
         set_playback_rate
@@ -28,6 +31,11 @@
     import { fmap_helper, display_docid } from '../helpers';
     import { activeo } from '../shared.svelte';
     import { postp } from '../../getp';
+    // Shown only where the browser can run the model at all.
+    const asr_preview_possible = local_asr_available();
+    let resources = $state();
+    let dialog_resources = $state();
+    init_preview();
     let {
         redact_task,
         muted,
@@ -49,6 +57,8 @@
         update_segments2_with_blanks,
         add_save_asr,
         show_graph,
+        // Statistics on the waveform selection (SelectionStatsDialog).
+        show_selection_stats = null,
         kit_id,
         kit_source_uid,
         follow_active_segment = $bindable(),
@@ -228,6 +238,8 @@
 
 <DeleteAllDialog bind:dialogRef={dialog_delete_all} onConfirm={delete_all_wrapper} {btn} {dbtn} />
 
+<ResourcesDialog bind:this={resources} bind:dialogRef={dialog_resources} />
+
 <div id="node-00-header" class="grid grid-cols-12">
     <div class="filename col-span-5" use:event.dispatch={'drew_filename'}>
         <div class="flex items-start gap-2 min-w-0">
@@ -341,6 +353,51 @@
                     <Crosshair size=20 />
                 </button>
             </div>
+            {#if show_selection_stats}
+            <div class="col-span-2">
+                <button
+                    class={btn}
+                    onclick={show_selection_stats}
+                    title="Statistics on the selection: level, peak, and the quartiles of its 20 ms frame levels"
+                    data-testid="stats-open"
+                >
+                    <ChartColumn size=20 />
+                </button>
+            </div>
+            {/if}
+            <div class="col-span-2">
+                <!-- What this app keeps in the browser: the speech model,
+                     local-audio file handles, settings (ResourcesDialog). -->
+                <button
+                    class={btn}
+                    onclick={ () => { resources.refresh(); dialog_resources.showModal(); } }
+                    title="Downloaded resources: the speech model and what else this app keeps in your browser"
+                    data-testid="resources-open"
+                >
+                    <HardDrive size=20 />
+                </button>
+            </div>
+            {#if asr_preview_possible}
+            <div class="col-span-2">
+                <!-- Experimental: ASR suggestions for the segments ahead, shown
+                     but not saved until a segment is selected while empty
+                     (asr_preview.svelte.js). Red outline when the model
+                     couldn't be loaded. -->
+                <button
+                    class="{preview.on ? cbtn : btn} {preview.error ? 'ring-2 ring-red-500' : ''}"
+                    onclick={ () => set_preview(!preview.on) }
+                    title={preview.error
+                        ? `ASR suggestions stopped: ${preview.error} — click twice to try again`
+                        : preview.stage
+                        ? `ASR suggestions (experimental): ${preview.stage}`
+                        : `${preview.on ? 'Turn off' : 'Turn on'} ASR suggestions (experimental): the segments ahead are run through speech recognition in this browser and shown in grey; selecting an empty segment saves its suggestion`}
+                    aria-pressed={preview.on}
+                    data-testid="asr-preview-toggle"
+                >
+                    <Sparkles size=20 class={preview.stage ? 'animate-pulse' : ''} />
+                </button>
+            </div>
+            {/if}
             <div class="col-span-2 float-left submit-button" use:event.dispatch={'drew_submit'}>
                 {#if constraint_audit}
                     <Popover.Root  bind:open={dialog_close_kit_donef_popover_isopen} >
