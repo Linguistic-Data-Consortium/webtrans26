@@ -60,3 +60,9 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Editor, OS and agent files. None of them belong in an image, and .gitignore
+# does not keep them out of one: `COPY . .` takes untracked files too.
+**/.DS_Store
+/.claude
+/app/javascript/node_modules
