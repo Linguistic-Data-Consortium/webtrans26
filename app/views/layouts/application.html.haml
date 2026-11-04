@@ -12,6 +12,7 @@
     -# the CSRF token. Configured in config/application.rb.
     %meta{ name: 'hlt-endpoint',   content: Rails.application.config.x.hlt_endpoint }
     %meta{ name: 'promise-bucket', content: Rails.application.config.x.promise_bucket }
+    %meta{ name: 'guidelines-url', content: Rails.application.config.x.guidelines_url }
     -# Whether s3:// sources and the bucket browser can work at all. The browser
     -# reaches S3 only through POST /token, so without Cognito and a region they
     -# are dead — and used to fail as a TypeError on undefined rather than saying so.

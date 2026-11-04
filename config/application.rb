@@ -62,6 +62,11 @@ module Webtrans26
     config.x.hlt_endpoint  = ENV.fetch("HLT_ENDPOINT", "")
     config.x.promise_bucket = ENV.fetch("PROMISE_BUCKET", "")
 
+    # The annotation guidelines document, opened by `h` then `5` in the tool.
+    # Unset means this instance has none, and the dialog says so rather than
+    # opening a blank window. See lib/ldcjs/service_config.js.
+    config.x.guidelines_url = ENV.fetch("GUIDELINES_URL", "")
+
     # Whether the browser can reach S3. Set per-request rather than here,
     # because it depends on credentials and on AWS_REGION — see
     # ApplicationController#cognito_configured? and the s3-available meta tag.

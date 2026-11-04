@@ -17,6 +17,11 @@
 const DEFAULT_ENDPOINT = '';
 const DEFAULT_BUCKET   = '';
 
+// No default: this app is the public release, and the guidelines belong to
+// whoever deploys it. Unconfigured, the help dialog reports that rather than
+// opening somebody else's document.
+const DEFAULT_GUIDELINES = '';
+
 function meta(name, fallback){
     if(typeof document === 'undefined') return fallback;
     const el = document.querySelector(`meta[name="${name}"]`);
@@ -50,4 +55,14 @@ export function s3_configured(){
     return meta('s3-available', 'false') === 'true';
 }
 
-export default { hlt_endpoint, promise_bucket, services_configured, s3_configured };
+// The annotation guidelines, opened by `h` then `5` from the main help dialog.
+// It was a string literal in MainHelpDialog, so every instance opened LDC's own
+// document whatever it was annotating.
+//
+// Empty means not configured, and the dialog says so rather than opening a
+// blank window: an instance with no guidelines of its own has nothing useful to
+// point at.
+export function guidelines_url(){ return meta('guidelines-url', DEFAULT_GUIDELINES); }
+export function guidelines_configured(){ return Boolean(guidelines_url()); }
+
+export default { hlt_endpoint, promise_bucket, services_configured, s3_configured, guidelines_url, guidelines_configured };

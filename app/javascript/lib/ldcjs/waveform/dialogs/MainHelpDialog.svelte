@@ -1,4 +1,5 @@
 <script>
+    import { toast } from 'svelte-sonner';
     import BaseDialog from './BaseDialog.svelte';
     import {
         AsrSpanDialog,
@@ -11,7 +12,7 @@
     import { event } from '../events';
     import { mark_transcription } from '../../../guide_state';
     import { asro, sado, run_asr4, run_sad } from '../asr.svelte';
-    import { services_configured } from '../../service_config';
+    import { services_configured, guidelines_url } from '../../service_config';
     import { local_audio_active } from '../../local_audio';
     import { local_asr_available } from '../../local_asr';
     import { modes, home_keys, waveform_map, input_map, playback_map, modifier_label, text_only_forbidden } from '../bindings';
@@ -99,6 +100,22 @@
     ]);
     let playback_cmds = $derived(rows(playback_map, 'global'));
 
+    // `h` then `5`. The document is configuration, not a constant: this app is
+    // the public release, so it ships with none -- an instance sets
+    // GUIDELINES_URL to its own. Unconfigured, say so; opening a blank window
+    // would look like a broken link.
+    function open_guidelines(){
+        const url = guidelines_url();
+        if(!url){
+            toast.error('No annotation guidelines are configured for this instance.', {
+                description: 'Set GUIDELINES_URL on the server to a document to open here.'
+            });
+            return;
+        }
+        window.open(url, 'webann_document_window',
+                    'toolbar=no,menubar=no,status=no,width=1000,height=500');
+    }
+
     function onKeydown(e){
         switch(e.key){
             case '4':
@@ -107,11 +124,7 @@
                 break;
             case '5':
                 dialog_main.close();
-                window.open(
-                    'https://docs.google.com/document/d/e/2PACX-1vSTU3051TwfSjLorIpae_Yy5G6veJwuo1AXPW7fvVWlD-CIZ95KpQL2zyfV3FoRNBtf6JZARobEtGCz/pub',
-                    'webann_document_window',
-                    'toolbar=no,menubar=no,status=no,width=1000,height=500'
-                );
+                open_guidelines();
                 break;
             case '6':
                 dialog_main.close();
