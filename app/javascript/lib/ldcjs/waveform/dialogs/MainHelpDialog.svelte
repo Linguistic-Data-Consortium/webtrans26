@@ -11,8 +11,7 @@
     import { event } from '../events';
     import { mark_transcription } from '../../../guide_state';
     import { run_asr4, run_sad } from '../asr.svelte';
-    import { services_configured, guidelines_url } from '../../service_config';
-    import { local_audio_active } from '../../local_audio';
+    import { guidelines_url } from '../../service_config';
     import { local_asr_available } from '../../local_asr';
     import { energy_available } from '../energy_run';
     import { preview_energy } from '../energy_preview';
@@ -154,7 +153,6 @@
     // for everyone, prefilled from the selection, blank for all of it.
     let pending_asr_type = null;
     const RUN_TITLES = {
-        sad: 'Speech activity detection over which stretch?',
         local: 'In-browser ASR over which stretch?'
     };
     let span_title = $state('Run ASR over which stretch?');
@@ -206,13 +204,17 @@
     // still performs the keystroke's default action after this runs — and where
     // an ASR option opens the span dialog, whose first field takes focus, the
     // digit landed in it: the span began as "06".
-    const SERVICES_KEYS = new Set([ 'h', '1', '2', '3', '4', '5', '6', '7' ]);
+    const SERVICES_KEYS = new Set([ 'h', '5', '6', '7' ]);
 
-    // Which keys do anything depends on what the dialog is actually showing,
-    // and the two halves are independent: 1-4 need a hosted service the audio
-    // may be sent to, 5 needs a browser that can run a model. A key for an
-    // entry the dialog did not render must do nothing — dispatching it would
-    // start a run against an empty endpoint, or one this browser cannot do.
+    // Which keys do anything depends on what the dialog is actually showing: a
+    // key for an entry it did not render must do nothing, or it would start a
+    // run this browser cannot do.
+    //
+    // 1 to 4 were the hosted services — SAD and the three remote ASR engines.
+    // They are not offered in this app, so those keys are not in
+    // SERVICES_KEYS and there is no fallback branch here for them. The
+    // numbering keeps the gap so these two dialogs stay mergeable with the app
+    // they are copied from.
     const LOCAL_KEY = '5';
     const ENERGY_KEY = '6';
     const FILL_KEY = '7';
@@ -221,7 +223,7 @@
         if(k === LOCAL_KEY) return local_asr_available();
         if(k === FILL_KEY) return local_asr_available() && !!transcribe_segments;
         if(k === ENERGY_KEY) return energy_available();
-        return services_configured() && !local_audio_active();
+        return false;
     }
 
     function dialog_services_keydown(e){
@@ -231,18 +233,6 @@
         switch(e.key){
             case 'h':
                 show_main();
-                break;
-            case '1':
-                ask_for_span('sad');
-                break;
-            case '2':
-                start_asr_run('asr4');
-                break;
-            case '3':
-                start_asr_run('asr6');
-                break;
-            case '4':
-                alert('unavailable');
                 break;
             case '5':
                 start_asr_run('local');

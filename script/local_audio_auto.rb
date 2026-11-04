@@ -192,15 +192,24 @@ def run(mode)
   JS
   sleep 0.3
   dialog_text = driver.execute_script("return [...document.querySelectorAll('dialog[open]')].map(d => d.textContent).join(' ')")
-  check "the Services dialog says none are available for local audio",
-        dialog_text.include?("audio is a file on your computer") && !dialog_text.include?("Speech Activity Detection")
+  # This app offers no hosted services at all, so a local_audio kit gets the
+  # same menu as any other: the in-browser options, and nothing that would send
+  # the file anywhere. What used to be checked here -- a notice explaining why
+  # SAD was missing -- went with the entries it was explaining.
+  check "the Services dialog offers the in-browser options for local audio",
+        dialog_text.include?("ASR (in this browser)") &&
+        !dialog_text.include?("Speech Activity Detection") &&
+        !dialog_text.include?("Rev.ai")
+  # 1 was SAD. The key is not in SERVICES_KEYS now, so it is inert -- still
+  # worth pressing, because inert is the property that matters: a local file
+  # must not leave the browser however the menu is driven.
   driver.execute_script(<<~JS)
     const d = [...document.querySelectorAll('dialog[open]')].find(x => x.textContent.includes('Available Services'));
     d.querySelector('[tabindex="0"]').dispatchEvent(new KeyboardEvent('keydown', { key: '1', bubbles: true, cancelable: true }));
   JS
   sleep 1
   posts = driver.execute_script("return window.__posts")
-  check "pressing 1 (SAD) sends nothing (#{posts.inspect})", posts.none? { |u| u !~ %r{\A/} || u =~ /hlt|sad|promise/ }
+  check "pressing 1, which no longer does anything, sends nothing (#{posts.inspect})", posts.none? { |u| u !~ %r{\A/} || u =~ /hlt|sad|promise/ }
 
   if mode == :handles
     puts "==> Reloading, permission still held..."
