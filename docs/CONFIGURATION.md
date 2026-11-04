@@ -15,6 +15,7 @@ This app deliberately avoids hard-coded infra. The defaults are chosen so a fres
 | `AWS_REGION` | unset | The region for Cognito and S3. **Required for `s3://` kit sources and the Browse tab** — the AWS SDK refuses to build a client without it, so until it is set those features report themselves unavailable. |
 | `HLT_ENDPOINT` | unset | The speech-activity-detection / ASR service. Unset, SAD and ASR are unavailable and say so. |
 | `PROMISE_BUCKET` | unset | The S3 bucket that service exchanges work through. Needed together with `HLT_ENDPOINT`; one without the other is not enough. |
+| `GUIDELINES_URL` | unset | The annotation guidelines document, opened by `h` then `5` in the transcription tool. Any URL a browser can open. **Unset, the tool says no guidelines are configured** rather than opening a blank window — this app deliberately ships no document of its own. |
 | `TRANSCRIPTION_REPL` | unset | Set to `1` by `bin/repl` and the scripted harnesses. Suppresses the training-guide popup so a scripted run isn't blocked by it. |
 
 Every one of these is optional. A deployment that sets none of them runs, signs

@@ -101,6 +101,11 @@ env:
     # HLT_ENDPOINT: https://sad.example.org
     # PROMISE_BUCKET: my-promises
 
+    # The annotation guidelines document, opened by `h` then `5` in the tool.
+    # Any URL a browser can open. Unset, the tool says none is configured --
+    # this app ships no document of its own.
+    # GUIDELINES_URL: https://example.org/our-annotation-guidelines
+
     # The hostname used in links in outgoing mail. Only matters once email is
     # on, and needs a hostname to be worth setting.
     # APP_HOST: app.example.com
