@@ -35,8 +35,10 @@ evidence for a claim: a reader outside the organisation has no idea what those
 names are, so citing one either puzzles them or hands them an internal project
 name for nothing. Make the claim on its own terms instead.
 
-`app_comparison/bin/xpublic` does not catch this — it greps for hostnames,
+The pre-publication scanner does not catch this — it greps for hostnames,
 buckets, AWS identities, keys and developer paths, not for sibling app names.
+Nor should any comment here cite a path outside this repository: the same
+reasoning applies, and a reader cannot follow it.
 
 **Its history is published, so don't rewrite it.** The first two commits are on
 `origin/master`; an amend or a squash of anything at or below them means a force

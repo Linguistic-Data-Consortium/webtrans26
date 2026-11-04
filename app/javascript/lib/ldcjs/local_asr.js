@@ -16,9 +16,11 @@
 //     decodeAudioData on. It costs nothing to decode here — decodeAudioData is
 //     asynchronous and the browser does the work off-thread.
 //
-// Accuracy is below the hosted service, deliberately: see
-// app_comparison/ports/local-stt.md, which is also where the model choice and
-// the trust-boundary decision behind this module are recorded.
+// Accuracy is below the hosted service, deliberately. The trade is privacy:
+// the audio never leaves the annotator's machine, which is the trust boundary
+// this module exists to respect. The model and quantisation are chosen by the
+// asr-model and asr-dtype meta tags, defaulting to whisper-base.en at q8 --
+// about 77 MB on a first run, then cached by the browser.
 
 import { round_to_6_places } from './waveform/times';
 import { local_file_for } from './local_audio';

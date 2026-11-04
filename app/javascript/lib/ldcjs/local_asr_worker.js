@@ -12,7 +12,8 @@
 //        { type: 'done', chunks }
 //        { type: 'error', message }
 //
-// See app_comparison/ports/local-stt.md.
+// This is the only file that imports @huggingface/transformers, so the engine
+// and its ~27 MB of wasm stay out of the main bundle.
 
 import { pipeline, env } from '@huggingface/transformers';
 

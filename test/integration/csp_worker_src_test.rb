@@ -6,8 +6,10 @@ require "test_helper"
 # annotator reads — so assert the directive is actually sent, not just that it
 # is written in the initializer.
 #
-# In-browser speech recognition runs in a Worker; see
-# app_comparison/ports/local-stt.md.
+# In-browser speech recognition runs in a Worker, and the engine loads its
+# backend as a blob: URL inside that worker -- so worker-src needs 'self' and
+# blob:, and script-src needs blob: as well. Without the second the worker
+# silently never starts, and only on a deployed instance.
 class CspWorkerSrcTest < ActionDispatch::IntegrationTest
   test "the CSP sends worker-src, allowing same-origin and blob: workers" do
     get new_session_url

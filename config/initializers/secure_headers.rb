@@ -65,10 +65,19 @@ SecureHeaders::Configuration.default do |config|
   # plain https URL on any host, fetched both as <audio> and for waveform
   # ranges, and which hosts to allow hasn't been decided.
   #
-  # The decision is open and it is not this app's alone -- the same policy is in
-  # the sibling apps. It is written up in claudeq/app_comparison, as
-  # surveys/open-security-questions.md (item 1). Read it before narrowing
-  # either list.
+  # Narrowing either list stops audio loading from any host not on it, so what
+  # is needed first is a decision about where kit audio comes from: S3 only
+  # (then drop https: from both), a known set of hosts (read them from
+  # configuration and list those), or arbitrary URLs (then keep https: and say
+  # so here). 'self', the S3 and Cognito endpoints, and HLT_ENDPOINT's origin
+  # are needed in every case.
+  #
+  # wss: is broader than anything uses now that Action Cable is gone, and can
+  # probably go but for Vite's HMR in development.
+  #
+  # ApplicationSystemTestCase fails any system test whose page logs a CSP
+  # violation, so a narrowed policy that breaks a tested page will show.
+  # Audio from an external host is not covered by the suite; check one by hand.
   connect_sources = %w['self' wss: https: *.amazonaws.com]
   connect_sources += %w[ws: http:] if Rails.env.development?
 
