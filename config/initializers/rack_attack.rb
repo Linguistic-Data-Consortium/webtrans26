@@ -1,4 +1,11 @@
 class Rack::Attack
+  # Off in test. The counters live in a MemoryStore created at boot, so a suite
+  # that signs in more than five times in twenty seconds starts getting 429s and
+  # fails for a reason that has nothing to do with what it is testing --
+  # cloudrecorder's integration tests do exactly that. Disabling it here keeps
+  # test runs deterministic; the throttles themselves are exercised by hand.
+  self.enabled = false if Rails.env.test?
+
   ### Configure Cache ###
 
   # Use Rails cache for Rack::Attack
@@ -83,9 +90,17 @@ class Rack::Attack
 
   ### Custom Throttle Response ###
 
-  # Return 429 status code on throttle with helpful headers
-  self.throttled_responder = lambda do |env|
-    match_data = env['rack.attack.match_data']
+  # Return 429 status code on throttle with helpful headers.
+  #
+  # The argument is a Rack::Attack::Request, not a raw env hash: rack-attack 6
+  # calls `throttled_responder.call(request)` (attack.rb:125). Reading it as
+  # env['rack.attack.match_data'] raised NoMethodError, so the first client to
+  # hit a limit got a 500 instead of a 429 -- and nothing noticed, because the
+  # only way to reach this code is to be throttled. Found 2026-11-04 when
+  # cloudrecorder's integration tests signed in often enough to trip
+  # logins/ip, which is the only suite in the family that does.
+  self.throttled_responder = lambda do |request|
+    match_data = request.env['rack.attack.match_data']
     now = Time.now.to_i
     retry_after = match_data[:period] - (now % match_data[:period])
 
