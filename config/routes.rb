@@ -180,6 +180,14 @@ Rails.application.routes.draw do
   resources :actions, only: [ :create ]
   resources :xamespaces, except: [ :new, :edit ]
 
-  resources :jwts, only: [ :create, :index ]
+  # Disabled 2026-11-05, not deleted — `JwtsController` and its nine tests stay
+  # for when this is picked up again. It mints bearer tokens for API clients
+  # that don't exist yet: `POST /jwts` checked an email and password without
+  # authentication, and `GET /jwts` handed back Cognito credentials. Nothing in
+  # this app's own interface calls either, and without a `jwt_secret` in
+  # credentials `JWT.encode` was raising, so the route answered 500 to a
+  # correct password. Uncomment to bring it back; the rack-attack throttle on
+  # /jwts is still in place and waiting for it.
+  # resources :jwts, only: [ :create, :index ]
 
 end

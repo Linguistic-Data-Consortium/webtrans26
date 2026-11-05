@@ -1,7 +1,16 @@
 require "test_helper"
 
 class JwtsControllerTest < ActionDispatch::IntegrationTest
+  # `resources :jwts` is commented out as of 2026-11-05 and the controller kept
+  # for later, so every test here would die on `jwts_url` being undefined.
+  # Skipping on the route's absence rather than hardcoding a skip means these
+  # nine come back on their own the moment the route is uncommented — nobody
+  # has to remember this file exists.
+  ROUTE_LIVE = Rails.application.routes.routes.any? { |r| r.defaults[:controller] == "jwts" }
+
   setup do
+    skip "resources :jwts is commented out in config/routes.rb" unless ROUTE_LIVE
+
     # Test env credentials may not include a jwt_secret. Stub a stable one for these tests.
     @stub_secret = "test-jwt-secret-#{SecureRandom.hex(8)}"
     @creds = Rails.application.credentials
@@ -10,6 +19,7 @@ class JwtsControllerTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    next unless ROUTE_LIVE
     @creds.singleton_class.send(:remove_method, :jwt_secret)
   end
 

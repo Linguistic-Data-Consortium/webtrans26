@@ -24,7 +24,9 @@ class Rack::Attack
 
   # Throttle POST requests to /session by IP address
   # Limit: 5 attempts per 20 seconds
-  # POST /jwts checks a password too, so it is throttled as a login.
+  # POST /jwts checks a password too, so it is throttled as a login. That
+  # route is commented out as of 2026-11-05 (see config/routes.rb), so this
+  # half never matches today; it is left in place for when it returns.
   throttle('logins/ip', limit: 5, period: 20.seconds) do |req|
     if %w[ /session /jwts ].include?(req.path) && req.post?
       req.ip

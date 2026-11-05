@@ -85,9 +85,8 @@ kept it. So each deployment generates its own.
 
 Add anything else the app can use to the same file, with the same command —
 `bin/rails credentials:edit` — in the shape
-[Configuration](CONFIGURATION.md) describes: `smtp`, `jwt_secret`,
-`cognito_pool_id`. All of them are optional and
-all are off when absent.
+[Configuration](CONFIGURATION.md) describes: `smtp` and `cognito_pool_id`.
+Both are optional and both are off when absent.
 
 ### Or skip credentials entirely
 
@@ -116,13 +115,11 @@ like a failure every deploy.
 
 With no credentials file, every credential reads as `nil` rather than raising,
 so the app boots and runs. What you give up is anywhere to put the *other*
-secrets. SMTP stays off, which is its default anyway. `jwt_secret`
-is the one to know about: `/jwts` mints tokens for API clients and errors
-without it — no part of the app's own interface calls it, so nothing an
-annotator does notices, but it is a broken route rather than a disabled one.
+secrets — SMTP and Cognito, both of which are off by default and report
+themselves unavailable rather than failing.
 
-Use `credentials:edit` if you expect to need any of those, which is why it is
-the one above.
+Use `credentials:edit` if you expect to need either, which is why it is the one
+above.
 
 ## Choosing a `config/deploy.yml`
 
