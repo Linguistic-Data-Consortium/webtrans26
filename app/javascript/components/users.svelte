@@ -1996,6 +1996,7 @@
                                                                 {#if rows}
                                                                     <Table
                                                                         bind:this={kits_for_task_table}
+                                                                        download={true}
                                                                         indexf={x => models.kit.index = x}
                                                                         columns={[
                                                                             [ 'ID', 'id', 'col-1' ],
