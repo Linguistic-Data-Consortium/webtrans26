@@ -80,7 +80,7 @@ end
 # might not be compatible with vite_ruby-3.9.2"). Put it back after updating;
 # any 5.x still installs.
 gem "vite_rails", "= 3.0.20"
-gem "vite_ruby",  "= 3.9.2"
+gem "vite_ruby",  "3.11.1"
 gem 'haml', '5.1.2'
 gem 'jquery-rails-cdn', '1.1.2'
 gem 'paper_trail'#, '12.2.0'
