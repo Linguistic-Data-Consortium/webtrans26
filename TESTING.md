@@ -13,7 +13,7 @@ The test suite has four layers. Most of the time you'll only run one or two of t
 
 ## Prerequisites
 
-- **Ruby** 3.4.3 (see `.ruby-version`)
+- **Ruby** 3.4.12 (see `.ruby-version`, which is the authority)
 - **Bun** 1.x (`brew install oven-sh/bun/bun`)
 - **Google Chrome** installed at the standard macOS path
 - A working bundle: `bundle install`

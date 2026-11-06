@@ -397,9 +397,10 @@ creates and migrates the database with no extra step.
 
 ### Architecture
 
-The image is built from `ruby:3.4.3-slim` for the architecture you build on. On
-an Apple Silicon Mac deploying to an x86_64 server, either build remotely or
-tell Kamal to build for the target:
+The image is built from the `ruby:<version>-slim` base named by
+`ARG RUBY_VERSION` in the Dockerfile — `3.4.12` at the time of writing — for
+the architecture you build on. On an Apple Silicon Mac deploying to an x86_64
+server, either build remotely or tell Kamal to build for the target:
 
 ```yaml
 builder:
