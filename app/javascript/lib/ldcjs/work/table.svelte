@@ -1,5 +1,5 @@
 <script>
-    import { create_download_tsv, create_download_url } from '../download_helper';
+    import { create_download_tsv, create_download_url, download_filename } from '../download_helper';
     import { btn } from './buttons';
     export let columns;
     export let rows;
@@ -159,15 +159,24 @@
     let url;
     let link;
     let filename;
+    // Tab separated stays the default: it is what this panel has always
+    // produced, and what every caller got before csv was an option.
+    let format = 'tsv';
     function download_reset(){
         tsv = 'empty';
         include_headers = false;
         include_full = null;
         url = null;
     }
+    // Changing the format after Create would leave the link pointing at a file
+    // in the other format, so it invalidates what was built.
+    function format_change(){
+        tsv = 'empty';
+        url = null;
+    }
     function downloadf(){
-        tsv = create_download_tsv(rows, columns, include_headers, include_full, matched);
-        url = create_download_url(tsv);
+        tsv = create_download_tsv(rows, columns, include_headers, include_full, matched, format);
+        url = create_download_url(tsv, format);
         link.href = url;
     }
     // The download panel is a plain <details>: the summary is the toggle, and
@@ -230,7 +239,7 @@
                             </div>
                             <div class="px-4 py-3">
                                 <div>
-                                    <p>You can download the full table or a filtered form of it as a tab separated file.</p>
+                                    <p>You can download the full table or a filtered form of it, tab separated or comma separated.</p>
                                     <p>Note that the original ordering of the table isn't saved once you sort the table by clicking the column headers.  If you've sorted the table, that's the "full" form.</p>
                                 </div>
                                 <form class="my-3 flex flex-wrap items-center justify-around gap-2">
@@ -246,11 +255,19 @@
                                         <input type=checkbox bind:checked={include_headers}>
                                         Include headers
                                     </label>
+                                    <label title="Tab separated. Cells containing a tab or line break have it replaced with a space.">
+                                        <input type=radio bind:group={format} value=tsv onchange={format_change}>
+                                        TSV
+                                    </label>
+                                    <label title="Comma separated (RFC 4180). Cells containing a comma, quote or line break are quoted, so nothing is lost.">
+                                        <input type=radio bind:group={format} value=csv onchange={format_change}>
+                                        CSV
+                                    </label>
                                     <label>
                                         <input class="input-sm rounded-md border-2 border-gray-300" type=text bind:value={filename} placeholder="filename">
                                     </label>
                                     <!-- svelte-ignore a11y_missing_attribute -->
-                                    <a class="text-blue-600 underline hover:text-blue-800" bind:this={link} download={filename}>{ url ? "Download" : ""}</a>
+                                    <a class="text-blue-600 underline hover:text-blue-800" bind:this={link} download={download_filename(filename, format)}>{ url ? "Download" : ""}</a>
                                     {#if !url}
                                         <button type="button" class="{btn}"   onclick={downloadf}>Create</button>
                                     {/if}
