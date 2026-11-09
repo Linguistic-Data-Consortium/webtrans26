@@ -24,7 +24,10 @@
         .form-group-body
           = f.email_field :email_address, class: 'border rounded w-full'
       %div
-        We will use email to send a verification link and notify you of changes. We will never share your email in any way.
+        - if Rails.application.config.x.mail_enabled
+          = UsersController::EMAIL_NOTICE
+        - else
+          = UsersController::MAILLESS_EMAIL_NOTICE
       %br
       .form-group
         .form-group-header

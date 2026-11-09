@@ -8,6 +8,19 @@ class UsersController < ApplicationController
   include UsersHelper
   # include AwsHelper
 
+  # What the signup form says about the email address it collects. #create has
+  # three branches and only one of them sends anything, so the form cannot
+  # promise a verification link: with no outbound mail the account waits for an
+  # administrator instead (see the awaiting_activation view, which says so).
+  # Same shape as PasswordsController::MAILLESS_NOTICE.
+  EMAIL_NOTICE = "We will use email to send a verification link and notify you of " \
+    "changes. We will never share your email in any way."
+
+  MAILLESS_EMAIL_NOTICE = "This instance doesn't send email. Your address identifies " \
+    "your account and is how an administrator can reach you — after signing up you " \
+    "will wait for one of them to activate it, rather than getting a link. " \
+    "We will never share your email in any way."
+
   #action displays a list of all users
   def index
     User.all
