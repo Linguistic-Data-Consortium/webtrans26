@@ -82,7 +82,7 @@ end
 gem "vite_rails", "= 3.0.20"
 gem "vite_ruby",  "= 3.9.2"
 gem 'haml', '5.1.2'
-gem 'jquery-rails-cdn', '1.1.2'
+gem 'jquery-rails-cdn', '1.2.0'
 gem 'paper_trail'#, '12.2.0'
 gem "aws-sdk-rails", '~> 3'
 gem "aws-sdk-s3", '~> 1'
