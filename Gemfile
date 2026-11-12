@@ -86,7 +86,7 @@ gem 'jquery-rails-cdn', '1.1.2'
 gem 'paper_trail'#, '12.2.0'
 gem "aws-sdk-rails", '~> 3'
 gem "aws-sdk-s3", '~> 1'
-gem "aws-sdk-cognitoidentity", "~> 1.31"
+gem "aws-sdk-cognitoidentity", "~> 1.101"
 # Markdown renderer for the in-app documentation viewer (same `.md` files
 # are also browsable directly on GitHub).
 gem "redcarpet"
