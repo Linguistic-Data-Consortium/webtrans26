@@ -179,8 +179,10 @@ GEM
       raabro (~> 1.4)
     globalid (1.4.0)
       activesupport (>= 6.1)
-    haml (5.1.2)
-      temple (>= 0.8.0)
+    haml (7.5.2)
+      prism (>= 1.1.0)
+      temple (>= 0.8.2)
+      thor
       tilt
     i18n (1.15.2)
       concurrent-ruby (~> 1.0)
@@ -489,7 +491,7 @@ DEPENDENCIES
   capybara
   csv
   debug
-  haml (= 5.1.2)
+  haml (= 7.5.2)
   image_processing (~> 1.2)
   importmap-rails
   jbuilder
