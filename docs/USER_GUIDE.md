@@ -11,17 +11,17 @@ This guide is organized in two parts:
 
 ## 1. Roles
 
-Roles in this app come from three sources: a flag on the `users` row, membership in a built-in `Group`, or a flag on a link table (`project_users`, `task_users`). Higher roles automatically grant lower ones — a system admin is implicitly a portal manager, project owner of every project, project admin of every project, and so on.
+Roles in this app come from three sources: a flag on the `users` row, membership in a built-in `Group`, or a flag on a link table (`project_users`, `task_users`). Along one line, higher roles grant lower ones: a system admin is implicitly a portal manager, and a portal manager is owner, and so admin, of every project and of every task in it. Project manager sits off that line — it grants no role on any project (see the diagram at the end of this section).
 
 ### System-level roles
 
 | Role | Source | What it implies |
 |---|---|---|
 | **System admin** | `users.admin = true` | Top of the hierarchy. Implies *every* role below. Set directly on the `users` row (no UI to elevate someone — has to be done in the DB or a console). |
-| **Portal manager** | Membership in the `Portal Managers` group<br>OR system admin | Implies project owner of every project. Effectively a super-administrator with explicit role membership instead of a column flag. |
-| **Project manager** | Membership in the `Project Managers` group<br>OR portal manager | Can create new Projects and has elevated read access, but isn't automatically an admin of any specific project. |
+| **Portal manager** | Membership in the `Portal Managers` group<br>OR system admin | Implies project owner of every project, and so project admin and task admin everywhere. Also: create access links for anyone below portal manager, and change any kit type. Not everything an admin can do — groups, features, workflows and deleting projects stay admin-only. |
+| **Project manager** | Membership in the `Project Managers` group<br>OR portal manager | Can create new projects (becoming their owner) and kit types, and has read access to everything: every project, task, kit and transcript, and the workflow list. Grants no role on any project — on someone else's project a project manager can look but not change anything. |
 
-The two role-granting Groups (`Portal Managers`, `Project Managers`) are arbitrary `Group` rows whose names are matched against by `User#portal_manager?` / `User#project_manager?`. Anyone in either group automatically gets the corresponding role; both groups are created and managed via the **Groups** dashboard tab.
+The two role-granting Groups (`Portal Managers`, `Project Managers`) are arbitrary `Group` rows whose names are matched against by `User#portal_manager?` / `User#project_manager?`. Anyone in either group automatically gets the corresponding role; both groups are created and managed via the **Groups** dashboard tab, which only a system admin can change — so in practice granting either role takes an admin.
 
 ### Project-level roles
 
@@ -30,8 +30,8 @@ These come from a row in `project_users` linking a User to a Project, with two b
 | Role | Source | What it implies |
 |---|---|---|
 | **Project member** | A `project_users` row exists for this user × project | Read access to the project (its tasks, its members). Can be drilled into from the dashboard's **Projects** tab. |
-| **Project admin** | `project_users.admin = true`<br>OR project owner of this project<br>OR portal manager (transitively) | Can edit the project, create/delete tasks within it, add/remove project members, set kit_type and workflow on tasks. |
-| **Project owner** | `project_users.owner = true`<br>OR portal manager (transitively) | Can rename the project, transfer ownership. Project owners are also project admins by definition. |
+| **Project admin** | `project_users.admin = true`<br>OR project owner of this project<br>OR portal manager (transitively) | Can create and delete tasks within it, add and remove project members, and everything a task admin can do on each of its tasks (including setting kit_type and workflow). Can't edit the project itself — that's the owner's. |
+| **Project owner** | `project_users.owner = true`<br>OR portal manager (transitively) | Can edit the project (name and its other fields), and make any member an owner or an admin, or take that away — the only way anyone becomes a project admin. A project can have several owners; there's no single-owner transfer. Owners are also project admins by definition. Deleting a project takes a system admin. |
 
 A project member who isn't admin/owner is read-only at the project level — they can see what's there but not change anything.
 
@@ -42,35 +42,35 @@ These come from a row in `task_users` linking a User to a Task, with one boolean
 | Role | Source | What it implies |
 |---|---|---|
 | **Task member** | A `task_users` row exists for this user × task | The user is *eligible* to receive kits from this task and see them in their **Work** tab. |
-| **Task admin** | `task_users.admin = true`<br>OR project admin of the task's project (transitively) | Can edit the task (rename, change status, change workflow, change kit_type), see all kits including others' done kits, download transcripts, manage task members. |
+| **Task admin** | `task_users.admin = true`<br>OR project admin of the task's project (transitively) | Can edit the task (rename, change status, change workflow, change kit_type), see all kits including others' done kits, download transcripts, and manage task members, including making them task admins. |
 
 ### Per-kit roles
 
 There's no separate "kit role" — access to a kit is derived from the task it belongs to:
 
 - A kit is **assigned** to a specific user (`kits.user_id`); only that user can edit it via the annotation tool. They keep that lock until they mark it Done, Broken, or Skip.
-- Anyone who is task admin (or higher) can view any kit in the task in **read-only** mode (`/workflows/<workflow_id>/read_only/<kit_uid>`).
+- Reading a kit — its transcript, annotation log and audio, including in **read-only** mode (`/workflows/<workflow_id>/read_only/<kit_uid>`) — is open to the user it's assigned to, to admins of its task (and so of its project, and portal managers), and to project managers. Nobody else, other task members included.
+- Changing a kit's state, owner or assignment takes an admin of its task.
 
 ### Quick reference: "who can do what"
 
-For a feature gated on each role, *anyone at or above that level* can do it.
+For a feature gated on a role, *anyone above it on the same line* can do it too. Project manager is on a branch of its own: portal managers (and so admins) are project managers, but being one grants nothing on the line below.
 
 ```
-                       system admin
-                            │
-                       portal manager  ←── grants every project-level role on every project
-                            │
-                       project manager
-                            │
-       ┌────────────────────┼────────────────────┐
-       │                    │                    │
-   project owner       project admin         (signed-in user)
-       │                    │
-       └────────┬───────────┘
-                │
-            task admin   ←── transitively grants this on every task in the admin'd project
-                │
-            task member
+   system admin
+        │
+   portal manager  ──────────►  project manager
+        │                       (create projects and kit types;
+        │  owner of every        read every project, task and kit;
+        │  project               no role on any project)
+        ▼
+   project owner
+        │
+   project admin   ←── admin of every task in the project
+        │
+   task admin
+        │
+   task member
 ```
 
 ---
@@ -160,8 +160,8 @@ A Kit Type is the template that defines a Task's annotation tool, available cons
 
 | What | Role required |
 |---|---|
-| See the Kit Types table (ID + Name) | Signed-in user. |
-| Open a Kit Type (drills into Info / Members sub-tabs) | Signed-in user (read access). |
+| See the Kit Types table (ID + Name) | Project manager. |
+| Open a Kit Type (drills into Info / Members sub-tabs) | Project manager. |
 | Edit a Kit Type's name, description, JavaScript template, root NodeClass, etc. | Project manager who administers every task using the type, or portal manager. A kit type belongs to no project, so one can sit under several projects' tasks; the patch endpoint refuses a type used by any task you don't administer, whether as the task's type or through its kits. |
 | **Create Kit Type** | Project manager. Trigger gated on `lead_annotator`. |
 | **Delete Kit Type** (after selecting one) | System admin in the interface (gated on `admin`). The endpoint applies the same rule as editing. |
@@ -174,11 +174,13 @@ Who can do what:
 
 | What | Role required |
 |---|---|
-| See the Features table | Signed-in user. |
-| Open / view a Feature | Signed-in user. |
-| Edit a Feature | Project manager. |
-| **Create Feature** | Project manager. |
+| See the Features table | System admin. |
+| Open / view a Feature | System admin. |
+| Edit a Feature | System admin. |
+| **Create Feature** | System admin. |
 | **Delete Feature** | System admin. |
+
+(The features themselves still apply to everyone: a task's Info panel lists the `task` features for its admins to set, and a kit type's those of category `kit_type`.)
 
 #### 2.2.6 Workflows
 
@@ -192,10 +194,10 @@ Who can do what:
 
 | What | Role required |
 |---|---|
-| See the Workflows table | Signed-in user. |
-| Open / view a Workflow | Signed-in user. |
-| Edit a Workflow | Project manager. |
-| **Create Workflow** | Project manager. |
+| See the Workflows table | Project manager. |
+| Open / view a Workflow | Project manager. |
+| Edit a Workflow | System admin. |
+| **Create Workflow** | System admin. |
 | **Delete Workflow** | System admin. |
 
 #### 2.2.7 Groups
@@ -204,11 +206,11 @@ Groups are arbitrary collections of users. Two of them have special meaning: `Po
 
 | What | Role required |
 |---|---|
-| See the Groups table | Signed-in user. |
-| Open a Group (drills into Group Info / Group Members sub-tabs) | Signed-in user. |
-| Edit a Group's metadata (name, description, type) | Project manager. |
-| Add a user to a Group / remove a user / toggle a member's admin flag inside the group | Project manager (and there's no separate "group admin" role beyond that). Adding someone to `Portal Managers` or `Project Managers` is therefore the canonical way to grant those system-level roles. |
-| **Create Group** | Project manager. |
+| See the Groups table | System admin. |
+| Open a Group (drills into Group Info / Group Members sub-tabs) | System admin. |
+| Edit a Group's metadata (name, description, type) | System admin. |
+| Add a user to a Group / remove a user | System admin. There's no "group admin" role and no per-member admin flag. Adding someone to `Portal Managers` or `Project Managers` is the canonical way to grant those system-level roles, so granting them takes an admin. |
+| **Create Group** | System admin. |
 | **Delete Group** | System admin. |
 
 #### 2.2.8 Invites
@@ -521,7 +523,7 @@ Top to bottom:
 
 #### 2.5.2 What you can do (gated by kit-type constraints)
 
-These four header buttons are individually feature-flagged on the **kit type's** constraints (set by a project admin in §2.4.1's Task Info panel — the Features panel pulls these in from the `Feature` rows of category `task` / `kit_type`).
+These four header buttons are individually feature-flagged on the **kit type's** constraints (set on the **Kit Types** tab, §2.2.4, by a project manager who administers every task using that kit type, or a portal manager; the checkboxes there come from the `Feature` rows of category `kit_type`).
 
 | Button | Always visible? | Gate |
 |---|---|---|
