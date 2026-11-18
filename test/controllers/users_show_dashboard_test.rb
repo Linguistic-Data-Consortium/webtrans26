@@ -19,7 +19,7 @@ class UsersShowDashboardTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     body = JSON.parse(@response.body)
-    %w[authenticated user admin portal_manager project_manager tus links bucket_test extra].each do |key|
+    %w[authenticated user admin portal_manager project_manager tus links extra].each do |key|
       assert body.key?(key), "dashboard payload should include '#{key}'"
     end
     assert body["authenticated"] # authenticated? returns the Session object, not a bare true
@@ -68,6 +68,23 @@ class UsersShowDashboardTest < ActionDispatch::IntegrationTest
     assert_not_nil entry
     assert_equal projects(:alpha).id, entry["project_id"]
     assert_equal tasks(:alpha_task_one).id, entry["task_id"]
+  end
+
+  # A kit type with free_choice used to swap the Work tab's link for one to the
+  # Browse tab, where the user picked a file. That tab is gone, and the seeded
+  # Transcription kit type carried free_choice, so a fresh install showed a link
+  # that did nothing. Now the constraint changes nothing.
+  test "a free_choice kit type gets the ordinary action, not a Browse link" do
+    task = tasks(:alpha_task_one)
+    task.kit_type.update_column(:constraints, (task.kit_type.constraints || {}).merge("free_choice" => "free_choice"))
+    Kit.create!(task_id: task.id, kit_type_id: task.kit_type_id, state: "unassigned", uid: "free-#{SecureRandom.hex(3)}")
+    sign_in_as @bob
+    get user_url(@bob), as: :json
+
+    entry = JSON.parse(@response.body)["tus"].find { |t| t["task"] == task.name }
+    assert_match(/Start Now/, entry["action"])
+    assert_no_match(/browser_link|Browse/, entry["action"])
+    assert_nil entry["free"]
   end
 
   test "tus entry hides project_id/task_id (zero) for a plain task member" do

@@ -626,10 +626,10 @@ class DashboardCrudTest < ApplicationSystemTestCase
 
   # ── Browse tab ──────────────────────────────────────────────────────────
 
-  test "Browse tab shows the 'deactivated' placeholder" do
+  test "there is no Browse tab" do
     sign_in_via_browser users(:admin)
-    find("[role='tab']", text: /\ABrowse\z/i, wait: 5).click
-    assert_text "deactivated"
+    assert_selector "[role='tab']", text: /\AProjects\z/i, wait: 5
+    assert_no_selector "[role='tab']", text: /\ABrowse\z/i
   end
 
   # ── Kit Types: namespace select + permission gating ─────────────────────

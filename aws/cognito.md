@@ -1,6 +1,6 @@
 # Setting up Cognito identity pools
 
-This is how the AWS side of `s3://` kit sources and the Browse tab gets built.
+This is how the AWS side of `s3://` kit sources gets built.
 It creates three things: an identity pool, a role the annotator's browser ends
 up holding, and a role the application itself runs as. The app reads none of it
 directly — see [How this connects to the app](#how-this-connects-to-the-app) at

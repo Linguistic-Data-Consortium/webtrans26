@@ -3,7 +3,7 @@
 //
 // Both were string literals repeated across the client — the endpoint in
 // waveform/helpers.js and aws.js, the bucket about thirty times in aws.js plus
-// a button in components/buckets.svelte — so an instance deployed outside LDC
+// a button in the bucket browser since removed — so an instance deployed outside LDC
 // had no way to point them anywhere else, and would fail confusingly against
 // buckets it could not read.
 //

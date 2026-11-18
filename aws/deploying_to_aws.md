@@ -419,7 +419,7 @@ the interface rather than failing. A third thing looks configurable and is not:
 | | |
 | --- | --- |
 | Email | set `MAIL_ENABLED: true` under `env.clear` and configure a mail server. Until then new signups wait for an admin to activate them. |
-| `s3://` kit sources, and the Browse tab | need Cognito in Rails credentials (`bin/rails credentials:edit`, keys `cognito_pool_id` and `cognito_provider_name`) **and** `AWS_REGION` under `env.clear`. [cognito.md](cognito.md) builds the AWS side — the identity pool and the two roles — and says which value goes in which key. |
+| `s3://` kit sources | need Cognito in Rails credentials (`bin/rails credentials:edit`, keys `cognito_pool_id` and `cognito_provider_name`) **and** `AWS_REGION` under `env.clear`. [cognito.md](cognito.md) builds the AWS side — the identity pool and the two roles — and says which value goes in which key. |
 | Hosted speech services | nothing to configure, and nothing to turn on. `HLT_ENDPOINT` and `PROMISE_BUCKET` appear commented out in the deploy templates, but the hosted entries were removed from the Services menu — they would send the annotator's audio to a service this app does not ship — so no reachable code reads either one. The speech activity detection and ASR this app does offer run in the annotator's own browser and need no configuration at all. |
 
 `docs/CONFIGURATION.md` has the full list.

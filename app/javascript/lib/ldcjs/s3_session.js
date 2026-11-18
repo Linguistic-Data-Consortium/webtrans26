@@ -14,7 +14,7 @@
 // a page that imports this and never touches S3 should not ask the server for
 // anything, and on an instance with the mechanism off that request would fail
 // and log on every load.
-import { S3Client, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3_session_available } from './service_config';
 
@@ -94,12 +94,6 @@ function head_object(Bucket, Key){
   return client().then((c) => c.send(new HeadObjectCommand({ Bucket, Key })));
 }
 
-// The session policy allows listing only under the caller's own project
-// prefixes, so a listing without a Prefix — the bucket root — is refused.
-function list_objects(params){
-  return client().then((c) => c.send(new ListObjectsV2Command(params)));
-}
-
 function put_object(Bucket, Key, Body, ContentType){
   return client().then((c) => c.send(new PutObjectCommand({ Bucket, Key, Body, ContentType })));
 }
@@ -111,4 +105,4 @@ function _reset(){
   s3 = null;
 }
 
-export { get_session, client, signed_url, head_object, list_objects, put_object, _reset };
+export { get_session, client, signed_url, head_object, put_object, _reset };

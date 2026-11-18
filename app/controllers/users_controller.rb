@@ -119,19 +119,8 @@ class UsersController < ApplicationController
           tu[:action] = get_action_link(task, tuser)
           tu[:state] = get_friendly_state_for_taskuser(tuser.state)
           tu[:done] = @kits_done_by_task[task.id].to_i
-          if task.kit_type.constraints['free_choice'] or task.meta['free_upload']# and tuser.state == 'needs_kit'
-            tu[:free] = true
-            tu[:state] = tuser.state
-            tu[:kit_uid] = tuser.kit_oid
-            tu[:task_id] = task.id
-            tu[:user_id] = tuser.user_id
-            tu[:self] = tuser.user_id == current_user.id
-            tu[:work_path] = "/workflows/#{tuser.id}/work/#{task.workflow_id}"
-            tu[:bucket] = '' # task&.data_set&.name&.split&.first || ''
-          end
         end
       end
-      bucket_test = 0 #bucket_size("#{ENV.fetch('ACTIVE_STORAGE_BUCKET')}/demo")
       extra = {}
           render json: {
             authenticated: authenticated?,
@@ -143,10 +132,8 @@ class UsersController < ApplicationController
             admin: admin?,
             portal_manager: portal_manager?,
             project_manager: project_manager?,
-            # other: [ tus, @links, bucket_test, extra ]
             tus: tus,
             links: @links,
-            bucket_test: bucket_test,
             extra: extra
           }
         end

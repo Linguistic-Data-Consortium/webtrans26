@@ -101,39 +101,11 @@ export var ldc_users = function(){
 
         //this function is called when initializing the show view
         init_show: function(){
-        //   const permissions = document.getElementById('permissions').dataset;
-        //   // const browser = new Browser();
-        //   const app = mount(App, {
-        //       target: document.getElementById('main'),
-        //       props: {
-        //           admin: (permissions.admin == 'true'),
-        //           portal_manager: (permissions.portal_manager == 'true'),
-        //           project_manager: (permissions.project_manager == 'true')
-        //           // browser: browser
-        //       }
-        //   });
-          
-          // The old `.jtro` input was replaced by an admin-only popup
-          // triggered by pressing `j` (see users.svelte).
-          $('#main').on( 'click', '.browser_link', function(){
-              // # task_id = Number($(this).attr('class').split(' ')[1])
-              // const h = {};
-              // h.task_id = $(this).data().task_id;
-              // h.user_id = $(this).data().user_id;
-              // h.work_path = $(this).data().work_path;
-              // h.bucket = $(this).data().bucket;
-              app.browse();
-            });
-            $('body').on("ajax:success", (e, data, status, xhr) => {
-                app.uploads(e);
-                let id = e.detail[0].id;
-                browser.id = id;
-                // console.log e.detail[0]
-                // $('.upload3').append ldc_nodes.array2html [ 'div', [
-                //     [ 'div', 'to create a url for this file in ruby code use:' ]
-                //     [ 'div', "url_for(Source.find(#{id}).file)" ]
-                // ]]
-            });
+            // Two jQuery handlers lived here, both for the removed Browse tab:
+            // a click on the Work tab's "Browse" link, and an upload's
+            // ajax:success. Both called methods on an `app` that hasn't been
+            // mounted here since the page moved to Svelte. The dashboard mounts
+            // itself; this stays as the hook the users entrypoint calls.
         },
 
         //this function is called when initializing the index view

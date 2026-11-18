@@ -123,34 +123,21 @@ class KitAuthorizationTest < ActionDispatch::IntegrationTest
     assert_equal "unassigned", elsewhere.reload.state
   end
 
-  test "kits_new goto: a member can't take someone else's kit" do
-    @kit.update!(user_id: @alice.id, state: "assigned")
-    sign_in_as @bob
-    post "/kits_new", params: { goto: @kit.id }, as: :json
-    assert_response :forbidden
-    assert_equal @alice.id, @kit.reload.user_id
-  end
+  # ── removed endpoints ────────────────────────────────────────────────────
 
-  test "kits_new: a stranger can't make kits in a task, and GET no longer routes" do
-    sign_in_as @charlie
+  # /kits_new made a kit from an uploaded file or a bucket object, or handed a
+  # done kit back to a user. Only the Browse tab called it, and that tab is
+  # gone, so it can't be used to make kits in a task any more.
+  test "kits_new is gone, along with the Browse tab's other endpoints" do
+    sign_in_as @bob
     assert_no_difference -> { Kit.count } do
       post "/kits_new", params: { s3: "s3://b/x.wav", task_id: @task.id, filename: "x.wav" }, as: :json
     end
-    assert_response :forbidden
+    assert_response :not_found
 
-    get "/kits_new", params: { goto: @kit.id }
+    get "/bucket", as: :json
     assert_response :not_found
   end
-
-  test "kits_new: a task member can still make a kit from a file" do
-    sign_in_as @bob
-    assert_difference -> { Kit.count }, 1 do
-      post "/kits_new", params: { s3: "s3://b/x.wav", task_id: @task.id, filename: "x.wav" }, as: :json
-    end
-    assert_response :success
-  end
-
-  # ── removed endpoints ────────────────────────────────────────────────────
 
   test "the kit_batches endpoints are gone" do
     sign_in_as @charlie

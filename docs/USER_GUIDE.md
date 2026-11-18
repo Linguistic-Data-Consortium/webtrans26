@@ -150,11 +150,7 @@ There's no Create button on this tab — task membership is granted from the **P
 | **Create Project** | Project manager. The trigger renders only if `lead_annotator` (= project manager) is true. |
 | **Delete Project** (after selecting one) | System admin. The Delete trigger only appears when `admin` is true. |
 
-#### 2.2.3 Browse
-
-Currently inactive — the tab renders the literal text `deactivated`. The Browse component (file/source explorer) was unwired pending a rewrite.
-
-#### 2.2.4 Kit Types
+#### 2.2.3 Kit Types
 
 A Kit Type is the template that defines a Task's annotation tool, available constraints, and which `NodeClass` is its tree root.
 
@@ -166,7 +162,7 @@ A Kit Type is the template that defines a Task's annotation tool, available cons
 | **Create Kit Type** | Project manager. Trigger gated on `lead_annotator`. |
 | **Delete Kit Type** (after selecting one) | System admin in the interface (gated on `admin`). The endpoint applies the same rule as editing. |
 
-#### 2.2.5 Features
+#### 2.2.4 Features
 
 A Feature is a named option (with a category, value, label, description) that can be attached to other entities — currently used for task-level toggles.
 
@@ -182,7 +178,7 @@ Who can do what:
 
 (The features themselves still apply to everyone: a task's Info panel lists the `task` features for its admins to set, and a kit type's those of category `kit_type`.)
 
-#### 2.2.6 Workflows
+#### 2.2.5 Workflows
 
 A Workflow is the kit-assignment strategy a Task uses:
 
@@ -200,7 +196,7 @@ Who can do what:
 | **Create Workflow** | System admin. |
 | **Delete Workflow** | System admin. |
 
-#### 2.2.7 Groups
+#### 2.2.6 Groups
 
 Groups are arbitrary collections of users. Two of them have special meaning: `Portal Managers` and `Project Managers` — membership in either grants the matching system-level role.
 
@@ -213,7 +209,7 @@ Groups are arbitrary collections of users. Two of them have special meaning: `Po
 | **Create Group** | System admin. |
 | **Delete Group** | System admin. |
 
-#### 2.2.8 Invites
+#### 2.2.7 Invites
 
 Send an email invitation that pre-creates an account.
 
@@ -249,7 +245,7 @@ Treat a live link like a password: anyone holding it becomes that user on first
 click. On an instance with outbound mail, the user can instead use the ordinary
 password-reset flow (§2.1); without mail, a link is the only recovery path.
 
-#### 2.2.9 Permissions
+#### 2.2.8 Permissions
 
 A read-only display of your current system-level role plus "preview as a lower role" buttons.
 
@@ -258,7 +254,7 @@ A read-only display of your current system-level role plus "preview as a lower r
 | See your current role label (*"You're an Admin."* / *"… a Portal Manager."* / *"… a Project Manager."* / *"You don't have any global permissions."*) | Signed-in user. |
 | Click **"Set yourself to <lower role>"** | Signed-in user. **Important:** this only mutates the in-memory Svelte state for the current browser session. It does *not* change `users.admin` or your group memberships. Refreshing the page restores your real role. The button is there so admins can sanity-check what less-privileged users see. There's no upgrade direction. |
 
-#### 2.2.10 Account
+#### 2.2.9 Account
 
 Your own settings. Visible to every signed-in user.
 
@@ -269,7 +265,7 @@ Your own settings. Visible to every signed-in user.
 | Idle sign-out | A browser that hasn't used its session for 14 days is signed out. |
 
 Forgotten passwords are a different path: with outbound mail, use the reset
-flow (§2.1); without it, ask an administrator for an access link (§2.2.8).
+flow (§2.1); without it, ask an administrator for an access link (§2.2.7).
 
 ### 2.3 Project drill-in
 
@@ -523,7 +519,7 @@ Top to bottom:
 
 #### 2.5.2 What you can do (gated by kit-type constraints)
 
-These four header buttons are individually feature-flagged on the **kit type's** constraints (set on the **Kit Types** tab, §2.2.4, by a project manager who administers every task using that kit type, or a portal manager; the checkboxes there come from the `Feature` rows of category `kit_type`).
+These four header buttons are individually feature-flagged on the **kit type's** constraints (set on the **Kit Types** tab, §2.2.3, by a project manager who administers every task using that kit type, or a portal manager; the checkboxes there come from the `Feature` rows of category `kit_type`).
 
 | Button | Always visible? | Gate |
 |---|---|---|

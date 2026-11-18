@@ -73,17 +73,6 @@ function getSignedUrlPromise(Bucket, Key){
   return client().then( (s3) => f.getSignedUrl(s3, cmd, { expiresIn: 3600 }) );
 }
 
-const listObjectsV2 = (Bucket) => {
-   const params = {Bucket, Delimiter: "/"};
-   return listObjectsV2params(params);
-}
-
-const listObjectsV2params = (params) => {
-   // const params = {Bucket, Delimiter: "/", Prefix: 'demo/' };
-   const cmd  = new f.ListObjectsV2Command(params);
-   return client().then( (s3) => s3.send(cmd) );
-}
-
 const headObject = (Bucket, Key) => {
    const params = {Bucket, Key};
    const cmd  = new f.HeadObjectCommand(params);
@@ -148,8 +137,6 @@ function gets3(){
 export {
   getSignedUrlPromise,
   getTranscribeClient,
-  listObjectsV2,
-  listObjectsV2params,
   headObject,
   putObject,
   uploadObject,

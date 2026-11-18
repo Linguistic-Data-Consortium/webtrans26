@@ -463,7 +463,7 @@ The two worth knowing about before a first deploy:
 
 - **`APP_HOST`** — the hostname used in links in activation and password-reset
   email. Wrong or unset, those links point somewhere useless.
-- **`AWS_REGION`** — required for `s3://` kit sources and the Browse tab,
+- **`AWS_REGION`** — required for `s3://` kit sources,
   because the browser gets S3 credentials from Cognito via `POST /token` and the
   AWS SDK refuses to build a client without a region. Until it is set, those
   features report themselves unavailable rather than failing.

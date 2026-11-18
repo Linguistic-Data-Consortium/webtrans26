@@ -7,7 +7,7 @@ import { resolve_s3_source, signed_url_for, head_source, sign_into, resolve_audi
 import { fromCognitoIdentity } from "@aws-sdk/credential-provider-cognito-identity";
 import { CognitoIdentityClient } from "@aws-sdk/client-cognito-identity";
 import { TranscribeClient } from "@aws-sdk/client-transcribe";
-import { S3Client, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 function init(ldc){
   refreshToken({
@@ -17,7 +17,6 @@ function init(ldc){
     S3Client,
     GetObjectCommand,
     HeadObjectCommand,
-    ListObjectsV2Command,
     PutObjectCommand,
     getSignedUrl
 });

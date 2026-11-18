@@ -108,7 +108,6 @@ Rails.application.routes.draw do
   # The imported graph covering this kit's audio, if one was imported for it —
   # what the transcribe_text_only mode transcribes against.
   post "/kits/imported", to: 'kits#imported'
-  post "/kits_new", to: 'kits#kits_new'
   post "/create_kits_from_kits_tab", to: 'kits#create_kits_from_kits_tab'
   resource :kits do
     member do
@@ -154,7 +153,6 @@ Rails.application.routes.draw do
       post :uget
       get :ugett
       post :uget_public
-      get :get_upload
       get :get_download
       get :new
     end
@@ -174,7 +172,6 @@ Rails.application.routes.draw do
       constraints: { token: /[A-Za-z0-9_\-]+/ }
   resources :features, except: [ :new, :edit ]
 
-  get '/bucket', to: 'data_sets#bucket'
   post '/token', to: 'cognito_token#get_credentials'
   # Per-project S3 credentials, the parallel path to /token — see
   # aws/s3_project_prefixes.md. Off unless S3_BUCKET and S3_ROLE_ARN are set.

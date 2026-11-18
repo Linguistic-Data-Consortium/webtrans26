@@ -40,9 +40,7 @@ module UsersHelper
 
   #function that returns either a link for a user to start/continue doing work, or a string saying there are no kits available
   def get_action_link(task, tuser, text = nil)
-    # if task.kits_available? || tuser.has_kit_oid?
-    fc = task&.kit_type&.constraints['free_choice']
-    if new_kits_available?(tuser) or tuser.has_kit_oid? or fc
+    if new_kits_available?(tuser) or tuser.has_kit_oid?
       if text.nil?
         link_string = case tuser.state
           when nil, '', 'needs_kit', 'ok'
@@ -57,14 +55,10 @@ module UsersHelper
       end
       if link_string
         work_path = "/workflows/#{tuser.id}/work/#{task.workflow_id}"
-        if task.kit_type.constraints['free_choice'] and tuser.state == 'needs_kit'
-          "<a class=browser_link>Browse</div>"
-        else
-          # Kits that exist and are waiting — or, for a workflow that makes
-          # them when the user arrives, what it still owes them.
-          count = @kits_available_by_task[task.id] || task.workflow.kits_left(tuser)
-          helpers.link_to link_string, work_path, :title => "#{count} kit#{'s' if count != 1} are left to be done"
-        end
+        # Kits that exist and are waiting — or, for a workflow that makes
+        # them when the user arrives, what it still owes them.
+        count = @kits_available_by_task[task.id] || task.workflow.kits_left(tuser)
+        helpers.link_to link_string, work_path, :title => "#{count} kit#{'s' if count != 1} are left to be done"
       else
         ''
       end

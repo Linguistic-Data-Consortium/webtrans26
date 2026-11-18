@@ -72,7 +72,7 @@ default_kit_type = KitType.where(name: "Transcription").first_or_create
 default_kit_type.update!(
   javascript: "empty",
   node_class_id: NodeClass.where(name: "ArcTranscription:Root").pluck(:id).first,
-  constraints: { "web_audio" => "web_audio", "show_source" => "show_source", "free_choice" => "free_choice" },
+  constraints: { "web_audio" => "web_audio", "show_source" => "show_source" },
 )
 Task.where(
   project_id: default_project.id,

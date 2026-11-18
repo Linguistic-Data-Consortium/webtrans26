@@ -51,7 +51,7 @@ class DashboardTest < ApplicationSystemTestCase
     assert_current_path(/\/users\/\d+/)
 
     # bits-ui Tabs render triggers as buttons with role="tab"
-    %w[Work Projects Browse Workflows Groups Invites Permissions].each do |label|
+    %w[Work Projects Workflows Groups Invites Permissions].each do |label|
       assert_selector "[role='tab']", text: /\A#{Regexp.escape(label)}\z/i, wait: 5
     end
   end

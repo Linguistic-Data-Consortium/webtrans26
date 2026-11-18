@@ -235,56 +235,6 @@ class KitsController < ApplicationController
     end
   end
 
-  def kits_new
-    if params[:open] or params[:s3]
-      user_id = current_user.id
-      task_id = params[:task_id].to_i
-      task = Task.find(task_id)
-      return deny_json unless task.member?(current_user) || task_admin_of?(task)
-      kit = Kit.new
-      kit.user_id = user_id
-      kit.task_id = task_id 
-      kit.kit_type_id = Task.find(task_id).kit_type_id
-      kit.state = 'unassigned'
-      # task_user = TaskUser.where( task_id: task_id, user_id: current_user.id).first
-      # @kit_types = KitType.all
-      # # redirect_to "/workflows/workflows/#{task.workflow_id}/read_only/#{kit.uid}", :only_path => true
-    end
-    if params[:open]
-      source = Source.where(id: params[:open].to_i).first
-      kit.source_uid = source.uid
-      kit.source[:uid] = source.uid
-      kit.source[:id] = source.uid
-      kit.source[:filename] = params[:filename]
-      kit.save!
-    end
-    if params[:s3]
-      uid = params[:s3]
-      kit.source_uid = uid
-      kit.source[:uid] = uid
-      kit.source[:id] = uid
-      kit.source[:filename] = params[:filename]
-      kit.save!
-    end
-    if params[:goto]
-      kit = Kit.find(params[:goto])
-      # Taking a kit back for yourself, or a task admin taking one in their task.
-      return deny_json unless kit.user_id == current_user.id || kit_task_admin?(kit)
-      kit.update(state: :unassigned, user_id: current_user.id)
-      # @task_user.update( state: 'needs_kit' )
-    end
-    respond_to do |format|
-      format.html
-      format.json do
-        render json: {
-          id: kit.id,
-          uid: kit.uid,
-          user_id: kit.user_id
-        }
-      end
-    end
-  end
-
   def edit
   end
 

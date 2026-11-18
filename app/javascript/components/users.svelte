@@ -14,7 +14,6 @@
     import { s3_configured, s3_session_available } from '../lib/ldcjs/service_config';
     import { getp, getp_no_catch, postp, postp_no_catch, postpf_no_catch } from '../lib/ldcjs/getp';
     import Help from './help.svelte';
-    import Browse from './browse_f.svelte';
     import Spinner from '../lib/ldcjs/work/spinner.svelte';
     import Table from '../lib/ldcjs/work/table.svelte';
     import Patch from './patch.svelte';
@@ -88,7 +87,6 @@
         project_manager,
         tus,
         links,
-        bucket_test,
         extra
     } = $props();
     let lead_annotator = $state(project_manager);
@@ -102,7 +100,6 @@
     // let pages = [
     //     [ 'Work',        'all',            "your tasks with links to start" ],
     //     [ 'Projects',    'all',            'projects, tasks, kits' ],
-    //     [ 'Browse',      'all',            'browse uploaded files' ],
     //     [ 'Kit Types',   'lead_annotator', 'tasks require a kit type' ],
     //     [ 'Namespaces',  'lead_annotator', 'kit types require a namespace' ],
     //     [ 'Tools',       'lead_annotator', 'kit types require a namespace' ],
@@ -143,15 +140,6 @@
         alert(e.detail);
     }
     
-    export function browse(x){
-        tab = 'browse';
-        // browse_a.step1(x);
-    }
-    let browsex = $state();
-    export function uploads(e){
-        // page5();
-        // browsex.get(e);
-    }
     // let p = getp(window.location);
     console.log('USERS');
     // p.then( (x) => console.log(x) )
@@ -1453,14 +1441,6 @@
                 </Tooltip.Root>
             </Tooltip.Provider>
         </Tabs.Trigger>
-        <Tabs.Trigger value="browse">
-            <Tooltip.Provider>
-                <Tooltip.Root>
-                    <Tooltip.Trigger>Browse</Tooltip.Trigger>
-                    <Tooltip.Content>browse uploaded files</Tooltip.Content>
-                </Tooltip.Root>
-            </Tooltip.Provider>
-        </Tabs.Trigger>
         <Tabs.Trigger value="kit_types">
             <Tooltip.Provider>
                 <Tooltip.Root>
@@ -2226,19 +2206,6 @@
                     />
                 {/if}
             {/await}
-        {/if}
-    </Tabs.Content>
-    <Tabs.Content value="browse">
-        {#if tab == 'browse'}
-    <!-- <Browse
-        {help}
-        {admin}
-        {portal_manager}
-        {project_manager}
-        p={Promise.resolve(tus)}
-        bind:this={browsex}
-    /> -->
-        deactivated
         {/if}
     </Tabs.Content>
     <Tabs.Content value="kit_types">

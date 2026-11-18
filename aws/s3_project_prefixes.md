@@ -283,14 +283,14 @@ shown to a user who is not in project 9 resolves to
 `<bucket>/9/…`, renders fine, and then fails at fetch with an opaque console
 error. So:
 
-- filter `s3://` sources and the Browse tab by `s3_read_project_ids`. The
-  association to scope from already exists — `User has_many :projects,
-  through: :project_users` — and `GroupUser.by_user` is the existing idiom for
-  a scope that takes a user id;
-- the Browse tab needs more than a filter: `listObjectsV2params`
-  (`bucket.svelte:31`, `promise_bucket.svelte:48`) must pass
-  `Prefix: "<project_id>/"`, since listing without one asks for the bucket root
-  and the session policy's `s3:prefix` condition will refuse it;
+- filter `s3://` sources by `s3_read_project_ids`. The association to scope
+  from already exists — `User has_many :projects, through: :project_users` —
+  and `GroupUser.by_user` is the existing idiom for a scope that takes a user
+  id;
+- any listing of the bucket must pass `Prefix: "<project_id>/"`, since listing
+  without one asks for the bucket root and the session policy's `s3:prefix`
+  condition will refuse it (the Browse tab this originally referred to has
+  since been removed — see the end of this document);
 - refuse such a kit server-side too.
 
 Neither replaces the policy. The policy is the only thing a determined user
@@ -433,10 +433,15 @@ Where the code departs from the text above, the code is right and this says why.
   requests for as long as the page is open, so 900 s would cut playback off a
   quarter-hour in. 3600 s is what the Cognito path gives, and a role's default
   maximum session duration.
-- **The Browse tab is not switched over.** It lists buckets from `/bucket` and
-  is admin-only. Making it per-project means choosing a project before listing,
-  and passing `Prefix: "<project_id>/"`, which the session policy requires.
-  That is the next consumer to move.
+- **The Browse tab was removed rather than switched over.** It had been
+  disabled in the interface for some time — it rendered the word
+  "deactivated" — and most of what it called no longer existed on the server:
+  `/browser` had no route, `/sources/get_upload` no action, and `/bucket`
+  pointed at a controller that was gone. It went with its five components,
+  `/kits_new` (which only it called), the listing helpers in `aws_helper.js`,
+  and the `free_choice` handling that turned the Work tab's link into a
+  "Browse" link that did nothing. There is no listing of the bucket in the
+  app now; anything that adds one has to pass `Prefix: "<project_id>/"`.
 - **Read-only viewing follows the same rule.** A portal admin who isn't in a
   kit's project is refused its `s3://` audio, because the session policy would
   refuse it anyway.
