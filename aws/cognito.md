@@ -57,7 +57,10 @@ aws iam put-role-policy --role-name $app_user_role_name --policy-document file:/
 
 **Every signed-in user gets this one role**, so this policy is the same for
 everyone who can log in. Scoping S3 access per user or per project is a
-different mechanism and this is not it.
+different mechanism and this is not it —
+[s3_project_prefixes.md](s3_project_prefixes.md) designs that one, and nothing
+in it is implemented, so what this page sets up is what the app actually does
+today.
 
 ## Create an EC2 instance role
 
