@@ -1,0 +1,7 @@
+{
+  "Path": "/",
+  "RoleName": "$instance_role_name",
+  "AssumeRolePolicyDocument": "{\"Version\": \"2012-10-17\",\"Statement\": [{\"Effect\": \"Allow\",\"Principal\": {\"Service\": \"ec2.amazonaws.com\"},\"Action\": \"sts:AssumeRole\"}]}",
+  "Description": "Instance role for application",
+  "MaxSessionDuration": 3600
+}

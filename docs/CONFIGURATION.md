@@ -41,6 +41,10 @@ reads those config entries.** The code uses
 Cognito is configured with `bin/rails credentials:edit`. Those environment
 variables are vestigial and setting them has no effect.
 
+Creating the AWS objects those two values name — the identity pool, the
+role the browser ends up holding, and the role the app runs as — is
+`aws/cognito.md`, which also sets out which value goes in which key.
+
 ## Activation flow
 
 Three branches in `UsersController#create`:

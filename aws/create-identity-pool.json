@@ -1,0 +1,6 @@
+{
+  "IdentityPoolName": "$id_pool_name",
+  "AllowUnauthenticatedIdentities": false,
+  "AllowClassicFlow": false,
+  "DeveloperProviderName": "$provider_name"
+}

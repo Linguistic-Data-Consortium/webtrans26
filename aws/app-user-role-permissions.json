@@ -1,0 +1,39 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "1",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": [
+        "$bucket_arn/*"
+      ]
+    },
+    {
+      "Sid": "2",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": [
+        "$bucket_arn/*"
+      ]
+    },
+    {
+      "Sid": "3",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": [
+        "$bucket_arn"
+      ]
+    },
+    {
+      "Sid": "4",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-identity:GetCredentialsForIdentity"
+      ],
+      "Resource": [
+        "*"
+      ]
+    }
+  ]
+}

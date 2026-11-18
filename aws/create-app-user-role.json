@@ -1,0 +1,6 @@
+{
+  "Path": "/service-role/",
+  "RoleName": "$app_user_role_name",
+  "Description": "Application user role for web app",
+  "MaxSessionDuration": 3600
+}
