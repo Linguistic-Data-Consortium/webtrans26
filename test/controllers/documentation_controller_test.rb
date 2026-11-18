@@ -66,4 +66,65 @@ class DocumentationControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  # ── links between and within docs ──────────────────────────────────────────
+
+  def article_hrefs(slug)
+    get documentation_show_url(slug)
+    assert_response :success
+    Nokogiri::HTML(@response.body).css(".doc-article a[href]").map { |a| a["href"] }
+  end
+
+  def ids_on(slug)
+    get documentation_show_url(slug)
+    Nokogiri::HTML(@response.body).css("[id]").map { |e| e["id"] }
+  end
+
+  test "a link to another doc goes to that doc's page, not to its .md file" do
+    hrefs = article_hrefs("USER_GUIDE")
+
+    assert_includes hrefs, "/documentation/CONFIGURATION#per-project-s3"
+    assert hrefs.none? { |h| h.match?(/\A[A-Za-z0-9_-]+\.md(#|\z)/) },
+      "a doc still links to a bare .md file: #{hrefs.grep(/\.md/).inspect}"
+  end
+
+  test "a .md link that names no doc is left as it was" do
+    controller = DocumentationController.new
+    html = %(<a href="NOT_A_DOC.md#x">x</a> <a href="USER_GUIDE.md">u</a>)
+
+    assert_equal %(<a href="NOT_A_DOC.md#x">x</a> <a href="/documentation/USER_GUIDE">u</a>),
+                 controller.send(:link_docs, html)
+  end
+
+  # Every link the docs make to themselves, followed: the page has to exist and,
+  # if the link names a heading, that heading has to be on it. The renderer's
+  # heading ids are not GitHub's, so an anchor that works on GitHub can still
+  # land at the top of the page here.
+  test "every link between and within the docs reaches its target" do
+    slugs = Dir.glob(Rails.root.join("docs", "*.md")).map { |p| File.basename(p, ".md") }
+    ids = {}
+    broken = []
+    slugs.each do |slug|
+      article_hrefs(slug).each do |href|
+        target, anchor =
+          case href
+          when %r{\A/documentation/([A-Za-z0-9_-]+)(?:#(.*))?\z} then [ $1, $2 ]
+          when /\A#(.*)\z/ then [ slug, $1 ]
+          when /\A[A-Za-z0-9_-]+\.md(#|\z)/
+            broken << "#{slug}: #{href} (a file path; the viewer has no route for it)"
+            next
+          else next
+          end
+        unless slugs.include?(target)
+          broken << "#{slug}: #{href} (no such doc)"
+          next
+        end
+        next if anchor.blank?
+        ids[target] ||= ids_on(target)
+        broken << "#{slug}: #{href} (no such heading)" unless ids[target].include?(anchor)
+      end
+    end
+
+    assert_empty broken
+  end
 end

@@ -80,6 +80,25 @@ class DocumentationController < ApplicationController
       superscript: true,
       underline: true
     )
-    @renderer.render(text)
+    link_docs(@renderer.render(text))
+  end
+
+  # The docs link to each other as files — `CONFIGURATION.md#per-project-s3` —
+  # because that is what works where they're read as files, on GitHub or in an
+  # editor. Served here, the same href asks for /documentation/CONFIGURATION.md,
+  # which no route matches, so every cross-doc link was a dead end. Point the
+  # ones that name a doc in docs/ at the page that shows it; leave anything
+  # else alone.
+  DOC_HREF = /href="([A-Za-z0-9_\-]+)\.md(#[^"]*)?"/
+
+  def link_docs(html)
+    html.gsub(DOC_HREF) do
+      slug, anchor = $1, $2
+      if File.exist?(DOCS_DIR.join("#{slug}.md"))
+        %(href="/documentation/#{slug}#{anchor}")
+      else
+        $&
+      end
+    end
   end
 end
