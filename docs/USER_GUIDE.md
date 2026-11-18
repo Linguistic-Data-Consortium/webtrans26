@@ -35,6 +35,8 @@ These come from a row in `project_users` linking a User to a Project, with two b
 
 A project member who isn't admin/owner is read-only at the project level — they can see what's there but not change anything.
 
+On an instance with **per-project S3** turned on (§2.6), project membership is also what lets you *read* the project's files in S3. Owning or administering the project does not by itself let you *write* them — see **Upload task member** below.
+
 ### Task-level roles
 
 These come from a row in `task_users` linking a User to a Task, with one boolean flag.
@@ -43,6 +45,7 @@ These come from a row in `task_users` linking a User to a Task, with one boolean
 |---|---|---|
 | **Task member** | A `task_users` row exists for this user × task | The user is *eligible* to receive kits from this task and see them in their **Work** tab. |
 | **Task admin** | `task_users.admin = true`<br>OR project admin of the task's project (transitively) | Can edit the task (rename, change status, change workflow, change kit_type), see all kits including others' done kits, download transcripts, and manage task members, including making them task admins. |
+| **Upload task member** | Task member of the task the project owner has made the project's **upload task**, *and* a project member | Per-project S3 only (§2.6): may add files under the project's prefix in S3. Not a separate role — it's ordinary task membership, so it's granted the way any is, by a task admin (§2.4.6). A project with no upload task has no one who can write to it, its owners included. |
 
 ### Per-kit roles
 
@@ -51,6 +54,7 @@ There's no separate "kit role" — access to a kit is derived from the task it b
 - A kit is **assigned** to a specific user (`kits.user_id`); only that user can edit it via the annotation tool. They keep that lock until they mark it Done, Broken, or Skip.
 - Reading a kit — its transcript, annotation log and audio, including in **read-only** mode (`/workflows/<workflow_id>/read_only/<kit_uid>`) — is open to the user it's assigned to, to admins of its task (and so of its project, and portal managers), and to project managers. Nobody else, other task members included.
 - Changing a kit's state, owner or assignment takes an admin of its task.
+- With per-project S3 on (§2.6), a kit whose audio is an `s3://` source also needs you to be a **member of the kit's project** — that applies to every reader above, system admins included.
 
 ### Quick reference: "who can do what"
 
@@ -286,10 +290,11 @@ There's no other field on Project Info — projects only have ID and name in the
 
 | What | Role required |
 |---|---|
-| See the task table (ID / Task / Available Kits / Source UID) | Project member. The header reads **"All Tasks"** for project admins and **"My Tasks"** for non-admins, but in both cases the rows are *all* tasks on the project — the label is just a UI hint, not a filter. |
+| See the task table (ID / Task / Available Kits / Source UID, plus **Upload** with per-project S3 on) | Project member. The header reads **"All Tasks"** for project admins and **"My Tasks"** for non-admins, but in both cases the rows are *all* tasks on the project — the label is just a UI hint, not a filter. |
 | Open a task (drills into Task Info / Kits / Done Kits / etc. — see §2.4) | Project member. The contents of those task sub-tabs *are* gated further (e.g. Kits requires task admin) — see §2.4. |
 | **Create Task** (dialog: name, then defaults) | **Project admin.** Trigger gated on `project_admin_bool`. New tasks default to workflow=`OnTheFly` and a fresh per-task `KitType` (with `web_audio` + `show_source` constraints) if those aren't specified. The POST `/projects/<id>/tasks` enforces `project_admin?`. |
 | **Delete Task** (after selecting one) | **Project admin.** Trigger gated on `project_admin_bool`. The DELETE `/projects/<id>/tasks/<task_id>` endpoint enforces `project_admin?`. |
+| **Make Upload Task** (after selecting a task) | **Project owner** (so also portal managers), and only on an instance with per-project S3 turned on (§2.6). Makes the selected task the project's upload task: its members may then add files to the project's S3 prefix. The **Upload** column shows `yes` against the current one, and the button doesn't appear while that task is selected. A project has at most one upload task; choosing another moves it. PATCH `/projects/<id>` with `s3_upload_task_id`, which only accepts a task in that project. Deleting the upload task leaves the project with none. |
 
 The "Open" + "Open Task Info" / "Open Kit List" buttons under the table appear once a row is selected (boiler7 on the task model). "Open Task List" is the same as the parent action; it's there for symmetry.
 
@@ -359,6 +364,8 @@ s3://my-bucket/recordings/REC_one.wav
 s3://my-bucket/recordings/REC_two.wav user_id=alice
 s3://my-bucket/recordings/REC_three.wav user_id=alice@example.org
 ```
+
+With per-project S3 on (§2.6), the part after `s3://` is a path inside this task's project rather than a bucket — `s3://my-bucket/recordings/REC_one.wav` is looked for at `recordings/` under a folder called `my-bucket` in the project's area. Leave the bucket name out of docids written for such an instance.
 
 `user_id` accepts a user's id, name or email address, whichever you have to hand. A kit made with one belongs to that person: the workflow gives it to them and to nobody else. A line without one makes an ordinary unassigned kit, which goes to whoever asks for work next.
 
@@ -651,3 +658,45 @@ bin/rails imported:tsv  FILE=transcripts.tsv NAME=reference
 ```
 
 One file may hold many documents — a column names which — and each becomes its own imported transcript. `bin/rails imported:list` shows what's stored, and `imported:clear` takes an import back out.
+
+### 2.6 Project files in S3 ([instance has per-project S3])
+
+An instance can keep its audio and other files in one Amazon S3 bucket, divided into one area per project, with who may read and write each area following project membership. This is off unless the person who runs the instance has set it up (`S3_BUCKET`, `S3_ROLE_ARN` and `AWS_REGION` — see [Configuration](CONFIGURATION.md#per-project-s3)); with it off, none of this section applies and `s3://` sources work as they always have. With it on, the **Upload** column and **Make Upload Task** button appear on the Project Tasks tab (§2.3.2).
+
+#### Who can do what
+
+| What | Who |
+|---|---|
+| Read a project's files — play a kit's `s3://` audio, load its `s3://` transcript | **Project member.** Being a member of a task, or a task admin, isn't enough on its own: you have to be in the project. |
+| Add files to a project's area, including replacing a file by adding one with the same name | **Project member who is also a member of the project's upload task.** Project owners and admins are not exempt — an owner who wants to upload adds themselves to the upload task. |
+| Choose the upload task | **Project owner**, or a portal manager (§2.3.2). |
+| Give someone upload permission | **Task admin of the upload task** — add them as a task member (§2.4.6). They also need to be a project member. |
+| Delete a project's files | **Nobody**, through the app. |
+
+Each user's access is worked out when their browser asks for it, from their memberships at that moment, and lasts an hour. **Adding** someone to a project or the upload task takes effect when they next reload the page. **Removing** someone stops the app opening that project's kits for them straight away, but access their browser was already given keeps working until its hour is up — it can't be called back early.
+
+#### Uploading
+
+**There is no upload screen in the app yet.** What exists is the permission: a member of a project's upload task is given credentials that can add files under that project's area, and nothing else. Getting files there today is done by someone with access to the bucket — whoever runs the instance — placing them under the project's folder, named by the project's ID (shown in the ID column of the Projects tab).
+
+#### How an `s3://` source is found
+
+With per-project S3 on, an `s3://` source names a path inside the kit's project, not a bucket. Whatever follows `s3://` is placed under the project's folder in the instance's one bucket:
+
+| Kit in project 7 with source | Is read from |
+|---|---|
+| `s3://foo` | `7/foo` |
+| `s3://interviews/day1/take1.wav` | `7/interviews/day1/take1.wav` |
+| `s3://my-bucket/recordings/x.wav` | `7/my-bucket/recordings/x.wav` — the old bucket name is just a folder now |
+
+The same applies to the files a JSON wrapper source points at (its `wav`, `tsv` and so on). Because everything a source says lands inside its own project's folder, no source can name another project's files.
+
+`http(s)` sources, paths, and audio uploaded through the app are unaffected.
+
+#### When the app refuses a kit
+
+Opening a kit with an `s3://` source — to work on it, or read-only — is refused with a message, instead of opening a page whose audio can't load, when:
+
+- **"You are not a member of this kit's project, so you can't read its audio."** — you hold the kit, or are viewing it, but aren't in its project. A project owner or admin can add you on the Project Members tab (§2.3.3). This applies to system admins and portal managers too: they can see every project, but reading a project's files takes membership of it.
+- **"This kit's task belongs to no project, so its s3:// audio has nowhere to be found."** — the task has lost its project. An administrator has to put it back in one.
+
