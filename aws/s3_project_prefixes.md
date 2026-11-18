@@ -5,7 +5,7 @@
 | **Source** | **none — new design.** Nothing in this app does per-user S3 scoping, so there is no existing implementation to adapt |
 | **Scope** | `webtrans26` |
 | **Surveyed** | 2026-11-16 at `59bec6b`; re-checked 2026-11-17 at `7bb928c`, which is the first commit where the `aws/cognito.md` referred to below exists |
-| **Status** | spec only — nothing described here is implemented |
+| **Status** | implemented, with the decisions recorded under "Decided while implementing" at the end |
 
 Requirements as given: a **parallel** mechanism with the current one left
 inactive; best practice as close as possible; a **single bucket**; the mapping
@@ -405,3 +405,39 @@ until step 8.
 - **Whether the old mechanism is ever removed.** The spec keeps it inert, not
   gone. Removing it later is a separate and smaller change, and nothing here
   depends on the answer.
+
+## Decided while implementing
+
+Where the code departs from the text above, the code is right and this says why.
+
+- **Write access is membership of the project's upload task**, not
+  `owner? || admin?`. Each project designates one task (`projects.s3_upload_task_id`,
+  set by the project owner); its members may `PutObject` under the project's
+  prefix. That membership is granted the way any task membership is, by a task
+  or project admin — a permission a higher role hands out rather than a role.
+  `ProjectUser#may_write_s3?` is still the one place this lives. It took a
+  migration after all, the one column. A project with no upload task is
+  writable by nobody.
+- **The rewrite lives in one client resolver**, `lib/ldcjs/s3_source.js`. The
+  three pasted blocks are gone, along with an older copy of the `init.js`
+  family that nothing called. `aws.js`'s duplicate `s3url()` is gone too. Two
+  more sites turned up that the survey missed: `add_sad` in `waveform/helpers.js`
+  took a bucket from `ldc.resources.bucket` and cut the key out of the source by
+  searching for the bucket name, and `services.js` built a source from it.
+  Nothing writes `ldc.resources.bucket` now. The server sends `{ bucket, project_id }`
+  as `s3_project` in the work page's data, which is a new key rather than
+  the task page's `bucket:` field (that one feeds the task view, not the
+  annotation tool).
+- **Credentials last 3600 s, not 900.** A presigned URL dies with the
+  credentials that signed it, and the audio element streams from one with range
+  requests for as long as the page is open, so 900 s would cut playback off a
+  quarter-hour in. 3600 s is what the Cognito path gives, and a role's default
+  maximum session duration.
+- **The Browse tab is not switched over.** It lists buckets from `/bucket` and
+  is admin-only. Making it per-project means choosing a project before listing,
+  and passing `Prefix: "<project_id>/"`, which the session policy requires.
+  That is the next consumer to move.
+- **Read-only viewing follows the same rule.** A portal admin who isn't in a
+  kit's project is refused its `s3://` audio, because the session policy would
+  refuse it anyway.
+

@@ -11,7 +11,7 @@
     import { Textarea } from "$lib/components/ui/textarea";
     import { Button, buttonVariants } from "$lib/components/ui/button";
     import { btn, cbtn, dbtn } from '../lib/ldcjs/work/buttons';
-    import { s3_configured } from '../lib/ldcjs/service_config';
+    import { s3_configured, s3_session_available } from '../lib/ldcjs/service_config';
     import { getp, getp_no_catch, postp, postp_no_catch, postpf_no_catch } from '../lib/ldcjs/getp';
     import Help from './help.svelte';
     import Browse from './browse_f.svelte';
@@ -579,6 +579,17 @@
             .then(y => response(y, () => model_actions.project.get_one('tasks'), () => models.task.id = null));
         };
         model_actions.task_user.patch = (x) => controller_actions.task_user.patch(models.task.user_id, x);
+        // Under per-project S3, members of this task may write to the project's
+        // prefix (Project#s3_upload_task). Owner-only, like any project edit.
+        model_actions.project.set_upload_task = (task_id) => {
+            controller_actions.project.patch(models.project.id, { s3_upload_task_id: task_id })
+            .then(y => {
+                // response() would say "created <project>", which this isn't.
+                if(!y || y.error) return response(y);
+                toast.success(`members of task ${task_id} may now upload to ${y.name}`);
+                model_actions.project.get_one('tasks');
+            });
+        };
         model_actions.kit_type.get_one = () => {
             pp = controller_actions.kit_type.get_one(models.kit_type.id)
             .then(x => {
@@ -2168,6 +2179,11 @@
                                             <div>
                                                 <button class={buttonVariants({ variant: "secondary" })} onclick={() => actions.task.get_one()}>Open</button>
                                             </div>
+                                            {#if v.project_owner_bool && s3_session_available() && models.task.id != v.s3_upload_task_id}
+                                                <div>
+                                                    <button class={buttonVariants({ variant: "secondary" })} title="Members of this task may upload to the project's S3 prefix" onclick={() => actions.project.set_upload_task(models.task.id)}>Make Upload Task</button>
+                                                </div>
+                                            {/if}
                                             {@render boiler7('task')}
                                             {#if v.project_admin_bool}
                                                 {@render dialog_delete('task')}
@@ -2183,7 +2199,8 @@
                                             [ 'ID', 'id', 'col-1' ],
                                             [ 'Task', 'name', 'col-2' ],
                                             [ 'Available Kits', 'available_kit_count', 'col-1' ],
-                                            [ 'Source UID', 'source_uid', 'col-1' ]
+                                            [ 'Source UID', 'source_uid', 'col-1' ],
+                                            ...(s3_session_available() ? [ [ 'Upload', 'upload', 'col-1' ] ] : [])
                                         ]}
                                         rows={v.tasks}
                                         selectedf={(x, y) => (models.task.id = x) && set_style(y)}

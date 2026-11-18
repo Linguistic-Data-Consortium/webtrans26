@@ -71,5 +71,16 @@ module Webtrans26
     # because it depends on credentials and on AWS_REGION — see
     # ApplicationController#cognito_configured? and the s3-available meta tag.
 
+    # Per-project S3 access (aws/s3_project_prefixes.md): one bucket, and one
+    # role the server assumes on a user's behalf with a session policy narrowed
+    # to the projects they belong to. Both empty means the mechanism is off and
+    # nothing about this instance changes; the gate is
+    # Authentication#s3_sessions_configured?, which also wants a region.
+    #
+    # Independent of the Cognito path above. An instance can have either, both
+    # or neither.
+    config.x.s3_bucket   = ENV.fetch("S3_BUCKET", "")
+    config.x.s3_role_arn = ENV.fetch("S3_ROLE_ARN", "")
+
   end
 end

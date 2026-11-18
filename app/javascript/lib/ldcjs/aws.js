@@ -3,6 +3,7 @@ import { hlt_endpoint, promise_bucket } from './service_config';
 import { TranscribeClient, StartTranscriptionJobCommand, GetTranscriptionJobCommand } from "@aws-sdk/client-transcribe";
 import { getp, getp_simple, postp } from "./getp";
 import { putObject, getSignedUrlPromise, get_json_object } from "./aws_helper";
+import { signed_url_for } from "./s3_source";
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 const s3 = new S3Client({});
 const transcribe_client = new TranscribeClient({});
@@ -129,20 +130,9 @@ async function exists(Bucket, Key){
     // }
 }
 
-function s3url(url){
-  const o = {};
-  const found = url.match(/^s3:\/\/([^\/]+)\/(.+)/);
-  if(found){
-    o.bucket = found[1];
-    o.key = found[2];
-  }
-  return o;
-}
-
-function S3url(url){
-  const o = s3url(url);
-  return { Bucket: o.bucket, Key: o.key };
-}
+// s3url() and S3url() were here, byte-identical to aws_helper.js's. The one
+// caller below now resolves through lib/ldcjs/s3_source.js, so a kit source
+// means the same thing here as everywhere else.
 // function getSignedUrlPromise(Bucket, Key){
 //   const params = { Bucket, Key };
 //   let cmd = new GetObjectCommand(params);
@@ -200,11 +190,10 @@ async function run_asr6(Bucket, Key){
 }
 
 function run_sad(audio){
-  const { Bucket, Key } = S3url(audio);
   const oo = {
     type: 'sad',
     data: {
-      audio: getSignedUrlPromise(Bucket, Key)
+      audio: signed_url_for(audio)
     }
   };
   function ff(data){

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_120000) do
   create_table "actions", force: :cascade do |t|
     t.bigint "client_time"
     t.datetime "created_at", null: false
@@ -321,7 +321,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.string "subtitle"
     t.string "title"
     t.datetime "updated_at", null: false
+    t.integer "s3_upload_task_id"
     t.index ["name"], name: "index_projects_on_name", unique: true
+    t.index ["s3_upload_task_id"], name: "index_projects_on_s3_upload_task_id"
   end
 
   create_table "sections", force: :cascade do |t|
@@ -530,5 +532,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["name"], name: "index_workflows_on_name", unique: true
   end
 
+  add_foreign_key "projects", "tasks", column: "s3_upload_task_id", on_delete: :nullify
   add_foreign_key "sessions", "users"
 end

@@ -81,6 +81,7 @@ class ProjectsController < ApplicationController
               name: title,
               project_owner_bool: project_owner_bool,
               project_admin_bool: project_admin_bool,
+              s3_upload_task_id: project.s3_upload_task_id,
               tasks: project.tasks.includes(:workflow).map { |x|
                 {
                   id: x.id,
@@ -90,7 +91,8 @@ class ProjectsController < ApplicationController
                   # for those the kits don't exist yet.
                   available_kit_count: x.workflow&.outstanding_kit_count(x, available_kit_counts[x.id] || 0) ||
                                        (available_kit_counts[x.id] || 0),
-                  source_uid: x.meta['docid']
+                  source_uid: x.meta['docid'],
+                  upload: x.id == project.s3_upload_task_id ? 'yes' : ''
                 }
               },
               members: project_users
@@ -149,7 +151,10 @@ class ProjectsController < ApplicationController
   private
 
   def project_params
-    params.require(:project).permit(:name, :title, :subtitle, :about, :image, :blog_url, :status, :comment, :image_name, :position,
+    # s3_upload_task_id: which task's members may write to the project's S3
+    # prefix. Settable only through update, which is owner-only, and the model
+    # refuses a task from another project.
+    params.require(:project).permit(:name, :title, :subtitle, :about, :image, :blog_url, :status, :comment, :image_name, :position, :s3_upload_task_id,
       assets: [], researchers_attributes: [:id, :name, :title, :description, :image, :_destroy],
       partners_attributes: [:id, :name, :url, :image, :_destroy], assets_destroy: {})
   end

@@ -2,7 +2,8 @@ import { mountSvelteComponents } from '../mount.js';
 import { activeo, urls } from '../lib/ldcjs/waveform/shared.svelte';
 import { set_ldc, init_nodes } from './other';
 import { getp, postp } from '../lib/ldcjs/getp';
-import { refreshToken, s3url, getSignedUrlPromise, headObject } from '../lib/ldcjs/aws_helper';
+import { refreshToken } from '../lib/ldcjs/aws_helper';
+import { resolve_s3_source, signed_url_for, head_source, sign_into, resolve_audio } from '../lib/ldcjs/s3_source';
 import { fromCognitoIdentity } from "@aws-sdk/credential-provider-cognito-identity";
 import { CognitoIdentityClient } from "@aws-sdk/client-cognito-identity";
 import { TranscribeClient } from "@aws-sdk/client-transcribe";
@@ -33,7 +34,6 @@ function init(ldc){
     // active_docid.update( () => obj.filename );
     activeo.docid = obj.filename;
     urls[obj.filename] = urls[obj.source.uid];
-    ldc.resources.original_s3_key = obj.source.uid;
     console.log(JSON.stringify(ldc.resources))
     delete urls[obj.source.uid];
   }
@@ -63,8 +63,7 @@ function init(ldc){
   // Resolve a wrapper-referenced path (audio or transcript) to a fetchable URL.
   // s3:// paths are signed; local/manifest paths are used as-is.
   function resolve_url(path){
-    const found = s3url(path);
-    if(found.bucket) return getSignedUrlPromise(found.bucket, found.key);
+    if(resolve_s3_source(path).bucket) return signed_url_for(path);
     return Promise.resolve(urls[path] || path);
   }
 
@@ -72,8 +71,7 @@ function init(ldc){
   // set_urlsx resolvers can turn the wav into a playable URL. s3:// wavs get a
   // signed URL; local/static wavs map to their own path.
   function ensure_audio_url(wav){
-    const found = s3url(wav);
-    if(found.bucket) return signed_url_for_audio(found.bucket, found.key, urls, wav);
+    if(resolve_s3_source(wav).bucket) return sign_into(urls, wav, wav);
     if(!urls[wav]) urls[wav] = wav;
     return Promise.resolve({ wav: wav, wav_url: urls[wav] });
   }
@@ -106,225 +104,65 @@ function init(ldc){
     })
     .catch(() => { alert('error loading transcript wrapper, try refreshing'); });
   }
-function set_urls3(found, k){
-    ldc.resources.bucket = found.bucket;
-    // const urls = urls;
-    return Promise.resolve(
-        k.match(/wav$/) ? { wav: k } : not_wav(found, k)
-    );
-}
-
-    function not_wav(found, k){
-        if(found.key.match(/json$/)){
-            return get_json(found);
-        }
-        else{
-            return headObject(found.bucket, found.key).then(x => {
-                if(x.ContentType == 'audio/wav' && x.Metadata.uid){
-                    // return({ wav: x.Metadata.uid });
-                    obj.source.meta = x.Metadata.uid;
-                    urls[obj.source.meta] = urls[k];
-                    activeo.docid = obj.source.meta;
-                    return({ wav: k });
-                }
-            });
-        }
-    }
-
-    function get_json(found){
-        getSignedUrlPromise(found.bucket, found.key)
-        .then( getp )
-        .then(function(d){
-
-            const o = {};
-
-            // resolve this one in parallel
-            if(d.tsv){
-                let found = s3url(d.tsv);
-                o.transcript = getSignedUrlPromise(found.bucket, found.key)
-                .then( getp )
-                .then(function(d){
-                    return {
-                        use_transcript: 'tsv',
-                        found_transcript: d
-                    };
-                });
-            }
-
-            // resolve this one in parallel
-            if(d.tdf){
-                let found = s3url(d.tdf);
-                o.transcript = getSignedUrlPromise(found.bucket, found.key)
-                .then( getp )
-                .then(function(d){
-                    return {
-                        use_transcript: 'tdf',
-                        found_transcript: d
-                    };
-                });
-            }
-
-            // resolve this one in parallel
-            if(d.sad_with_aws){
-                let found = s3url(d.sad_with_aws);
-                o.transcript = getSignedUrlPromise(found.bucket, found.key)
-                .then( getp )
-                .then(function(d){
-                    return {
-                        use_transcript: 'sad_with_aws',
-                        found_transcript: d
-                    };
-                });
-            }
-
-            if(d.wav){
-              o.wav = d.wav;
-              return o;
-                // active_docid.update( () => d.wav );
-                // found = s3url(d.wav);
-                // return signed_url_for_audio(found.bucket, found.key, urls, d.wav)
-                // .then( (x) => {
-                //     o.wav = x.wav;
-                //     // o.wav_url = urls[x.wav];
-                //     return o;
-                // });
-            }
-            else if(d.channels){
-              o.wav = d.channels[0];
-              o.channels = d.channels;
-            //   o.channels = [
-            //   ]
-              let p = Promise.resolve();
-              for(let i = 1; i < o.channels.length; i++){
-                const k = o.channels[i];
-                const found = s3url(k);
-                p = p.then(() => signed_url_for_audio(found.bucket, found.key, urls, k));
-              }
-              return p.then(() => o);
-            }
-            else{
-                return o;
-            }
-            
-        })
-        .catch( () => alert('error, try refreshing') )
-}
-
-function signed_url_for_audio(bucket, key, urls, k) {
-  return getSignedUrlPromise(bucket, key)
-  .then(function(data){
-      urls[k] = data;
-  })
-  .then( () => { return { wav: k, wav_url: urls[k] } } );
-}
-function set_urls2(k){
-//   const urls = urls;
-  if(k.match(/^http/)) urls[k] = k;
-  if(!urls[k]) return;
-  if(urls[k].substr(0, 2) === 's3'){
-      if(urls[k] === 's3'){
-          return alert(`no bucket in the audio url for ${k} — the kit's source should be an s3:// url, an http url, or a path`);
-      }
-      else{
-          ldc.resources.bucket = urls[k].replace(/^s3(:\/\/)?/, '').replace(/\/.+/, '');
-          const bucket = ldc.resources.bucket;
-          let key = k.replace(bucket + '/', '').replace('filename_for_', '');
-          if(ldc.resources.original_s3_key) key = ldc.resources.original_s3_key;
-          return signed_url_for_audio(bucket, key, urls, k);
-          // .then( () => k );
-      }
-  }
-  else{
-      return Promise.resolve( { wav: k, wav_url: urls[k] } );
-  }
- }
+// set_urls3, not_wav, get_json and set_urls2 were here: an older copy of the
+// set_urlsx family below that nothing called, including one of the three
+// pasted blocks that derived a bucket from one string and a key from another.
+// Resolution now goes through lib/ldcjs/s3_source.js.
+    // The Waveform's set_urls: manifest entry k to { wav, wav_url }. An s3 .wav
+    // is signed; an s3 .json wrapper and an s3 object with a uid in its metadata
+    // are looked into first; anything else goes to resolve_audio, which is the
+    // same rule every other site uses.
     function set_urlsx(kk){
         const k = kk.replace(/\s+$/, '');
-        const found = s3url(k);
+        const found = resolve_s3_source(k);
         if(found.bucket) {
-            return set_urls3x(found, k);
-            // .then( (x) => signed_url_for_audio(found.bucket, found.key, urls, x) )
-            // .then( () => k );
+            return Promise.resolve(
+                k.match(/wav$/) ? sign_into(urls, k, k) : not_wavx(found, k)
+            );
         }
         else{
-            return set_urls2x(k);
+            return resolve_audio(k, urls);
         }
-    }
-    function set_urls3x(found, k){
-        ldc.resources.bucket = found.bucket;
-        // const urls = urls;
-        return Promise.resolve( 
-            k.match(/wav$/) ? signed_url_for_audio(found.bucket, found.key, urls, k) : not_wavx(found, k)
-        );
     }
 
     function not_wavx(found, k){
-        // alert(found.key)
         if(found.key.match(/json$/)){
-            return get_jsonx(found);
+            return get_jsonx(k);
         }
         else{
-            return headObject(found.bucket, found.key).then(x => {
+            return head_source(k).then(x => {
                 if(x.ContentType == 'audio/wav' && x.Metadata.uid){
                     obj.source.meta = x.Metadata.uid;
                     activeo.docid = obj.source.meta;
-                    return signed_url_for_audio(found.bucket, found.key, urls, k);
+                    return sign_into(urls, k, k);
                 }
             });
         }
     }
 
-    function get_jsonx(found){
-        return getSignedUrlPromise(found.bucket, found.key)
+    // A transcript named by the wrapper, resolved by the same rule as the
+    // wrapper itself — under per-project S3 its paths are project-relative too.
+    function wrapper_transcript(src, use_transcript){
+        return signed_url_for(src)
+        .then( getp )
+        .then( (d) => ({ use_transcript, found_transcript: d }) );
+    }
+
+    function get_jsonx(k){
+        return signed_url_for(k)
             .then( getp )
             .then(function(d){
 
                 const o = {};
 
-                // resolve this one in parallel
-                if(d.tsv){
-                    let found = s3url(d.tsv);
-                    o.transcript = getSignedUrlPromise(found.bucket, found.key)
-                    .then( getp )
-                    .then(function(d){
-                        return {
-                            use_transcript: 'tsv',
-                            found_transcript: d
-                        };
-                    });
-                }
-
-                // resolve this one in parallel
-                if(d.tdf){
-                    let found = s3url(d.tdf);
-                    o.transcript = getSignedUrlPromise(found.bucket, found.key)
-                    .then( getp )
-                    .then(function(d){
-                        return {
-                            use_transcript: 'tdf',
-                            found_transcript: d
-                        };
-                    });
-                }
-
-                // resolve this one in parallel
-                if(d.sad_with_aws){
-                    let found = s3url(d.sad_with_aws);
-                    o.transcript = getSignedUrlPromise(found.bucket, found.key)
-                    .then( getp )
-                    .then(function(d){
-                        return {
-                            use_transcript: 'sad_with_aws',
-                            found_transcript: d
-                        };
-                    });
-                }
+                // each resolved in parallel; the last one present wins, as before
+                if(d.tsv) o.transcript = wrapper_transcript(d.tsv, 'tsv');
+                if(d.tdf) o.transcript = wrapper_transcript(d.tdf, 'tdf');
+                if(d.sad_with_aws) o.transcript = wrapper_transcript(d.sad_with_aws, 'sad_with_aws');
 
                 if(d.wav){
-                    // active_docid.update( () => d.wav );
                     activeo.docid = d.wav;
-                    found = s3url(d.wav);
-                    return signed_url_for_audio(found.bucket, found.key, urls, d.wav)
+                    return sign_into(urls, d.wav, d.wav)
                     .then( (x) => {
                         o.wav = x.wav;
                         o.wav_url = urls[x.wav];
@@ -334,32 +172,11 @@ function set_urls2(k){
                 else{
                     return o;
                 }
-                
+
             })
             .catch( () => alert('error, try refreshing') )
     }
 
-    function set_urls2x(k){
-        // const urls = urls;
-        if(k.match(/^http/)) urls[k] = k;
-        if(!urls[k]) return;
-        if(urls[k].substr(0, 2) === 's3'){
-            if(urls[k] === 's3'){
-                return alert(`no bucket in the audio url for ${k} — the kit's source should be an s3:// url, an http url, or a path`);
-            }
-            else{
-                ldc.resources.bucket = urls[k].replace(/^s3(:\/\/)?/, '').replace(/\/.+/, '');
-                const bucket = ldc.resources.bucket;
-                let key = k.replace(bucket + '/', '').replace('filename_for_', '');
-                if(ldc.resources.original_s3_key) key = ldc.resources.original_s3_key;
-                return signed_url_for_audio(bucket, key, urls, k);
-                // .then( () => k );
-            }
-        }
-        else{
-            return Promise.resolve( { wav: k, wav_url: urls[k] } );
-        }
-    }
     ldc.set_urlsx = set_urlsx;
     // ns.main = mount(Main, {
     //   target: $('.view')[0],

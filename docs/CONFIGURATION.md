@@ -13,6 +13,8 @@ This app deliberately avoids hard-coded infra. The defaults are chosen so a fres
 | `ALLOWED_HOSTS` | `APP_HOST` if set, otherwise unset | Comma-separated hostnames and/or IP addresses this instance answers to, e.g. `app.example.org` or `203.0.113.25`. Any other `Host` header gets a 403, which keeps a forged one from shaping the links and redirects Rails builds, and refuses DNS-rebinding requests; `/up` is exempt so health checks still work. **Unset, any host is answered** — set it once you know the name or address people use. |
 | `SSL` | unset (treated as **`true`**) | Sets `assume_ssl` and `force_ssl` in production: HTTP redirects to HTTPS and cookies are marked secure. **On by default** — every deployment in [Deployment](DEPLOYMENT.md) serves HTTPS, either with a Let's Encrypt certificate if the machine has a hostname or a self-signed one for its IP if not. Set `SSL=false` only for a deliberate plain-HTTP deployment, and note that passwords then cross the network in the clear. |
 | `AWS_REGION` | unset | The region for Cognito and S3. **Required for `s3://` kit sources and the Browse tab** — the AWS SDK refuses to build a client without it, so until it is set those features report themselves unavailable. |
+| `S3_BUCKET` | unset | The one bucket for **per-project S3**, the alternative to Cognito described below. Needed together with `S3_ROLE_ARN` and `AWS_REGION`; with any of the three missing the mechanism is off and nothing about the instance changes. |
+| `S3_ROLE_ARN` | unset | The role the app assumes on a user's behalf for per-project S3, narrowed to that user's projects. The app's own AWS credentials need `sts:AssumeRole` on it. See below. |
 | `HLT_ENDPOINT` | unset | The **hosted** speech-activity-detection / ASR service. **Nothing reachable reads this in this app.** The hosted entries were removed from the Services menu — they would send the annotator's audio to a service this app does not ship — so setting it has no visible effect. The row is kept because the send paths are still in the code, unreachable; a fork that wants the hosted services back needs this variable *and* has to restore the menu entries. The speech services this app does offer run in the annotator's own browser and need no configuration. |
 | `PROMISE_BUCKET` | unset | The S3 bucket that service exchanges work through. Needed together with `HLT_ENDPOINT`; one without the other is not enough — and, with the hosted entries removed, neither is read by anything reachable. Same caveat as above. |
 | `GUIDELINES_URL` | unset | The annotation guidelines document, opened by `h` then `5` in the transcription tool. Any URL a browser can open. **Unset, the tool says no guidelines are configured** rather than opening a blank window — this app deliberately ships no document of its own. |
@@ -44,6 +46,36 @@ variables are vestigial and setting them has no effect.
 Creating the AWS objects those two values name — the identity pool, the
 role the browser ends up holding, and the role the app runs as — is
 `aws/cognito.md`, which also sets out which value goes in which key.
+
+### Per-project S3
+
+A second way for the browser to reach S3, independent of Cognito: an instance
+can have either, both or neither. Set `S3_BUCKET`, `S3_ROLE_ARN` and
+`AWS_REGION`, and:
+
+- `POST /s3_session` assumes the role with a session policy built from the
+  user's project memberships, so each user's credentials reach only their own
+  projects. **A user may read under `<project id>/` for every project they
+  belong to, and write there only if they are also a member of that project's
+  upload task.** Nobody may delete. A user in no project gets a 403, not
+  credentials.
+- A kit's `s3://` source is **rewritten, not read as a bucket**: everything
+  after `s3://` is a path under the kit's project in the one bucket, so
+  `s3://foo/take1.wav` in a project with id 7 is `<S3_BUCKET>/7/foo/take1.wav`.
+  An existing source that names a bucket is reinterpreted the same way — its
+  objects have to sit at `<project id>/<old bucket>/…`, or the sources have to
+  drop the bucket name. Nothing in the database changes.
+- A kit whose project the user isn't in is refused with a reason, rather than
+  shown a page whose audio then fails to load.
+- The project owner marks which task is the **upload task** — the *Make Upload
+  Task* button on the project's task list, which appears only when this is on.
+  Members of that task are who may write; adding them is the usual task
+  membership, granted by a task or project admin. No upload task means nobody
+  writes.
+
+The AWS objects to create — the bucket, the role, and the app's own permission
+to assume it — and the reasoning behind all of the above are in
+`aws/s3_project_prefixes.md`.
 
 ## Activation flow
 

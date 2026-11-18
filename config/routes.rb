@@ -176,6 +176,9 @@ Rails.application.routes.draw do
 
   get '/bucket', to: 'data_sets#bucket'
   post '/token', to: 'cognito_token#get_credentials'
+  # Per-project S3 credentials, the parallel path to /token — see
+  # aws/s3_project_prefixes.md. Off unless S3_BUCKET and S3_ROLE_ARN are set.
+  post '/s3_session', to: 's3_sessions#create'
     
   resources :actions, only: [ :create ]
   resources :xamespaces, except: [ :new, :edit ]

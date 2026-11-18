@@ -55,6 +55,15 @@ export function s3_configured(){
     return meta('s3-available', 'false') === 'true';
 }
 
+// Whether the per-project S3 path is on — POST /s3_session, which hands out
+// credentials narrowed to the caller's projects (aws/s3_project_prefixes.md).
+// Independent of s3_configured(): the two are separate mechanisms with separate
+// server gates, and an instance may have either, both or neither. Absent means
+// false, for the same reason as above.
+export function s3_session_available(){
+    return meta('s3-sessions-available', 'false') === 'true';
+}
+
 // The annotation guidelines, opened by `h` then `5` from the main help dialog.
 // It was a string literal in MainHelpDialog, so every instance opened LDC's own
 // document whatever it was annotating.
@@ -65,4 +74,4 @@ export function s3_configured(){
 export function guidelines_url(){ return meta('guidelines-url', DEFAULT_GUIDELINES); }
 export function guidelines_configured(){ return Boolean(guidelines_url()); }
 
-export default { hlt_endpoint, promise_bucket, services_configured, s3_configured, guidelines_url, guidelines_configured };
+export default { hlt_endpoint, promise_bucket, services_configured, s3_configured, s3_session_available, guidelines_url, guidelines_configured };

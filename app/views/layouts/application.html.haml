@@ -17,6 +17,10 @@
     -# reaches S3 only through POST /token, so without Cognito and a region they
     -# are dead — and used to fail as a TypeError on undefined rather than saying so.
     %meta{ name: 's3-available', content: cognito_configured?.to_s }
+    -# Whether the per-project S3 path (POST /s3_session) is on. Independent of
+    -# s3-available: an instance can have either, both or neither. See
+    -# aws/s3_project_prefixes.md and lib/ldcjs/s3_session.js.
+    %meta{ name: 's3-sessions-available', content: s3_sessions_configured?.to_s }
     -# Pinned by hash (cdnjs's published SRI) and by path in the CSP, so a
     -# change on the CDN is refused rather than run. Changing a version means
     -# changing both: config/initializers/secure_headers.rb lists the URLs.

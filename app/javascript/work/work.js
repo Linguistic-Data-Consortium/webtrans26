@@ -2,6 +2,7 @@ import { init } from './init'
 import { setup } from '../settings'
 import { getp } from '../lib/ldcjs/getp';
 import { needs_local_audio, prepare_local_audio } from './local_audio_gate';
+import { set_s3_project } from '../lib/ldcjs/s3_source';
 
 // import { sources_object_add_node } from '../lib/ldcjs/waveform/sources_stores';
 // const debug = false;
@@ -95,6 +96,10 @@ let workflow = null;
       window.ldc.permissions = hash;
       window.ldc.resources = {};
       window.ldc.resources.manifest = hash.manifest;
+      // Present only when the server has per-project S3 on: then a kit's s3://
+      // source is a path under its project's prefix rather than a bucket and a
+      // key. Set before anything resolves a source.
+      set_s3_project(hash.s3_project);
       window.ldc.get_constraint = window.get_constraint;
       window.ldc.services_init = window.services_init;
       window.ldc.$ = window.$;

@@ -6,6 +6,8 @@ module Authentication
     helper_method :authenticated?
     # the layout renders it as the s3-available meta tag
     helper_method :cognito_configured?
+    # and this one as s3-sessions-available
+    helper_method :s3_sessions_configured?
   end
 
   class_methods do
@@ -88,6 +90,20 @@ module Authentication
       cognito_init
       @pool_id.present? &&
         @provider_name.present? &&
+        (ENV["AWS_REGION"].present? || Aws.config[:region].present?)
+    end
+
+    # Whether this instance can vend per-project S3 sessions — POST
+    # /s3_session, aws/s3_project_prefixes.md. Separate from
+    # cognito_configured? on purpose: the two mechanisms are gated
+    # independently, and with neither set the app behaves as it always has.
+    #
+    # The region is checked for the same reason as above: Aws::STS::Client.new
+    # raises MissingRegionError before the role is ever named.
+    def s3_sessions_configured?
+      x = Rails.application.config.x
+      x.s3_bucket.present? &&
+        x.s3_role_arn.present? &&
         (ENV["AWS_REGION"].present? || Aws.config[:region].present?)
     end
 

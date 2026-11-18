@@ -65,7 +65,36 @@ module MailToggleHelpers
   end
 end
 
+# Turns the per-project S3 path (POST /s3_session) on for the block: a bucket,
+# a role and a region, which is what Authentication#s3_sessions_configured?
+# asks for. Nothing reaches AWS — STS is stubbed through Aws.config, and
+# `assume_role` may be a Proc to capture what was asked for.
+module S3SessionToggleHelpers
+  S3_TEST_BUCKET = "test-project-data"
+  S3_TEST_ROLE = "arn:aws:iam::000000000000:role/test-project-data"
+
+  def with_s3_sessions(assume_role: nil)
+    x = Rails.application.config.x
+    saved = [ x.s3_bucket, x.s3_role_arn, ENV["AWS_REGION"], Aws.config[:sts] ]
+    x.s3_bucket = S3_TEST_BUCKET
+    x.s3_role_arn = S3_TEST_ROLE
+    ENV["AWS_REGION"] = "us-east-1"
+    Aws.config[:sts] = { stub_responses: { assume_role: assume_role || S3SessionToggleHelpers.stub_credentials } }
+    yield
+  ensure
+    x.s3_bucket, x.s3_role_arn, region, sts = saved
+    region.nil? ? ENV.delete("AWS_REGION") : ENV["AWS_REGION"] = region
+    sts.nil? ? Aws.config.delete(:sts) : Aws.config[:sts] = sts
+  end
+
+  def self.stub_credentials
+    { credentials: { access_key_id: "ASIATEST", secret_access_key: "secret", session_token: "token",
+                     expiration: Time.utc(2030, 1, 1) } }
+  end
+end
+
 class ActionDispatch::IntegrationTest
   include SignInHelpers
   include MailToggleHelpers
+  include S3SessionToggleHelpers
 end

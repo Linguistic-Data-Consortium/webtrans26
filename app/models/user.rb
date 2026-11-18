@@ -25,6 +25,23 @@ class User < ApplicationRecord
 
   scope :sorted, -> { order('name ASC') }
 
+  # The projects whose S3 prefix this user may read and write, as integer ids —
+  # see S3SessionPolicy. Reading is project membership. Writing is computed
+  # from the read set, never independently, so a project you may write is
+  # always one you may read.
+  def s3_read_project_ids
+    project_users.pluck(:project_id).compact.uniq.sort
+  end
+
+  def s3_write_project_ids
+    readable = s3_read_project_ids
+    project_users.includes(project: :s3_upload_task)
+                 .select(&:may_write_s3?)
+                 .map(&:project_id)
+                 .select { |id| readable.include?(id) }
+                 .uniq.sort
+  end
+
 
   def self.make_anon
     name = new_token

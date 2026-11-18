@@ -16,9 +16,10 @@ function add_asr_sendx(path, type, ldc){
     if(ldc.obj.source.uid.startsWith("s3://")){
       path = ldc.obj.source.uid;
     }
-    else if(ldc.resources.bucket){
-      path = `s3://${ldc.resources.bucket}/${path}`;
-    }
+    // There was a branch here building s3://${ldc.resources.bucket}/${path}.
+    // That value was only ever written by the client's own resolvers as a side
+    // effect, and nothing writes it now that one resolver (s3_source.js) does
+    // the job; an s3 kit source is caught by the branch above.
     else{
       // alert(`can't run asr on ${source_uid}`);
       alert(`can't run asr on ${path}`);

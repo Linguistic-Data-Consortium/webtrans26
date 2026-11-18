@@ -22,7 +22,7 @@ import {
     save_redaction
 } from './modification1';
 import { round_to_3_places } from './times';
-import { refreshToken, getSignedUrlPromise, putObject, s3url } from '../aws_helper';
+import { resolve_audio, entry_source, signed_url_for } from '../s3_source';
 import { getp, getp_wav, postp, getp_simple } from '../getp';
 import { ParseB } from './parse_b';
 import { get_hlt_promise } from '../aws';
@@ -78,59 +78,16 @@ function add_timestamps2(data, docid, f){
     add_audio_to_listq(f);
 }
 
-function signed_url_for_audio(bucket, key, urls, k) {
-    return getSignedUrlPromise(bucket, key)
-    .then(function(data){
-        urls[k] = data;
-    })
-    .then( () => { return { wav: k, wav_url: urls[k] } } );
-}
-
+// Manifest entry k to { wav, wav_url } — the same rule as the work page's
+// set_urlsx, from lib/ldcjs/s3_source.js. This file used to carry its own copy
+// of it, including the pasted block that took a bucket from urls[k] and a key
+// from k.
 function set_urls_source(k, ldc){
-    const found = s3url(k);
-    if(found.bucket) {
-        return set_urls3_source(found, k, ldc);
-        // .then( (x) => signed_url_for_audio(found.bucket, found.key, urls, x) )
-        // .then( () => k );
-    }
-    else{
-        const found2 = s3url(ldc.resources.urls[k]);
-        if(found2.bucket){
-            return set_urls3_source(found2, k, ldc);
-        }
-        else{
-            return set_urls2_source(k, ldc);
-        }
-    }
-}
-function set_urls3_source(found, k, ldc){
-    ldc.resources.bucket = found.bucket;
-    return Promise.resolve(
-        signed_url_for_audio(found.bucket, found.key, ldc.resources.urls, k)
-        .catch( () => alert('error, try refreshing') )
-    );
-}
-
-function set_urls2_source(k, ldc){
     const urls = ldc.resources.urls;
-    if(k.match(/^http/)) urls[k] = k;
-    if(!urls[k]) return;
-    if(urls[k].substr(0, 2) === 's3'){
-        if(urls[k] === 's3'){
-            return alert(`no bucket in the audio url for ${k} — the kit's source should be an s3:// url, an http url, or a path`);
-        }
-        else{
-            ldc.resources.bucket = urls[k].replace(/^s3(:\/\/)?/, '').replace(/\/.+/, '');
-            const bucket = ldc.resources.bucket;
-            let key = k.replace(bucket + '/', '').replace('filename_for_', '');
-            if(ldc.resources.original_s3_key) key = ldc.resources.original_s3_key;
-            return signed_url_for_audio(bucket, key, urls, k);
-            // .then( () => k );
-        }
-    }
-    else{
-        return Promise.resolve( { wav: k, wav_url: urls[k] } );
-    }
+    // A signing failure alerts here, as it always has; the other outcomes are
+    // returned as they stand.
+    if(entry_source(k, urls)) return resolve_audio(k, urls).catch( () => alert('error, try refreshing') );
+    return resolve_audio(k, urls);
 }
 
 function get_audio_buffer_info(k, ldc){
@@ -257,15 +214,12 @@ function add_sad(k, ldc){
     // f2 a
     // return
     // if(k.match(/\.json$/)) k = k.replace(/json$/, 'wav');
-    if(ldc.resources.bucket){
-        const bucket = ldc.resources.bucket;
-        let key = k; //.replace('10s.wav', '5s.wav')
-        if(key.startsWith("s3://")){
-            const idx = key.indexOf(bucket) + bucket.length + 1;
-            key = key.substring(idx);
-        }
-        return getSignedUrlPromise(bucket, key);
-    }
+    // Was a sixth copy of "find the bucket": ldc.resources.bucket, written as a
+    // side effect by whichever resolver ran last, with the key cut out of k by
+    // searching for the bucket name in it. The source rule in s3_source.js
+    // gives both directly, and nothing writes ldc.resources.bucket any more.
+    const src = entry_source(k, ldc.resources.urls);
+    if(src) return signed_url_for(src);
 }
     //     return getSignedUrlPromise(bucket, key).then(function(fn) {
     //       // inputs: ["/NIEUW02/promises/sad_in/#{w.wave_docid}.wav"]
@@ -415,7 +369,6 @@ function pad(x){
 export {
     docid2channel,
     add_save_asr,
-    signed_url_for_audio,
     set_urls_source,
     get_audio_buffer_info,
     fill_speakerm,

@@ -163,6 +163,9 @@ class TaskUsersController < ApplicationController
     @project = @task.project
     @kit_type = @kit.kit_type
     kit_source_helper
+    if (refusal = s3_source_refusal)
+      return redirect_to(root_path, flash: { error: refusal })
+    end
     render 'workflows/work'
   rescue Workflow::TaskLockError => e
     redirect_to root_path, :flash => {:info => e.to_s}
@@ -215,6 +218,9 @@ class TaskUsersController < ApplicationController
 
     @kit_type = @kit.kit_type
     kit_source_helper
+    if (refusal = s3_source_refusal)
+      return redirect_to(user_path(task_user.user), flash: { info: refusal })
+    end
     # raise @kit.inspect
     respond_to do |format|
       format.html #{ render "kit_types/kit_type/#{@kit.kit_type.meta['template']}" }
@@ -290,6 +296,11 @@ class TaskUsersController < ApplicationController
       hash['source']['size'] = @kit.source[:size] if @kit.source[:type] == 'local'
       data[:manifest] = @manifest if @manifest
       data[:initt] = hash
+      # Under per-project S3 a kit's s3:// source is a key under its project's
+      # prefix in the one bucket, so the client needs both to resolve it — see
+      # lib/ldcjs/s3_source.js. Absent when the mechanism is off, and the
+      # client then resolves s3:// sources exactly as before.
+      data[:s3_project] = { bucket: Rails.application.config.x.s3_bucket, project_id: s3_project_id } if s3_sessions_configured?
     else
       data[:local_audio_url] = "/workflows/#{@task_user.id}/work/#{@workflow.id}/local_audio"
     end
@@ -347,6 +358,31 @@ class TaskUsersController < ApplicationController
   end
 
   private
+
+  # The project whose S3 prefix this kit's s3:// source lives under, or nil
+  # when it has none. Kit belongs_to :task is optional and tasks.project_id is
+  # nullable, so either can be missing.
+  def s3_project_id
+    @kit&.task&.project_id
+  end
+
+  # Why this kit can't be shown under per-project S3, or nil if it can.
+  #
+  # The session policy is what actually stops a user reading another project's
+  # prefix. This makes the refusal legible: without it the page renders, the
+  # audio request comes back 403, and all anyone sees is a console error.
+  # Only s3:// sources the client resolves itself are affected — a Source row
+  # is served by this app, and local:// audio never leaves the browser.
+  def s3_source_refusal
+    return nil unless s3_sessions_configured?
+    return nil unless @source.nil? && @kit&.source_uid.to_s.start_with?('s3://')
+    project_id = s3_project_id
+    if project_id.nil?
+      "This kit's task belongs to no project, so its s3:// audio has nowhere to be found."
+    elsif !current_user.s3_read_project_ids.include?(project_id)
+      "You are not a member of this kit's project, so you can't read its audio."
+    end
+  end
 
   # Whether this visit would make a new kit for a local_audio task — the case
   # where the file has to be picked first. A user returning to a kit

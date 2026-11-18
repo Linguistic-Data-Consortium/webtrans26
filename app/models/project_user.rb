@@ -26,6 +26,20 @@ class ProjectUser < ActiveRecord::Base
   scope :by_project_and_user, lambda{ |project_id, user_id | where(:user_id => user_id, :project_id => project_id) }
   scope :project_owner, lambda{|project_id| where( :project_id => project_id, :owner => true)}
   
+  # Whether this member may write to the project's S3 prefix.
+  #
+  # Reading follows membership of the project; writing also needs membership of
+  # the project's upload task (Project#s3_upload_task). That membership is
+  # granted the way any task membership is, by a task or project admin, so the
+  # permission is something a higher role hands out rather than a role itself.
+  #
+  # The one place that decision lives: User#s3_write_project_ids and the
+  # session policy both ask this. No upload task means nobody writes.
+  def may_write_s3?
+    task = project&.s3_upload_task
+    task.present? && task.task_users.exists?(user_id: user_id)
+  end
+
   delegate :name, :to => :user, :prefix => true
            
   delegate :name, :to => :project, :prefix => true

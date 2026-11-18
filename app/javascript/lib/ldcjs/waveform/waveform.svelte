@@ -94,7 +94,6 @@
     import {
         docid2channel,
         add_save_asr,
-        signed_url_for_audio,
         set_urls_source,
         get_audio_buffer_info,
         fill_speakerm,
