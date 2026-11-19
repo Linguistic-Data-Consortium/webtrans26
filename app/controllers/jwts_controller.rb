@@ -11,7 +11,17 @@ class JwtsController < ApplicationController
   def create
     # The same answer for an inactive account as for a wrong password: sign-in
     # refuses inactive accounts, and so must this.
+    # And the same lockout as sign-in (SessionsController#create), or this
+    # would be a way to keep guessing a locked account's password.
     user = User.authenticate_by(params.permit(:email_address, :password))
+    account = user || User.find_by(email_address: params[:email_address].to_s)
+    if account&.locked?
+      user = nil
+    elsif user
+      user.clear_sign_in_failures
+    else
+      account&.register_failed_sign_in
+    end
     if user&.activated?
       encoded_token = encode(user)
       render json: { token: encoded_token }, status: :ok

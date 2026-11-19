@@ -62,6 +62,7 @@ class AccessLinksController < ApplicationController
 
     user.activate unless user.activated?
     user.clear_access_digest # single use
+    user.clear_sign_in_failures # an administrator's link is a way past a lock, too
     start_new_session_for user
     # The link is how someone gets in without knowing the password, a new
     # account's or a forgotten one, so they choose one now, without being asked

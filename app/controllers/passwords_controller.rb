@@ -56,8 +56,10 @@ class PasswordsController < ApplicationController
   def reset
     if @user.update(params.permit(:name, :password, :password_confirmation))
       session.delete(:password_reset_token)
-      # A reset is how you evict someone who knows the old password.
+      # A reset is how you evict someone who knows the old password, and how
+      # the owner of a locked account gets back in without waiting.
       @user.sessions.destroy_all
+      @user.clear_sign_in_failures
       redirect_to new_session_path, notice: "Password and profile have been updated."
     else
       error_message = @user.errors.full_messages.join(", ")

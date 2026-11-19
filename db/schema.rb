@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_19_150000) do
   create_table "actions", force: :cascade do |t|
     t.bigint "client_time"
     t.datetime "created_at", null: false
@@ -515,6 +515,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
     t.datetime "reset_sent_at"
     t.datetime "updated_at", null: false
     t.datetime "password_changed_at"
+    t.integer "failed_sign_in_count", default: 0, null: false
+    t.datetime "locked_until"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 

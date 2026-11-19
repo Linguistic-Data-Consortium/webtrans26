@@ -103,7 +103,7 @@ The auth surface is small and entirely available to anyone (signed in or not), s
 
 | What | Where | Notes |
 |---|---|---|
-| Sign in | `/session/new` (form POSTs to `/session` → `sessions#create`) | Requires email + password. **Rate-limited** to 10 attempts per 3 minutes per IP — exceeding it triggers *"Try again later."* On success, redirects to the user's dashboard (`/users/<id>`). Account must be activated. |
+| Sign in | `/session/new` (form POSTs to `/session` → `sessions#create`) | Requires email + password. **Rate-limited** to 10 attempts per 3 minutes per IP — exceeding it triggers *"Try again later."* On success, redirects to the user's dashboard (`/users/<id>`). Account must be activated. **Lockout:** 3 wrong passwords in a row lock the account for 30 minutes, during which even the right password is refused; a successful sign-in resets the count. A locked account gets the same message as a wrong password or an unknown address (*"Try another email address or password. After 3 failed attempts in a row, an account is locked for 30 minutes."*), so the form never reveals which addresses have accounts or which are locked. Completing a password reset, or opening an access link from an administrator, unlocks it straight away. |
 | Sign out | `DELETE /session` → `sessions#destroy` | Terminates the current session and redirects to `/session/new`. Available wherever the dashboard renders a sign-out control. |
 
 #### Reset password (and optionally rename) ([signed-out, no role required])

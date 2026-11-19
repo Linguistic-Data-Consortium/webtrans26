@@ -6,16 +6,29 @@ class SessionsController < ApplicationController
   def new
   end
 
+  # One answer for every failure: a wrong password, an unknown address, and a
+  # locked account (even with the right password). Telling them apart would say
+  # which addresses have accounts, and which are locked.
+  FAILED = "Try another email address or password. After #{User::LOCKOUT_ATTEMPTS} failed attempts " \
+    "in a row, an account is locked for #{User::LOCKOUT_PERIOD.in_minutes.to_i} minutes."
+
   def create
-    if user = User.authenticate_by(params.permit(:email_address, :password))
-      if user.activated?
-        start_new_session_for user
-        redirect_to after_authentication_url
-      else
-        redirect_to new_session_path, alert: "Your account hasn't been activated yet."
-      end
+    # authenticate_by takes the same time whether or not the address exists.
+    user = User.authenticate_by(params.permit(:email_address, :password))
+    account = user || User.find_by(email_address: params[:email_address].to_s)
+
+    if account&.locked?
+      redirect_to new_session_path, alert: FAILED
+    elsif user.nil?
+      account&.register_failed_sign_in
+      redirect_to new_session_path, alert: FAILED
+    elsif user.activated?
+      user.clear_sign_in_failures
+      start_new_session_for user
+      redirect_to after_authentication_url
     else
-      redirect_to new_session_path, alert: "Try another email address or password."
+      user.clear_sign_in_failures
+      redirect_to new_session_path, alert: "Your account hasn't been activated yet."
     end
   end
 

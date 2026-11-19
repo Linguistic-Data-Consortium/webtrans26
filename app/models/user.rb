@@ -35,6 +35,33 @@ class User < ApplicationRecord
     self.password = self.password_confirmation = SecureRandom.base64(48)
   end
 
+  # Sign-in lockout: this many wrong passwords in a row lock the account for
+  # LOCKOUT_PERIOD, during which even the right one is refused.
+  LOCKOUT_ATTEMPTS = 3
+  LOCKOUT_PERIOD = 30.minutes
+
+  def locked?
+    locked_until.present? && locked_until > Time.current
+  end
+
+  # Count a wrong password, locking the account on the LOCKOUT_ATTEMPTS-th. One
+  # UPDATE, so attempts arriving together can't each read the old count. The
+  # count starts again from zero once a lock is set, so an account whose lock
+  # has run out gets the full number of tries.
+  def register_failed_sign_in
+    User.where(id: id).update_all([
+      "failed_sign_in_count = CASE WHEN failed_sign_in_count + 1 >= ? THEN 0 ELSE failed_sign_in_count + 1 END, " \
+      "locked_until = CASE WHEN failed_sign_in_count + 1 >= ? THEN ? ELSE locked_until END",
+      LOCKOUT_ATTEMPTS, LOCKOUT_ATTEMPTS, LOCKOUT_PERIOD.from_now
+    ])
+  end
+
+  # A right password, a completed reset, or an access link: start counting again.
+  def clear_sign_in_failures
+    return if failed_sign_in_count.zero? && locked_until.nil?
+    update_columns(failed_sign_in_count: 0, locked_until: nil)
+  end
+
   # Chosen too long ago, or never chosen at all (a generated password, or one
   # from before this policy, which nothing can check against it).
   def password_expired?
