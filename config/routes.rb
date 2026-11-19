@@ -164,6 +164,7 @@ Rails.application.routes.draw do
 
   resources :invites
   # Signed-in password change (the dashboard's Account tab).
+  get '/account/password/edit', to: 'account_passwords#edit', as: :edit_account_password
   patch '/account/password', to: 'account_passwords#update', as: :account_password
   # One-time sign-in links: index/create are the admin side (JSON), and
   # /access/:id/:token is the link a new user clicks.

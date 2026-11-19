@@ -45,6 +45,12 @@ module Webtrans26
     # land on a "please wait for activation" page instead.
     config.x.mail_enabled = ENV["MAIL_ENABLED"] == "true"
 
+    # Password policy (PasswordPolicy, User#password_expired?). A chosen
+    # password must be changed after PASSWORD_MAX_AGE_DAYS, and may not repeat
+    # any earlier one; PASSWORD_HISTORY, when set, limits that to the last N.
+    config.x.password_max_age_days = Integer(ENV.fetch("PASSWORD_MAX_AGE_DAYS", "90"))
+    config.x.password_history = ENV["PASSWORD_HISTORY"].presence&.then { |n| Integer(n) }
+
     # Set by bin/repl and the transcription REPL/auto harnesses. When on, the
     # front end suppresses the training guide popup so the scripted runs aren't
     # blocked by it (see app/javascript/lib/transcription_guide.svelte).

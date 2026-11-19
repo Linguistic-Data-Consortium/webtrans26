@@ -2535,7 +2535,7 @@
                     <div>
                         <Label for="account_new_password">New password</Label>
                         <Input type="password" id="account_new_password" autocomplete="new-password" bind:value={account_new_password} />
-                        <div class="pt-1 text-xs text-gray-600">At least 8 characters.</div>
+                        <div class="pt-1 text-xs text-gray-600">At least 16 characters, with an uppercase letter, a lowercase letter, a number and a special character. No common words or patterns, nothing from your username or email address, and not one you've used before.</div>
                     </div>
                     <div>
                         <Label for="account_confirm_password">Confirm new password</Label>

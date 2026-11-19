@@ -5,8 +5,8 @@ class UserTest < ActiveSupport::TestCase
     {
       name: "newuser",
       email_address: "new@example.com",
-      password: "password123",
-      password_confirmation: "password123"
+      password: GOOD_PASSWORD,
+      password_confirmation: GOOD_PASSWORD
     }.merge(overrides)
   end
 
@@ -60,10 +60,83 @@ class UserTest < ActiveSupport::TestCase
     assert user.errors[:email_address].any?
   end
 
-  test "requires password at least 8 chars" do
-    user = User.new(valid_user_attrs(password: "short", password_confirmation: "short"))
+  # ── password policy ──────────────────────────────────────────────────────
+
+  def password_errors(password, attrs = {})
+    user = User.new(valid_user_attrs(attrs.merge(password: password, password_confirmation: password)))
+    user.valid?
+    user.errors[:password]
+  end
+
+  test "a password meeting every rule is accepted" do
+    assert_empty password_errors(GOOD_PASSWORD)
+  end
+
+  test "a password needs at least 16 characters" do
+    assert_includes password_errors("Sh0rt^Glacier"), "must be at least 16 characters"
+  end
+
+  test "a password needs upper and lower case, a number and a special character" do
+    assert_includes password_errors("tromboneglaciermild"),
+      "must include an uppercase letter, a number, and a special character"
+    assert_empty password_errors("Trombone-Glacier-Mild9")
+  end
+
+  test "a password can't contain a common word, even dressed up" do
+    assert_includes password_errors("Glacier#P@ssw0rd-Mild"), %(must not contain a common word or pattern ("password"))
+    assert_includes password_errors("Glacier#Qwerty7-Mildly"), %(must not contain a common word or pattern ("qwerty"))
+    assert_includes password_errors("Glacier#Mild-12345678"), %(must not contain a common word or pattern ("1234"))
+  end
+
+  test "a password can't contain the username or any part of the email address" do
+    msg = "must not contain your username or email address"
+    assert_includes password_errors("Newuser#Glacier9Mild"), msg
+    assert_includes password_errors("Glacier#Mild9Example", email_address: "jo@example.com"), msg
+    assert_includes password_errors("Glacier#Mild9Smith!", email_address: "jane.smith@lab.org"), msg
+  end
+
+  test "a password can't be the current one or any used before" do
+    user = User.create!(valid_user_attrs)
+    user.update!(password: OTHER_GOOD_PASSWORD, password_confirmation: OTHER_GOOD_PASSWORD)
+
+    user.password = user.password_confirmation = OTHER_GOOD_PASSWORD # the current one
     assert_not user.valid?
-    assert user.errors[:password].any?
+    assert_includes user.errors[:password], "must not be one you've used before"
+
+    user.password = user.password_confirmation = GOOD_PASSWORD # the one before
+    assert_not user.valid?
+    assert_includes user.errors[:password], "must not be one you've used before"
+  end
+
+  test "PASSWORD_HISTORY limits how far back reuse is refused" do
+    Rails.application.config.x.password_history = 1
+    user = User.create!(valid_user_attrs)
+    user.update!(password: OTHER_GOOD_PASSWORD, password_confirmation: OTHER_GOOD_PASSWORD)
+    assert_equal 1, user.password_histories.count
+    user.password = user.password_confirmation = GOOD_PASSWORD # two back: allowed again
+    assert user.valid?, user.errors.full_messages.inspect
+  ensure
+    Rails.application.config.x.password_history = nil
+  end
+
+  test "choosing a password stamps it; a generated one doesn't count as chosen" do
+    user = User.create!(valid_user_attrs)
+    assert_not user.password_expired?
+    assert_equal 1, user.password_histories.count
+
+    generated = User.new(name: "gen", email_address: "gen@example.com")
+    generated.assign_generated_password
+    generated.save!
+    assert generated.password_expired?, "nobody has chosen this account's password yet"
+    assert_empty generated.password_histories
+  end
+
+  test "a password expires once it's older than PASSWORD_MAX_AGE_DAYS" do
+    user = User.create!(valid_user_attrs)
+    user.update_columns(password_changed_at: (User.password_max_age + 1.day).ago)
+    assert user.password_expired?
+    user.update_columns(password_changed_at: (User.password_max_age - 1.day).ago)
+    assert_not user.password_expired?
   end
 
   test "allows nil password on existing user" do

@@ -1,0 +1,61 @@
+<%# Where a signed-in user is sent when their password has expired or was never
+    chosen (ApplicationController#require_unexpired_password), and where an
+    access link lands. Posts to AccountPasswordsController#update. %>
+<div class="min-h-screen bg-gray-50 py-1 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <h2 class="mt-1 text-3xl font-bold tracking-tight text-gray-900">Choose a new password</h2>
+    <p class="mt-2 text-sm text-gray-600">
+      <% if !current_user.password_changed_at %>
+        Your account needs a password of your own before you continue.
+      <% elsif @expired %>
+        Your password is more than <%= User.password_max_age.in_days.to_i %> days old. Choose a new one to continue.
+      <% else %>
+        Change the password you sign in with.
+      <% end %>
+    </p>
+  </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-6 px-4 shadow sm:rounded-lg sm:px-10">
+      <%= form_with url: account_password_path, method: :patch, local: true, class: "space-y-6" do |form| %>
+        <% if @needs_current %>
+          <div>
+            <%= form.label :current_password, "Current password", class: "block text-sm font-medium leading-6 text-gray-900" %>
+            <div class="mt-2">
+              <%= form.password_field :current_password, required: true, autocomplete: "current-password",
+                  class: "block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3" %>
+            </div>
+          </div>
+        <% end %>
+
+        <div>
+          <%= form.label :password, "New password", class: "block text-sm font-medium leading-6 text-gray-900" %>
+          <div class="mt-2">
+            <%= form.password_field :password, required: true, autocomplete: "new-password",
+                minlength: PasswordPolicy::MIN_LENGTH, maxlength: 72,
+                class: "block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3" %>
+          </div>
+          <%= render "shared/password_rules" %>
+        </div>
+
+        <div>
+          <%= form.label :password_confirmation, "Confirm new password", class: "block text-sm font-medium leading-6 text-gray-900" %>
+          <div class="mt-2">
+            <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password",
+                maxlength: 72, class: "block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3" %>
+          </div>
+        </div>
+
+        <div>
+          <%= form.submit "Set password",
+              class: "flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500" %>
+        </div>
+      <% end %>
+
+      <div class="mt-6 text-center">
+        <%= button_to "Sign out", session_path, method: :delete, form: { class: "inline" },
+            class: "font-medium text-indigo-600 hover:text-indigo-500" %>
+      </div>
+    </div>
+  </div>
+</div>

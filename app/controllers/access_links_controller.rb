@@ -8,6 +8,7 @@
 # fresh link or goes through password recovery.
 class AccessLinksController < ApplicationController
   allow_unauthenticated_access only: %i[ show ]
+  skip_before_action :require_unexpired_password, only: %i[ show ]
 
   # Outstanding (unused) links, so an administrator can see who is still
   # waiting to click one.
@@ -62,7 +63,11 @@ class AccessLinksController < ApplicationController
     user.activate unless user.activated?
     user.clear_access_digest # single use
     start_new_session_for user
-    redirect_to root_path, notice: "Welcome, #{user.name}."
+    # The link is how someone gets in without knowing the password, a new
+    # account's or a forgotten one, so they choose one now, without being asked
+    # for the old one. The flag lives in this session only.
+    session[:password_set_without_current] = true
+    redirect_to edit_account_password_path, notice: "Welcome, #{user.name}. Choose a password to finish signing in."
   end
 
   private
@@ -76,13 +81,8 @@ class AccessLinksController < ApplicationController
   end
 
   def create_and_mint(name, email)
-    password = User.new_token
-    user = User.new(
-      name: name,
-      email_address: email,
-      password: password,
-      password_confirmation: password
-    )
+    user = User.new(name: name, email_address: email)
+    user.assign_generated_password
     if user.save
       mint user
     else

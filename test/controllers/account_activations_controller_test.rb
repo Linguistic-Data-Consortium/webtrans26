@@ -7,8 +7,8 @@ class AccountActivationsControllerTest < ActionDispatch::IntegrationTest
     user = User.create!(
       name: "pending_u",
       email_address: "pending_u@example.com",
-      password: "password123",
-      password_confirmation: "password123"
+      password: GOOD_PASSWORD,
+      password_confirmation: GOOD_PASSWORD
     )
     user.update_columns(activated: false, activated_at: nil, confirmed_at: nil)
     user

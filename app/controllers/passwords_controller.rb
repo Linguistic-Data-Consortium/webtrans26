@@ -4,7 +4,7 @@ class PasswordsController < ApplicationController
   before_action :set_user_from_session, only: %i[ reset ]
 
   MAILLESS_NOTICE = "This instance doesn't send email, so passwords can't be reset here. " \
-    "Ask a portal manager or administrator for a sign-in link, then change your password on the Account tab."
+    "Ask a portal manager or administrator for a sign-in link; opening it lets you choose a new password."
 
   def new
   end

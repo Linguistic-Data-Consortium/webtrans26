@@ -108,12 +108,12 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
   test "PATCH /passwords/:token updates the password with a valid token" do
     token = users(:alice).password_reset_token
     open_reset_link(token)
-    submit_reset("brand-new-pw", "brand-new-pw")
+    submit_reset(GOOD_PASSWORD, GOOD_PASSWORD)
     assert_redirected_to new_session_path
     assert_match(/updated/i, flash[:notice])
 
     users(:alice).reload
-    assert users(:alice).authenticate("brand-new-pw")
+    assert users(:alice).authenticate(GOOD_PASSWORD)
     assert_not users(:alice).authenticate("password123")
   end
 
@@ -121,14 +121,14 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     alice = users(:alice)
     alice.sessions.create!(user_agent: "elsewhere", ip_address: "10.0.0.1")
     open_reset_link(alice.password_reset_token)
-    submit_reset("brand-new-pw")
+    submit_reset(GOOD_PASSWORD)
     assert_empty alice.reload.sessions
   end
 
   test "PATCH /passwords/:token with mismatched confirmation redirects back with alert" do
     token = users(:alice).password_reset_token
     open_reset_link(token)
-    submit_reset("brand-new-pw", "different")
+    submit_reset(GOOD_PASSWORD, "different")
     assert_redirected_to reset_password_path
     assert flash[:alert].present?
     assert users(:alice).reload.authenticate("password123"), "password should be unchanged"
@@ -146,7 +146,7 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
   test "reset token cannot be reused after the password is changed (salt rotates)" do
     token = users(:alice).password_reset_token
     open_reset_link(token)
-    submit_reset("brand-new-pw", "brand-new-pw")
+    submit_reset(GOOD_PASSWORD, GOOD_PASSWORD)
     assert_redirected_to new_session_path
 
     # The reset token is scoped to the old password_salt — after a successful reset the token invalidates.
@@ -157,10 +157,10 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
 
   test "a finished reset can't be submitted again from the same browser" do
     open_reset_link(users(:alice).password_reset_token)
-    submit_reset("brand-new-pw")
-    submit_reset("second-try-pw")
+    submit_reset(GOOD_PASSWORD)
+    submit_reset(OTHER_GOOD_PASSWORD)
     assert_redirected_to new_password_path
-    assert users(:alice).reload.authenticate("brand-new-pw")
+    assert users(:alice).reload.authenticate(GOOD_PASSWORD)
   end
 
   # ── the link as emailed: /passwords/reset#<token> ─────────────────────────
@@ -188,8 +188,8 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to reset_password_path
     follow_redirect!
     assert_select "input[name='password']"
-    submit_reset("brand-new-pw")
-    assert users(:alice).reload.authenticate("brand-new-pw")
+    submit_reset(GOOD_PASSWORD)
+    assert users(:alice).reload.authenticate(GOOD_PASSWORD)
   end
 
   test "claiming a bad token sends you back to request a new link" do

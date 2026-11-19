@@ -16,7 +16,8 @@ module TranscriptionReplLib
   # tone plus a TSV transcript, so the tool loads pre-populated. Both files live in
   # public/ and are served statically; the repl manifest patch maps the .json uid.
   WRAPPER_JSON_PATH = "/test_tone_10s.json"
-  PASSWORD = "password123"
+  # Meets PasswordPolicy, which applies to any password set from here on.
+  PASSWORD = "Tr0mbone^Glacier^Mild"
 
   module_function
 
@@ -79,6 +80,11 @@ module TranscriptionReplLib
       u.password_confirmation = PASSWORD
     end
     user.update!(activated: true, activated_at: Time.now) unless user.activated?
+    # A repl database from before the password policy still has the old
+    # password, and no date it was chosen, which would send the run to the
+    # change-password form. Bring it up to date either way.
+    user.update!(password: PASSWORD, password_confirmation: PASSWORD) unless user.authenticate(PASSWORD)
+    user.update_columns(password_changed_at: Time.now) if user.password_expired?
 
     class_def = ClassDef.where(name: "ArcTranscription").first_or_create!
     root_nc = NodeClass.where(name: "Root").first_or_create!

@@ -90,7 +90,7 @@ The auth surface is small and entirely available to anyone (signed in or not), s
 | What | Where | Notes |
 |---|---|---|
 | Open the sign-up form | "Create account" link on `/session/new`, or visit `/signup` directly | |
-| Submit name, email, password, password confirmation | Form on `/signup` (POSTs to `/signup` → `users#create`) | Username: 1–30 chars, letters/digits/`_`/`-`/`.`, case-insensitive unique. Email: standard format, max 255, case-insensitive unique. Password: ≥ 8 chars. |
+| Submit name, email, password, password confirmation | Form on `/signup` (POSTs to `/signup` → `users#create`) | Username: 1–30 chars, letters/digits/`_`/`-`/`.`, case-insensitive unique. Email: standard format, max 255, case-insensitive unique. Password: see *Password rules* below. |
 | Receive activation email | `UserMailer.account_activation` is sent automatically on successful sign-up | The email contains a single link to `/account_activations/<token>/edit?email=…` that activates the account. **Exception:** in the `development` environment the account is auto-activated and the user is signed in immediately — no email step. |
 
 #### Activate the account ([signed-out, link from email])
@@ -112,6 +112,41 @@ The auth surface is small and entirely available to anyone (signed in or not), s
 |---|---|---|
 | Request a reset link | "Username/password recovery" link on `/session/new`, or `/passwords/new` directly (form POSTs to `/passwords` → `passwords#create`) | Sends `PasswordsMailer.reset` to the email address *if* one matches, but the page always shows the same notice (*"Password reset instructions sent (if user with that email address exists)."*) regardless — so an attacker can't enumerate users. |
 | Set a new password | Click the reset link in the email → `/passwords/reset#<token>`. The token is in the fragment, which the browser never sends; the page's script removes it from the address bar and posts it (`passwords#claim`), the server holds it in the session, and the form PATCHes `/passwords/reset` (`passwords#reset`). So no request path, and no log, ever carries a live token. (`/passwords/<token>/edit`, the older form of the link, still works for links already sent.) Needs JavaScript. | The form lets you update **password + password confirmation** *and* the **username**. Token is single-signed and expires; an invalid/expired token redirects back to `/passwords/new` with *"Password reset link is invalid or has expired."* |
+
+#### Password rules
+
+Every password someone chooses — at sign-up, in a reset, on the Account tab, or
+on the change form below — must:
+
+- be at least **16 characters**;
+- include an **uppercase letter, a lowercase letter, a number and a special
+  character** (anything that isn't a letter or digit, a space included);
+- not contain a **common word or pattern** — the list is
+  `config/password_blocklist.txt`: frequent passwords, keyboard runs and
+  repeats, months, days, seasons, and this application's own name and subject.
+  Look-alike swaps don't help (`P@ssw0rd` still contains *password*). Ordinary
+  words outside the list are fine, so a phrase of unrelated words with a few
+  symbols works well;
+- not contain the account's **username or email address**, or a part of either
+  three characters or longer (`jane.doe@lab.org` rules out *jane*, *doe*,
+  *janedoe* and *lab*). The app stores no date of birth, so that can't be
+  checked;
+- not be **one the account has used before** — every earlier one, unless
+  `PASSWORD_HISTORY` limits it to the last N.
+
+**Passwords expire** after 90 days (`PASSWORD_MAX_AGE_DAYS`). On the next
+request after that, the user is sent to **Choose a new password**
+(`/account/password/edit`) and can do nothing else until they have; requests
+from the dashboard get a 403 saying so. The same happens to an account whose
+password was never chosen by its user: one created by an access link or an
+invite, or **any account from before these rules** — a stored password can't be
+checked against them, so everyone chooses a new one at their first sign-in.
+
+The change form asks for the current password, except straight after signing in
+with an access link (§2.2.7): that link is how someone gets in without knowing
+it, so it lets them choose one without, once. Passwords the app makes up itself
+— for an account nobody has chosen one for yet — are exempt from the rules,
+and never count as chosen.
 
 #### View own profile / dashboard ([signed-in user only])
 
@@ -235,7 +270,7 @@ the account and hands you a URL to pass on however you like — chat, phone, pap
 | What | Detail |
 |---|---|
 | **Create Link** (name + email) | Creates an inactive account with a random password nobody needs to know, and returns a link. `POST /access_links`, gated on `portal_manager?` (which includes admins). |
-| The link | `/access/<user id>/<token>`. Opening it activates the account, starts a session, and signs the person straight in — no password prompt. |
+| The link | `/access/<user id>/<token>`. Opening it activates the account, starts a session, and takes the person straight to **Choose a new password**, without asking for the old one (*Password rules*, §2.1). |
 | **Single use** | The click clears the stored digest, so the same URL won't work twice. A refresh, a second click, or a later sign-out all mean the user needs a new link. |
 | **Expiry** | A link not used within 7 days stops working; create another. Invitation links expire the same way. |
 | Re-issuing | Creating a link for an address that already exists doesn't make a second account — it issues a fresh link for that user and keeps their name. This is the recovery path for someone who signed out. |
@@ -264,7 +299,7 @@ Your own settings. Visible to every signed-in user.
 
 | What | Detail |
 |---|---|
-| **Change password** (current password, new password, confirmation) | Requires your existing password, so a borrowed browser can't quietly change it. The new one must be at least 8 characters and match its confirmation. `PATCH /account/password`, which requires authentication and is rate-limited to 10 attempts per 3 minutes. |
+| **Change password** (current password, new password, confirmation) | Requires your existing password, so a borrowed browser can't quietly change it. The new one must follow the *Password rules* (§2.1) and match its confirmation. `PATCH /account/password`, which requires authentication and is rate-limited to 10 attempts per 3 minutes. |
 | Other devices | A successful change destroys every other session for your account and tells you how many — the current browser stays signed in. That's how you evict a device you no longer control, or retire a spent access link. |
 | Idle sign-out | A browser that hasn't used its session for 14 days is signed out. |
 

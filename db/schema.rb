@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_19_120000) do
   create_table "actions", force: :cascade do |t|
     t.bigint "client_time"
     t.datetime "created_at", null: false
@@ -301,6 +301,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_120000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "password_histories", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "password_digest", null: false
+    t.datetime "created_at", null: false
+    t.index ["user_id"], name: "index_password_histories_on_user_id"
+  end
+
   create_table "project_users", force: :cascade do |t|
     t.boolean "admin", default: false
     t.datetime "created_at", null: false
@@ -507,6 +514,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_120000) do
     t.string "reset_digest"
     t.datetime "reset_sent_at"
     t.datetime "updated_at", null: false
+    t.datetime "password_changed_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 

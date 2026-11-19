@@ -34,8 +34,7 @@
           = f.label :password
         .form-group-body
           = f.password_field :password, class: 'border rounded w-full'
-      %div
-        At least 8 characters.
+      = render "shared/password_rules"
       %br
       .form-group.mb-8
         .form-group-header

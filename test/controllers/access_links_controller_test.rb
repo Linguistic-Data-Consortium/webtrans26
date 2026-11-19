@@ -116,7 +116,7 @@ class AccessLinksControllerTest < ActionDispatch::IntegrationTest
     assert_difference -> { user.sessions.count }, 1 do
       get url
     end
-    assert_redirected_to root_path
+    assert_redirected_to edit_account_password_path # to choose a password
     assert user.reload.activated, "the account is activated by the click"
     assert_nil user.access_digest, "the link is spent"
   end
@@ -142,7 +142,7 @@ class AccessLinksControllerTest < ActionDispatch::IntegrationTest
 
     user = User.find_by(email_address: "oneshot@example.com")
     get url
-    assert_redirected_to root_path
+    assert_redirected_to edit_account_password_path
 
     assert_no_difference -> { user.sessions.count } do
       get url

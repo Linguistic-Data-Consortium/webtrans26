@@ -3,6 +3,9 @@ class ApplicationController < ActionController::Base
   include SessionsHelper
   # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
   allow_browser versions: :modern
+  # A password past its age, or never chosen, has to be replaced before
+  # anything else (AccountPasswordsController#edit).
+  before_action :require_unexpired_password
 
   # Handle Rack::Attack rate limiting
   rescue_from Rack::Attack::Throttle do |exception|
@@ -145,6 +148,17 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  def require_unexpired_password
+    return unless authenticated? && current_user&.password_expired?
+    respond_to do |format|
+      format.json do
+        render json: { error: "Your password has expired. Choose a new one to continue.", password_expired: true },
+               status: :forbidden
+      end
+      format.any { redirect_to edit_account_password_path }
+    end
+  end
 
   # Who may do what with one kit. The roles here are the ones task_admin? and
   # friends check, but taken from the kit rather than from params[:id], so they

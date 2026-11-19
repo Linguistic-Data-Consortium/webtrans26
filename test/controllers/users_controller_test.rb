@@ -8,8 +8,8 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
       user: {
         name: "signup_user",
         email_address: "signup@example.com",
-        password: "password123",
-        password_confirmation: "password123"
+        password: GOOD_PASSWORD,
+        password_confirmation: GOOD_PASSWORD
       }.merge(overrides)
     }
   end

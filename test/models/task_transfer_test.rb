@@ -153,7 +153,7 @@ class TaskTransferTest < ActiveSupport::TestCase
     # A different user takes the id the dump's rows point at, so a copy that
     # ignored the mapping would hand this task's kits to the wrong person.
     squatter = User.create!(id: was, email_address: "squatter@example.com", name: "squatter",
-                            password: "password123", password_confirmation: "password123")
+                            password: GOOD_PASSWORD, password_confirmation: GOOD_PASSWORD)
     TaskTransfer.import(dump)
 
     alice = User.find_by!(email_address: users(:alice).email_address)

@@ -12,7 +12,34 @@ class User < ApplicationRecord
   VALID_EMAIL_REGEX = /\A[-\w+.]+@([-a-z\d]+\.)+[a-z]+\z/i
   validates :email_address, presence: true, length: { maximum: 255 }, format: { with: VALID_EMAIL_REGEX }, uniqueness: { case_sensitive: false }
 
-  validates :password, presence: true, length: { minimum: 8 }, allow_nil: true
+  validates :password, presence: true, allow_nil: true
+  # The rules for a chosen password (PasswordPolicy). A password the app makes
+  # up itself, for an account nobody has chosen one for yet, is exempt.
+  validate :password_meets_policy, if: -> { password.present? && !@password_generated }
+
+  has_many :password_histories, -> { order(created_at: :desc) }, dependent: :delete_all
+  before_save :stamp_password_change, if: :will_save_change_to_password_digest?
+  after_save :remember_password, if: :saved_change_to_password_digest?
+
+  # How long a chosen password lasts before it must be changed, and how many
+  # earlier ones may not be chosen again (nil: all of them). Set by
+  # PASSWORD_MAX_AGE_DAYS and PASSWORD_HISTORY (config/application.rb).
+  def self.password_max_age = Rails.application.config.x.password_max_age_days.days
+  def self.password_history_count = Rails.application.config.x.password_history
+
+  # Give the account a long random password nobody knows, as access links,
+  # invites and anonymous accounts need. It isn't the user's choice, so it
+  # doesn't count as one: the account is left needing a password chosen.
+  def assign_generated_password
+    @password_generated = true
+    self.password = self.password_confirmation = SecureRandom.base64(48)
+  end
+
+  # Chosen too long ago, or never chosen at all (a generated password, or one
+  # from before this policy, which nothing can check against it).
+  def password_expired?
+    password_changed_at.nil? || password_changed_at < User.password_max_age.ago
+  end
 
   scope :all_activated, -> { where(:activated => true) }
   has_many :project_users, :dependent => :destroy
@@ -45,8 +72,7 @@ class User < ApplicationRecord
 
   def self.make_anon
     name = new_token
-    pw = new_token
-    new name: name, email_address: "#{name}@example.org", password: pw, password_confirmation: pw, anon: true
+    new(name: name, email_address: "#{name}@example.org", anon: true).tap(&:assign_generated_password)
   end
 
   def self.digest(string)
@@ -204,7 +230,7 @@ class User < ApplicationRecord
 
   def create_invite_digest(sent_by)
     self.invite_token  = User.new_token
-    self.password = User.new_token # avoid db error
+    assign_generated_password # avoid db error
     update_attribute(:invite_digest, User.digest(invite_token))
     update_attribute(:invite_sent_at, Time.zone.now)
     update_attribute(:invite_sent_by, sent_by)
@@ -221,6 +247,26 @@ class User < ApplicationRecord
   end
 
   private
+
+  def password_meets_policy
+    PasswordPolicy.errors_for(password, self).each { |message| errors.add(:password, message) }
+  end
+
+  def stamp_password_change
+    self.password_changed_at = @password_generated ? nil : Time.current
+  end
+
+  # Keep the chosen password's digest, and only as many as the policy looks at.
+  def remember_password
+    if @password_generated
+      @password_generated = false
+      return
+    end
+    password_histories.create!(password_digest: password_digest)
+    return unless (keep = User.password_history_count)
+    stale = password_histories.offset(keep).pluck(:id)
+    PasswordHistory.where(id: stale).delete_all if stale.any?
+  end
 
   def create_activation_digest
     self.activation_token  = User.new_token

@@ -4,6 +4,12 @@ require "rails/test_help"
 
 Rack::Attack.enabled = false
 
+# Passwords that meet PasswordPolicy, for tests that set one. The fixtures'
+# "password123" is a stored digest from before the policy, which signs in but
+# could never be chosen now.
+GOOD_PASSWORD = "Tr0mbone^Glacier^Mild"
+OTHER_GOOD_PASSWORD = "Velvet#Kettle7Orbit!"
+
 # Vite tag helpers are stubbed to no-ops by default so most tests can render layouts without
 # depending on a built Vite manifest. System tests that need to exercise the real Svelte app
 # can toggle this off by setting ViteStub.enabled = false (see test/system/dashboard_test.rb).

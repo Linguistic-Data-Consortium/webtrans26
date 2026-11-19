@@ -22,7 +22,7 @@ class PasswordResetTest < ApplicationSystemTestCase
   test "with mail enabled, a user can reset their password via the email link" do
     with_mail_enabled do
       user = users(:alice)
-      new_password = "fresh-new-pw"
+      new_password = GOOD_PASSWORD
 
       # Step 1: request the reset from the sign-in page
       visit new_session_url
