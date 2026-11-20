@@ -5,9 +5,8 @@ class User < ApplicationRecord
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
 
-  attr_accessor :remember_token, :activation_token, :reset_token, :invite_token, :access_token
+  attr_accessor :remember_token, :reset_token, :invite_token, :access_token
   # before_save :downcase_email
-  before_create :create_activation_digest
   VALID_USERNAME_REGEX  = /\A[-a-zA-Z0-9_.]+\Z/
   validates :name, presence: true, length: { maximum: 30 }, format: { with: VALID_USERNAME_REGEX }, uniqueness: { case_sensitive: false }
   VALID_EMAIL_REGEX = /\A[-\w+.]+@([-a-z\d]+\.)+[a-z]+\z/i
@@ -213,10 +212,6 @@ class User < ApplicationRecord
     end
   end
 
-  def send_activation_email
-    UserMailer.account_activation(self).deliver_now
-  end
-
   def create_reset_digest
     self.reset_token = User.new_token
     update_attribute(:reset_digest,  User.digest(reset_token))
@@ -328,12 +323,6 @@ class User < ApplicationRecord
     UserMailer.invite(self).deliver_now
   end
 
-  def send_activation_email_after_updating_digest
-    create_activation_digest
-    save
-    send_activation_email
-  end
-
   private
 
   def password_meets_policy
@@ -356,9 +345,5 @@ class User < ApplicationRecord
     PasswordHistory.where(id: stale).delete_all if stale.any?
   end
 
-  def create_activation_digest
-    self.activation_token  = User.new_token
-    self.activation_digest = User.digest(activation_token)
-  end
 
 end

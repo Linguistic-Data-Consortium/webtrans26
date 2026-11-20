@@ -82,23 +82,22 @@ For a feature gated on a role, *anyone above it on the same line* can do it too.
 
 ## 2. Functionality
 
-### 2.1 Sign-up, sign-in, and account
+### 2.1 Getting an account, signing in
 
 The auth surface is small and entirely available to anyone (signed in or not), since the whole point is to *get* you signed in.
 
-#### Create an account ([signed-out only])
+#### Getting an account (by invitation only)
+
+There is no signup. A portal manager or administrator creates the account on
+the **Invites** tab (*Invite someone*, §2.2.7) and sends the person a one-time
+link, valid for 7 days — copied into an email of their own, or, on an instance
+with outbound mail, emailed from the app as well. Opening it:
 
 | What | Where | Notes |
 |---|---|---|
-| Open the sign-up form | "Create account" link on `/session/new`, or visit `/signup` directly | |
-| Submit name, email, password, password confirmation | Form on `/signup` (POSTs to `/signup` → `users#create`) | Username: 1–30 chars, letters/digits/`_`/`-`/`.`, case-insensitive unique. Email: standard format, max 255, case-insensitive unique. Password: see *Password rules* below. |
-| Receive activation email | `UserMailer.account_activation` is sent automatically on successful sign-up | The email contains a single link to `/account_activations/<token>/edit?email=…` that activates the account. **Exception:** in the `development` environment the account is auto-activated and the user is signed in immediately — no email step. |
+| Open the invitation link | `/access/<user id>/<token>` | Activates the account, signs the person in, and takes them to **Choose a new password** without asking for an old one (*Password rules*, below). With two-step sign-in on, setting that up comes next. The link works once. |
 
-#### Activate the account ([signed-out, link from email])
-
-| What | Where | Notes |
-|---|---|---|
-| Click the activation link | `GET /account_activations/<token>/edit?email=…` (`account_activations#edit`) | Sets `users.activated = true` and stamps `activated_at`. Until this step succeeds, sign-in fails with *"Your account hasn't been activated yet."* |
+The sign-in page says accounts are by invitation, in place of a signup link.
 
 #### Sign in / Sign out
 
@@ -116,7 +115,7 @@ The auth surface is small and entirely available to anyone (signed in or not), s
 
 #### Password rules
 
-Every password someone chooses — at sign-up, in a reset, on the Account tab, or
+Every password someone chooses — after an invitation, in a reset, on the Account tab, or
 on the change form below — must:
 
 - be at least **16 characters**;
@@ -235,7 +234,7 @@ The log keeps everything; nothing prunes it.
 | `sign_out` | Signed out |
 | `account.locked` | Locked after too many failed sign-ins |
 | `account.created` | Signed up |
-| `account.activated` | Activated (by an administrator, an activation link or an access link) |
+| `account.activated` | Activated (by an administrator, or by opening an invitation link) |
 | `account.disabled_inactive` | Disabled after the inactivity limit |
 | `account.deactivated` | Deactivated by hand (dashboard, users:deactivate, or the console) |
 | `admin.granted` | Made a system admin |
@@ -379,30 +378,23 @@ Groups are arbitrary collections of users. Two of them have special meaning: `Po
 
 #### 2.2.7 Invites
 
-Send an email invitation that pre-creates an account.
+There is no public sign-up: every account starts with an invitation from a
+portal manager or system admin (*Accounts: by invitation only*,
+[CONFIGURATION.md](CONFIGURATION.md)).
 
-| What | Role required |
-|---|---|
-| Open the tab and see the invitations you've made | **Project manager.** Anyone else sees the literal text *"Not allowed"*. |
-| Send a new invite (email, optional starting role, optional pre-assignment to a project + task) | Project manager. The role-radio in the dialog only offers tiers ≤ your own: project managers can invite a normal user; portal managers can also invite a Project Manager; admins can also invite a Portal Manager. |
-| See an invite's status (Sent / Activated) | Project manager. |
+##### Invite someone
 
-> The send-invite dialog is currently commented out in the client, so `POST /invites`
-> has no caller. On an instance without working outbound mail, use **Access links**
-> below instead.
-
-##### Access links (no email required)
-
-At the top of the same tab, for **portal managers and system admins** only. Creates
-the account and hands you a URL to pass on however you like — chat, phone, paper.
+At the top of the tab, for **portal managers and system admins** only. Creates
+the account and hands you a URL to send them yourself — email, chat, phone, paper.
 
 | What | Detail |
 |---|---|
-| **Create Link** (name + email) | Creates an inactive account with a random password nobody needs to know, and returns a link. `POST /access_links`, gated on `portal_manager?` (which includes admins). |
-| The link | `/access/<user id>/<token>`. Opening it activates the account, starts a session, and takes the person straight to **Choose a new password**, without asking for the old one (*Password rules*, §2.1). |
+| **Create Link** (name + email) | Creates an inactive account with a random password nobody needs to know, and returns the invitation link. `POST /access_links`, gated on `portal_manager?` (which includes admins). |
+| *Email the link to them too* | Shown only when outbound mail is on (`MAIL_ENABLED`), and ticked by default. The app sends the link itself, naming you as the inviter, and the page says so. Without mail, copy the link and send it from your own email. |
+| The link | `/access/<user id>/<token>`. Opening it activates the account, starts a session, and takes the person straight to **Choose a new password**, without asking for the old one (*Password rules*, §2.1). If two-step sign-in is on, setting it up follows. |
 | **Single use** | The click clears the stored digest, so the same URL won't work twice. A refresh, a second click, or a later sign-out all mean the user needs a new link. |
-| **Expiry** | A link not used within 7 days stops working; create another. Invitation links expire the same way. |
-| Re-issuing | Creating a link for an address that already exists doesn't make a second account — it issues a fresh link for that user and keeps their name. This is the recovery path for someone who signed out. |
+| **Expiry** | A link not used within 7 days stops working; create another. |
+| Re-issuing | Creating a link for an address that already exists doesn't make a second account — it issues a fresh link for that user and keeps their name. This is also the recovery path for someone who has lost their password on an instance without mail. |
 | **Who for** | A portal manager can create links for anyone except admins and other portal managers; only an admin can create those. A link signs its holder in as that user, so it would otherwise make a portal manager an admin. |
 | **Links not used yet** table | Name / Email / Created / By, for every account with an outstanding link. Rows disappear once the link is spent. |
 
@@ -410,8 +402,13 @@ Only the token's digest is stored, so the URL is shown exactly once, when you cr
 it — there's no way to look it up afterwards. If you lose it, create another.
 
 Treat a live link like a password: anyone holding it becomes that user on first
-click. On an instance with outbound mail, the user can instead use the ordinary
-password-reset flow (§2.1); without mail, a link is the only recovery path.
+click. Send it only to the address you created it for. On an instance with
+outbound mail, a user who forgets their password can use the ordinary
+password-reset flow (§2.1); without mail, a new link is the only recovery path.
+
+The audit log records each link as `access_link.created` (with `emailed` when the
+app sent it), the new account as `account.created`, and its use as
+`access_link.used`.
 
 #### 2.2.8 Permissions
 

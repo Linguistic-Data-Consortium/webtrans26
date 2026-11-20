@@ -194,6 +194,8 @@
     let access_link_email = $state('');
     let access_link_url = $state('');
     let access_link_copied = $state(false);
+    let access_link_send_email = $state(true); // offered only when mail is configured
+    let access_link_emailed = $state(false);
     let access_links_p = $state(Promise.resolve({ users: [] }));
     function load_access_links(){
         access_links_p = controller_actions.access_link.get_all();
@@ -201,9 +203,11 @@
     function create_access_link(){
         access_link_url = '';
         access_link_copied = false;
+        access_link_emailed = false;
         controller_actions.access_link.create({
             name: access_link_name,
-            email_address: access_link_email
+            email_address: access_link_email,
+            send_email: access_link_send_email
         })
         .then( (x) => {
             if(!x){
@@ -219,6 +223,7 @@
                 // The URL is shown once — only its digest is stored, so it
                 // can't be looked up again. Minting a new one is the remedy.
                 access_link_url = x.url;
+                access_link_emailed = !!x.emailed;
                 access_link_name = '';
                 access_link_email = '';
                 toast.success(x.ok);
@@ -1062,12 +1067,14 @@
 {#snippet access_links()}
     <div class="mb-4">
         <div class="flex justify-around">
-            <div>Access links</div>
+            <div>Invite someone</div>
         </div>
         <p class="mx-auto max-w-3xl py-2 text-sm text-gray-600">
-            Creates the account and gives you a link to pass on. Whoever opens it is
-            signed in as that user and the link is then spent — no password is ever
-            needed. Someone who signs out needs a fresh link, or a password reset.
+            Accounts are by invitation only. This creates the account and gives you a
+            one-time link, valid for 7 days, to send them yourself — paste it into an
+            email of your own. Opening it signs them in and has them choose a password.
+            For someone who already has an account, it's a way back in if they're
+            locked out or have forgotten their password.
         </p>
         <form class="flex flex-wrap items-end justify-around gap-2" onsubmit={(e) => e.preventDefault()}>
             <div>
@@ -1078,11 +1085,21 @@
                 <Label for="access_link_email">Email</Label>
                 <Input type="text" id="access_link_email" placeholder="Email" bind:value={access_link_email} />
             </div>
+            {#await access_links_p then v}
+                {#if v?.mail_enabled}
+                    <label class="flex items-center gap-1 text-sm">
+                        <input type="checkbox" id="access_link_send_email" bind:checked={access_link_send_email} />
+                        Email the link to them too
+                    </label>
+                {/if}
+            {/await}
             <Button variant="secondary" onclick={create_access_link}>Create Link</Button>
         </form>
         {#if access_link_url}
             <div class="mx-auto mt-4 max-w-3xl rounded-md border border-gray-300 bg-gray-50 p-3">
-                <div class="text-sm text-gray-600">Copy this now — it isn't shown again.</div>
+                <div class="text-sm text-gray-600">
+                    {#if access_link_emailed}Emailed to them. Here's the link as well, in case it doesn't arrive — it isn't shown again.{:else}Copy this and send it to them — it isn't shown again.{/if}
+                </div>
                 <div class="mt-2 flex items-center gap-2">
                     <input class="flex-1 rounded-md border-2 border-gray-300 p-2 font-mono text-sm" readonly value={access_link_url} />
                     <button type="button" class="{btn}" onclick={copy_access_link}>{access_link_copied ? 'Copied' : 'Copy'}</button>

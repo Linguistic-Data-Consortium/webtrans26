@@ -152,12 +152,6 @@ class UserTest < ActiveSupport::TestCase
     assert alice.save
   end
 
-  test "create_activation_digest is set before create" do
-    user = User.create!(valid_user_attrs)
-    assert_not_nil user.activation_digest
-    assert_not_nil user.activation_token
-  end
-
   test "activate sets flags and timestamps" do
     user = users(:unactivated)
     assert_not user.activated?

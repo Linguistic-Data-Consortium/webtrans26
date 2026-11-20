@@ -83,7 +83,7 @@ These tests:
   removed from `PATH`, so a stale Homebrew chromedriver doesn't interfere.
 
 **Test files:**
-- `test/system/login_test.rb` — sign in/out, wrong password, unactivated, signup link
+- `test/system/login_test.rb` — sign in/out, wrong password, unactivated, no signup
 - `test/system/password_reset_test.rb` — request → email → set new password → sign in
 - `test/system/dashboard_test.rb` — Work tab, tab navigation, Start Now link wiring
 - `test/system/dashboard_crud_test.rb` — every Projects/Tasks/Kits/Members/KitTypes/Features/Workflows/Groups/Invites/Permissions operation a user can do via the UI

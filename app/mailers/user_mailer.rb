@@ -1,21 +1,11 @@
 class UserMailer < ApplicationMailer
 
-  # Subject can be set in your I18n file at config/locales/en.yml
-  # with the following lookup:
-  #
-  #   en.user_mailer.account_activation.subject
-  #
-  def account_activation(user)
-    @user = user
-    mail to: user.email_address, subject: 'Account activation'
-  end
-
-  # Someone used this address to sign up, and it already has an account. The
-  # signup page answered as if it were new, so as not to tell them, and the
-  # owner hears about it here instead.
-  def signup_attempt(user)
-    @user = user
-    mail to: user.email_address, subject: 'Sign-up attempt with your address'
+  # An invitation (AccessLinksController): the one-time link that signs the
+  # person in and has them choose a password. Only when MAIL_ENABLED and the
+  # inviter asked for it; otherwise they pass the link on themselves.
+  def invitation(user, url, inviter)
+    @user, @url, @inviter = user, url, inviter
+    mail to: user.email_address, subject: "Your invitation"
   end
 
   def invite(user)

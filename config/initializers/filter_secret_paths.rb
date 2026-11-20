@@ -3,7 +3,6 @@
 #   /access/:id/:token               one-time sign-in link
 #   /passwords/:token/edit           emailed password reset
 #   /invites/:token[/edit]           invitation
-#   /account_activations/:token/edit activation
 #
 # filter_parameters hides the token in the "Parameters:" line, but the
 # "Started GET ..." line is written from request.filtered_path, which filters
@@ -15,8 +14,7 @@ module FilterSecretPaths
   SECRET_SEGMENTS = [
     %r{\A(/access/\d+/)[^/?]+},
     %r{\A(/passwords/)(?!new\b|reset\b)[^/?]+},
-    %r{\A(/invites/)(?!new\b)[^/?]+},
-    %r{\A(/account_activations/)[^/?]+}
+    %r{\A(/invites/)(?!new\b)[^/?]+}
   ].freeze
 
   def filtered_path

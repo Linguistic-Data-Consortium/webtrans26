@@ -46,10 +46,9 @@ class LoginTest < ApplicationSystemTestCase
     assert_equal 0, users(:alice).sessions.count
   end
 
-  test "the sign-in page links to the signup form" do
+  test "the sign-in page offers no signup, and says accounts are by invitation" do
     visit new_session_url
-    click_on "Create account"
-    assert_current_path new_user_path
-    assert_text "Sign up"
+    assert_no_link "Create account"
+    assert_text "Accounts are by invitation"
   end
 end

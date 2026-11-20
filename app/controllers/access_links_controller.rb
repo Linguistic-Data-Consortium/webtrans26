@@ -1,11 +1,13 @@
-# One-time sign-in links, for instances where outbound mail doesn't work and
-# the email invite flow (InvitesController) is therefore unusable.
+# Invitations: the only way an account is created (there is no public signup).
 #
 # An administrator or portal manager creates the account by name + email and
-# gets back a URL. Whoever opens that URL is activated and signed in as that
-# user, and the link dies on use — the account's password is random and nobody
-# ever needs to know it. To get back in after signing out, the user asks for a
-# fresh link or goes through password recovery.
+# gets back a one-time URL, valid 7 days. They pass it on themselves — copied
+# into an email of their own, by default, since this app sends none — or, on an
+# instance with MAIL_ENABLED, ask for it to be emailed from here as well
+# (send_email). Whoever opens it is activated, signed in, and asked to choose a
+# password (and to set up two-step sign-in, where that's on). The same link,
+# minted again for an existing address, is how someone who is locked out or has
+# forgotten their password gets back in.
 class AccessLinksController < ApplicationController
   allow_unauthenticated_access only: %i[ show ]
   skip_before_action :require_unexpired_password, only: %i[ show ]
@@ -17,6 +19,8 @@ class AccessLinksController < ApplicationController
     respondj do
       allow(:portal_manager) do
         {
+          # Whether the form can offer to email the link (MAIL_ENABLED).
+          mail_enabled: Rails.application.config.x.mail_enabled,
           users: User.where.not(access_digest: nil).sorted.map do |user|
             {
               id: user.id,
@@ -96,6 +100,7 @@ class AccessLinksController < ApplicationController
     user = User.new(name: name, email_address: email)
     user.assign_generated_password
     if user.save
+      audit("account.created", user: user, actor: current_user, via: "invitation")
       mint user
     else
       { errors: user.errors.full_messages }
@@ -104,13 +109,19 @@ class AccessLinksController < ApplicationController
 
   def mint(user)
     token = user.create_access_digest(current_user.id)
-    audit("access_link.created", user: user, actor: current_user)
+    url = access_link_url(user.id, token)
+    # Emailed as well, when asked and there's mail to send it with. The URL is
+    # always returned too: it's shown once, and copying it stays possible.
+    emailed = ActiveModel::Type::Boolean.new.cast(params[:send_email]) && Rails.application.config.x.mail_enabled
+    UserMailer.invitation(user, url, current_user).deliver_later if emailed
+    audit("access_link.created", user: user, actor: current_user, emailed: emailed || nil)
     {
-      ok: "access link created for #{user.name}",
+      ok: emailed ? "invitation emailed to #{user.email_address}" : "invitation link created for #{user.name}",
       name: user.name,
       email: user.email_address,
       activated: user.activated,
-      url: access_link_url(user.id, token)
+      emailed: !!emailed,
+      url: url
     }
   end
 end

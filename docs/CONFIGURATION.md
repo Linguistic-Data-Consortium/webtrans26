@@ -6,7 +6,7 @@ This app deliberately avoids hard-coded infra. The defaults are chosen so a fres
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `MAIL_ENABLED` | unset (treated as `false`) | When `"true"`, signups send an activation email. Otherwise, signups land on `/awaiting_activation`. The password-reset email is sent by a background job, so with mail on something has to run jobs: `SOLID_QUEUE_IN_PUMA=true`, which both deploy templates set, runs them inside the web server. |
+| `MAIL_ENABLED` | unset (treated as `false`) | When `"true"`, the invitation form can email the link as well as show it, and passwords can be reset by email. Both emails are sent by a background job, so something has to run jobs: `SOLID_QUEUE_IN_PUMA=true`, which both deploy templates set, runs them inside the web server. Without mail, invitation links are copied and sent by the inviter, and a forgotten password is recovered with a new invitation link. |
 | `PASSWORD_MAX_AGE_DAYS` | `90` | How long a chosen password lasts. After that the user must choose a new one before doing anything else. Accounts whose password nobody has chosen, including every account from before the password rules, count as expired. See *Password rules* in the User Guide. |
 | `PASSWORD_HISTORY` | unset (every earlier password) | How many earlier passwords a new one may not repeat. Unset, none of an account's earlier passwords may be chosen again. |
 | `MFA_ENABLED` | unset (treated as `false`) | When `"true"`, every user must sign in with a code from an authenticator app as well as their password, and anyone who hasn't set one up is taken to do it at their next sign-in. Turning it off again keeps what people set up, unused. See *Two-step sign-in* in the User Guide. |
@@ -83,19 +83,18 @@ The AWS objects to create — the bucket, the role, and the app's own permission
 to assume it — and the reasoning behind all of the above are in
 `aws/s3_project_prefixes.md`.
 
-## Activation flow
+## Accounts: by invitation only
 
-Three branches in `UsersController#create`:
+There is no public signup. A portal manager or administrator creates each
+account from the **Invites** tab (*Invite someone*: name and email address) and
+gets back a one-time link, valid for 7 days. Opening it activates the account,
+signs the person in and has them choose a password.
 
-1. **Rails.env.development?** — auto-activate the new user and sign them in. Fast iteration; no email required.
-2. **Otherwise + `MAIL_ENABLED=true`** — call `@user.send_activation_email` (uses ActionMailer) and flash "check your email".
-3. **Otherwise + mail disabled (the default)** — redirect to `/awaiting_activation` with a friendly "an admin needs to activate you" page. No mailer crash.
-
-To activate someone by hand from a Rails console:
-
-```ruby
-User.find_by(email_address: "x@y.com").activate
-```
+- **Mail off (the default):** the inviter copies the link and sends it
+  themselves, in an email of their own or however they like.
+- **`MAIL_ENABLED=true`:** the form also offers *Email the link to them too*,
+  which sends it from the app (in the background, so jobs must run — see
+  `MAIL_ENABLED` above). The link is still shown for copying.
 
 ## Password reset flow
 

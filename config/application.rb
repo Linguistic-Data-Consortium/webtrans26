@@ -40,9 +40,9 @@ module Webtrans26
     # Enable Rack::Attack middleware for rate limiting
     config.middleware.use Rack::Attack
 
-    # Outbound email is opt-in: by default this repo has no SMTP configured,
-    # so the account-activation email path would crash. When disabled, signups
-    # land on a "please wait for activation" page instead.
+    # Outbound email is opt-in: by default this repo has no SMTP configured.
+    # Without it, password resets aren't offered and an invitation link is
+    # copied and sent by whoever made it; with it, the app can email it too.
     config.x.mail_enabled = ENV["MAIL_ENABLED"] == "true"
 
     # Password policy (PasswordPolicy, User#password_expired?). A chosen

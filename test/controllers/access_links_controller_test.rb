@@ -210,4 +210,43 @@ class AccessLinksControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     assert_equal "Permission denied.", JSON.parse(@response.body)["error"]
   end
+
+  # ── as the way accounts are made, with or without mail ──────────────────
+
+  test "with mail off (the default), the link is only returned to copy, whatever is asked" do
+    sign_in_as @pat
+    assert_no_enqueued_emails do
+      post access_links_url, params: { email_address: "invitee2@example.com", name: "invitee2", send_email: true }, as: :json
+    end
+    body = JSON.parse(@response.body)
+    assert body["url"].present?
+    assert_equal false, body["emailed"]
+    get access_links_url, as: :json
+    assert_equal false, JSON.parse(@response.body)["mail_enabled"]
+  end
+
+  test "with mail on, the link can be emailed from here as well as copied" do
+    with_mail_enabled do
+      sign_in_as @pat
+      assert_enqueued_emails 1 do
+        post access_links_url, params: { email_address: "invitee@example.com", name: "invitee", send_email: true }, as: :json
+      end
+      body = JSON.parse(@response.body)
+      assert body["emailed"]
+      assert body["url"].present?, "still shown, in case the email doesn't arrive"
+
+      assert_no_enqueued_emails do
+        post access_links_url, params: { email_address: "other@example.com", name: "other", send_email: false }, as: :json
+      end
+    end
+  end
+
+  test "an account made by invitation is in the security log, with who made it" do
+    sign_in_as @pat
+    mint_for("logged@example.com", "logged")
+    e = SecurityEvent.where(event: "account.created").last
+    assert_equal [ User.find_by(email_address: "logged@example.com").id, @pat.id, "invitation" ],
+                 [ e.user_id, e.actor_id, e.details["via"] ]
+  end
 end
+

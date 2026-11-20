@@ -60,26 +60,6 @@ class Rack::Attack
     end
   end
 
-  ### Prevent Account Activation Spam ###
-
-  # Throttle account activation requests by IP
-  # Limit: 10 attempts per 5 minutes
-  throttle('account_activations/ip', limit: 10, period: 5.minutes) do |req|
-    if req.path.start_with?('/account_activations') && req.get?
-      req.ip
-    end
-  end
-
-  ### Prevent Signup Spam ###
-
-  # Throttle signup requests by IP
-  # Limit: 5 signups per hour
-  throttle('signups/ip', limit: 5, period: 1.hour) do |req|
-    if req.path == '/signup' && req.post?
-      req.ip
-    end
-  end
-
   ### API Rate Limiting ###
 
   # General API throttling (if you have API endpoints)

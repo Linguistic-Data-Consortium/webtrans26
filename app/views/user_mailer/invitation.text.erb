@@ -1,0 +1,8 @@
+Hi <%= @user.name %>,
+
+<%= @inviter&.name || "An administrator" %> has invited you to sign in.
+
+Open this link within 7 days to choose a password and sign in. It works once:
+<%= @url %>
+
+If you weren't expecting this, you can ignore it.

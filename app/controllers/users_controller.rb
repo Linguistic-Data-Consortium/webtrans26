@@ -2,26 +2,11 @@ class UsersController < ApplicationController
 
   # before_action :authenticate, :except => [ :new, :create, :mail_username, :check_username, :single ]
   # before_action :admin_user, :only => [ :destroy, :update_activated ]
-  allow_unauthenticated_access only: %i[ new create ]
   before_action :portal_manager_user, only: %i[ unactivated active activate deactivate ]
 
   include UsersHelper
   # include AwsHelper
 
-  # What the signup form says about the email address it collects. #create has
-  # three branches and only one of them sends anything, so the form cannot
-  # promise a verification link: with no outbound mail the account waits for an
-  # administrator instead (see the awaiting_activation view, which says so).
-  # Same shape as PasswordsController::MAILLESS_NOTICE.
-  EMAIL_NOTICE = "We will use email to send a verification link and notify you of " \
-    "changes. We will never share your email in any way."
-
-  MAILLESS_EMAIL_NOTICE = "This instance doesn't send email. Your address identifies " \
-    "your account and is how an administrator can reach you — after signing up you " \
-    "will wait for one of them to activate it, rather than getting a link. " \
-    "We will never share your email in any way."
-
-  #action displays a list of all users
   def index
     User.all
   end
@@ -170,67 +155,7 @@ class UsersController < ApplicationController
     end # correct_user
   end # show
 
-  #this action is for displaying the page where new users can sign up
-  def new
-    @user = User.new
-  end
-
-  #this action actually signs up new users
-  def create
-    @user = User.new(user_params)
-    if @user.save
-      audit("account.created", user: @user)
-      if Rails.env.development?
-        @user.activate
-        start_new_session_for @user
-        redirect_to root_url
-      elsif Rails.application.config.x.mail_enabled
-        if user_params[:name].match(/^TESTUSER/)
-          @user.groups << Group.where(name: "TestUsers").first_or_create
-        end
-        @user.send_activation_email
-        flash[:info] = "Please check your email to activate your account."
-        redirect_to root_url
-      else
-        # No outbound mail configured — the user has to wait for an admin to
-        # flip the activation flag manually. See `awaiting_activation` view.
-        redirect_to awaiting_activation_path(email: @user.email_address)
-      end
-    elsif address_already_registered?
-      answer_as_if_new
-    else
-      render 'new'
-    end
-  end
-
   private
-
-  # The signup page mustn't say which addresses have accounts, so "Email address
-  # has already been taken" is never shown. When that is the only thing wrong,
-  # the visitor gets exactly the answer a new signup gets, nothing is created,
-  # and (with mail on) the owner is told. Any other error still shows, minus that
-  # one.
-  def address_already_registered?
-    return false unless @user.errors.of_kind?(:email_address, :taken)
-    @user.errors.delete(:email_address, :taken)
-    @user.errors.empty?
-  end
-
-  def answer_as_if_new
-    if Rails.application.config.x.mail_enabled
-      owner = User.find_by(email_address: @user.email_address)
-      # Sent now, as the activation email is, so the two answers take as long.
-      UserMailer.signup_attempt(owner).deliver_now if owner
-      flash[:info] = "Please check your email to activate your account."
-      redirect_to root_url
-    else
-      redirect_to awaiting_activation_path(email: @user.email_address)
-    end
-  end
-
-  def user_params
-    params.require(:user).permit(:name, :email_address, :password, :password_confirmation, profile_attributes: [:year_of_birth, :gender, :cities, :languages_known])
-  end
 
   # Before-action that ensures the current user is the same as the @user
   # the URL points at — there's no UI for one user to view another's profile.

@@ -25,7 +25,6 @@ Rails.application.routes.draw do
 
   get 'password_resets/edit'
 
-  get '/awaiting_activation', to: 'pages#awaiting_activation', as: :awaiting_activation
 
   get '/documentation',       to: 'documentation#index', as: :documentation_index
   get '/documentation/:slug', to: 'documentation#show',  as: :documentation_show, constraints: { slug: /[A-Za-z0-9_\-]+/ }
@@ -33,8 +32,6 @@ Rails.application.routes.draw do
   get :echo, to: 'pages#echo'
 
   root 'pages#home'
-  get '/signup', to: 'users#new'
-  post '/signup', to: 'users#create'
     # get '/login', to: 'sessions#new'
   # post '/login', to: 'sessions#create'
   # get '/confirmation', to: 'sessions#confirmation'
@@ -42,7 +39,8 @@ Rails.application.routes.draw do
   # delete '/logout', to: 'sessions#destroy'
   # get '/logout2', to: 'sessions#destroy2'
 
-  resources :users do
+  # No signup: accounts come by invitation (AccessLinksController).
+  resources :users, except: %i[ new create ] do
     collection do
       get :unactivated
       get :active
@@ -53,7 +51,6 @@ Rails.application.routes.draw do
     end
   end
   # resources :sessions, only: [:create]
-  resources :account_activations, only: [:edit]
   resources :password_resets,     only: [:new, :create, :edit, :update]
 
 

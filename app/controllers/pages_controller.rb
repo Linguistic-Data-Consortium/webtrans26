@@ -1,11 +1,5 @@
 class PagesController < ApplicationController
 
-  allow_unauthenticated_access only: %i[awaiting_activation]
-
-  def awaiting_activation
-    @email = params[:email].presence
-  end
-
   def home
     if authenticated?
       redirect_to user_path(current_user)
