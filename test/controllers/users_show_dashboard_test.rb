@@ -8,9 +8,11 @@ class UsersShowDashboardTest < ActionDispatch::IntegrationTest
     @admin = users(:admin)
   end
 
-  test "unauthenticated request redirects to sign-in" do
-    get user_url(@alice), as: :json
+  test "unauthenticated request redirects to sign-in, or gets a 401 as JSON" do
+    get user_url(@alice)
     assert_redirected_to new_session_path
+    get user_url(@alice), as: :json
+    assert_response :unauthorized # signed-out JSON gets a 401, not a redirect to the HTML form
   end
 
   test "alice loading her own dashboard gets the full JSON payload" do

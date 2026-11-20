@@ -207,6 +207,7 @@ in the script.
 | `script/transcription_repl_wrapper.rb` | Interactive variant — kit source is a JSON **wrapper** with a transcript; opens with it pre-loaded |
 | `script/transcription_auto.rb` | Automated variant — Selenium drives the annotations on a plain `.wav` kit |
 | `script/transcription_auto_text_only.rb` | Automated variant — the `transcribe_text_only` mode: an imported graph becomes the segments and the captions, and only text may change |
+| `script/session_expiry_auto.rb` | Automated — the session ends mid-edit: the save is held under a banner, nothing reaches the log, and after signing in again in a second tab it lands in order and work carries on |
 | `bin/repl` | Wrapper that launches the REPL server (`RAILS_ENV=repl TRANSCRIPTION_REPL=1`, port 3001) |
 | `config/initializers/transcription_repl_patch.rb` | Manifest-injection monkey-patch (gated on `TRANSCRIPTION_REPL=1`) |
 | `config/environments/repl.rb` | The dedicated `repl` Rails environment |

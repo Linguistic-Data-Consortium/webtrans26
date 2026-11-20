@@ -31,7 +31,7 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
 
   test "index requires authentication" do
     get projects_url, as: :json
-    assert_redirected_to new_session_path
+    assert_response :unauthorized # signed-out JSON gets a 401, not a redirect to the HTML form
   end
 
   # ── show ──────────────────────────────────────────────────────────────────

@@ -110,6 +110,7 @@
     import Segments from './segments.svelte';
     import GraphPanel from './graph_panel.svelte';
     import DesyncBanner from './desync_banner.svelte';
+    import SessionBanner from './session_banner.svelte';
     import { bulko } from './bulk.svelte';
     import Sections from './sections.svelte';
     import Comments from './comments.svelte';
@@ -2582,6 +2583,7 @@
 </script>
 
 <DesyncBanner />
+<SessionBanner />
 
 <!-- <div>previous {asro.previous}</div>
 <div>type {asro.type}</div>

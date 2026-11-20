@@ -9,6 +9,7 @@ arithmetic that several call sites depend on.
 Verifying work here:
 
     bundle exec ruby script/transcription_auto.rb   # needs bin/repl on :3001
+    bundle exec ruby script/session_expiry_auto.rb  # saves across an ended session
     bin/rails test
     npx vitest run
     bin/rails test:system

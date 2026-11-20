@@ -120,7 +120,7 @@ class S3SessionsTest < ActionDispatch::IntegrationTest
   test "signed out, there is no session" do
     with_s3_sessions do
       post "/s3_session", as: :json
-      assert_response :redirect
+      assert_response :unauthorized # signed-out JSON gets a 401, not a redirect to the HTML form
     end
   end
 

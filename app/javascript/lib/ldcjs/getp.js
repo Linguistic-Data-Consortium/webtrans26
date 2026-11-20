@@ -51,8 +51,23 @@ function get_init(){
     h.method = 'DELETE';
     return h;
   }
+  // A failed response, saying why where that matters to the caller: the
+  // session ended (the server's 401, or a redirect that landed on the sign-in
+  // form) as against anything else. modification2.js holds unsaved edits for
+  // the first, and reports the second.
+  function response_error(r){
+    const e = new Error('response error');
+    e.status = r.status;
+    let landed = '';
+    try { landed = new URL(r.url).pathname; } catch(_) {}
+    e.session_expired = r.status === 401 || (r.redirected && landed === '/session/new');
+    return e;
+  }
+
   function responsef(r){
-    if(r.ok) {
+    const failure = response_error(r);
+    // An ok status after a redirect to the sign-in form is still a failure.
+    if(r.ok && !failure.session_expired) {
       const type = r.headers.get("content-type");
       if (type && type.includes("application/json")) {
         return r.json();
@@ -68,7 +83,7 @@ function get_init(){
         return r.arrayBuffer();
       }
     }
-    throw new Error('response error');
+    throw failure;
   }
   
   function getp(url){

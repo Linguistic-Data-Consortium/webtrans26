@@ -72,7 +72,7 @@ class AccountPasswordsControllerTest < ActionDispatch::IntegrationTest
     patch account_password_url, params: {
       current_password: "password123", password: GOOD_PASSWORD, password_confirmation: GOOD_PASSWORD
     }, as: :json
-    assert_redirected_to new_session_path
+    assert_response :unauthorized # signed-out JSON gets a 401, not a redirect to the HTML form
     assert users(:alice).reload.authenticate("password123")
   end
 

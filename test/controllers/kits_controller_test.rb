@@ -147,10 +147,10 @@ class KitsControllerTest < ActionDispatch::IntegrationTest
 
   test "time_spent endpoints require authentication" do
     get get_time_spent_kits_path(uid: @kit.uid), as: :json
-    assert_redirected_to new_session_path
+    assert_response :unauthorized # signed-out JSON gets a 401, not a redirect to the HTML form
 
     post change_time_spent_kits_path, params: { uid: @kit.uid, time_spent: 1 }, as: :json
-    assert_redirected_to new_session_path
+    assert_response :unauthorized
   end
 
   # ── set_kits_done (admin-only) ───────────────────────────────────────────

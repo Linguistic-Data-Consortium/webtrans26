@@ -89,6 +89,28 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal stamp, session.reload.updated_at
   end
 
+  # ── what a signed-out request gets ─────────────────────────────────────
+
+  test "a signed-out JSON request gets a 401 that says the session ended" do
+    post annotations_url, params: { task_user_id: 1, json: "{}" }, as: :json
+    assert_response :unauthorized
+    assert JSON.parse(@response.body)["session_expired"]
+  end
+
+  test "a signed-out page load comes back to that page after signing in" do
+    get user_path(users(:alice))
+    assert_redirected_to new_session_path
+    sign_in_as users(:alice)
+    assert_redirected_to user_url(users(:alice))
+  end
+
+  # Coming back to /annotations, which has no page, was an error after signing in.
+  test "a signed-out save isn't remembered as somewhere to come back to" do
+    post annotations_url, params: { task_user_id: 1, json: "{}" }, as: :json
+    sign_in_as users(:alice)
+    assert_redirected_to root_url
+  end
+
   # ── lockout ──────────────────────────────────────────────────────────────
 
   def fail_sign_in(user, times)

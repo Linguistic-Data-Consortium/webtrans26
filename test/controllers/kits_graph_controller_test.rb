@@ -198,7 +198,7 @@ class KitsGraphControllerTest < ActionDispatch::IntegrationTest
 
   test "a signed-out visitor is turned away" do
     post kits_graph_url, params: { uid: @kit.uid }, as: :json
-    assert_redirected_to new_session_path
+    assert_response :unauthorized # signed-out JSON gets a 401, not a redirect to the HTML form
     assert_equal 0, GraphNode.count
   end
 end

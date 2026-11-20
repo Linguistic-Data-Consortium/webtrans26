@@ -1,5 +1,6 @@
 import { postp, postp_no_catch } from '../getp';
 import { report_desync } from './desync.svelte';
+import { hold_until_signed_in } from './session_hold.svelte';
 const debug = false;
 let messages = []; // message(s) to send to the annotate controller
 const submissions = {}; // messages sent
@@ -78,17 +79,24 @@ function add_message_listitem_by_id(id, child_values_to_add, callback, nosubmit 
     }
 }
 
+// Saves go out one at a time, each after the last has been answered, so the
+// log receives them in the order they were made. Nothing may leave this chain
+// rejected: a rejected link skips every .then after it, so one failure used to
+// stop all later saves without a word (see save_failed). The final catch is the
+// backstop; a save's own failures are handled before they get there.
 function submit_form(){
     var m = [];
     m = messages.slice();
     messages = [];
     annotations_promise = annotations_promise.then( function(){
         return submit_form_old(m);
+    }).catch( function(e){
+        report_desync('A change could not be checked against the server.', { error: String(e) });
     });
 }
 
 function add_callback(f){
-    annotations_promise = annotations_promise.then(f);
+    annotations_promise = annotations_promise.then(f).catch( function(e){ console.error(e); });
 }
 
 let d;
@@ -112,13 +120,44 @@ function submit_form_old(m){
             var url = '/annotations';
             submissions[obj.client_time] = obj
             pending_save_before(messages);
-            promise = postp_no_catch(url, { task_user_id: ldc.obj2.task_user_id, json: JSON.stringify(obj) }).then(function(data){ if(debug) console.time('annotate2'); annotate2(data, obj.client_time); if(debug) console.timeEnd('annotate2'); });
+            // Serialized once, here: a resend after signing in (save_failed)
+            // must be this exact body, not obj as later bookkeeping leaves it.
+            promise = send(url, obj, { task_user_id: ldc.obj2.task_user_id, json: JSON.stringify(obj) });
             obj.received = false;
             submissions[obj.client_time] = obj;
         }
         messages = [];
     }
     return promise;
+}
+
+function send(url, obj, body){
+    return postp_no_catch(url, body).then(
+        function(data){ if(debug) console.time('annotate2'); annotate2(data, obj.client_time); if(debug) console.timeEnd('annotate2'); },
+        function(e){ return save_failed(url, obj, body, e); }
+    );
+}
+
+// The request itself failed — no reply to check.
+//
+// Signed out (a 401, or a redirect to the sign-in form; see getp.js): the
+// server refused before reading a message, so none of them is in the log. Hold
+// this batch until the session works again and send it as it was; the batches
+// queued behind it wait, so the order is kept. The banner says what's happening
+// (session_banner.svelte).
+//
+// Anything else — the network, a server error page — and whether the write
+// landed is unknown, so the page can't be trusted: say so. This was the silent
+// case: the rejection skipped annotate2, and nothing reported it.
+function save_failed(url, obj, body, e){
+    if(e && e.session_expired){
+        return hold_until_signed_in().then( function(){ return send(url, obj, body); });
+    }
+    submissions[obj.client_time].received = true;
+    return report_desync(
+      'A change could not be saved — the request failed.',
+      { client_time: obj.client_time, status: e && e.status, error: String(e) }
+    );
 }
 
   // Each response is checked against the message it answers. Pairing is by

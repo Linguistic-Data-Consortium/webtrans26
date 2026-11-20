@@ -50,9 +50,20 @@ module Authentication
       session
     end
 
+    # A page load goes to the sign-in form and comes back afterwards. A JSON
+    # request — the editor saving, the dashboard fetching — gets a 401 that says
+    # the session ended: redirected, fetch would follow it to the HTML form and
+    # the caller couldn't tell that from any other failure. And only a page is
+    # worth coming back to: returning to /annotations after signing in would
+    # land on an action that doesn't exist.
     def request_authentication
-      session[:return_to_after_authenticating] = request.url
-      redirect_to new_session_path
+      if request.format.json?
+        render json: { error: "Your session has ended. Sign in again to continue.", session_expired: true },
+               status: :unauthorized
+      else
+        session[:return_to_after_authenticating] = request.url if request.get?
+        redirect_to new_session_path
+      end
     end
 
     def after_authentication_url

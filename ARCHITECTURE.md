@@ -409,9 +409,29 @@ client's guess against the server's own reading of the record:
 A disagreement means the prediction lost, and there is no automatic way back:
 the log is the record and the client cannot rewrite it. So it reports through
 `desync.svelte.js` and `desync_banner.svelte` tells the annotator to reload.
-Four other paths end up in the same place — a reply that never came, a write the
-server refused, a reply this page can't parse, and a tree locked by another
-session, which means nothing being typed is landing at all.
+Other paths end up in the same place — an empty reply, a write the server
+refused, a reply this page can't check, a request that failed outright (the
+network, a server error page), and a tree locked by another session, which means
+nothing being typed is landing at all.
+
+One failure is not like the others: **the session ended.** The server answers a
+signed-out JSON request with a 401 before anything reads the messages
+(`Authentication#request_authentication`), so none of them is in the log, and
+nothing is out of step yet. `save_failed` holds that batch — and the queue holds
+everything behind it — until a request works again, then sends the same body,
+serialized once, unchanged. `session_hold.svelte.js` checks every few seconds,
+and `session_banner.svelte` says what's happening and opens sign-in in another
+tab (this one must not navigate: it holds the edits). The log ends up exactly as
+it would have. `getp.js` tells this apart from other failures: a 401, or a
+redirect that landed on the sign-in form.
+
+Saves go out one at a time on one promise chain (`annotations_promise`), and
+**no link may be left rejected**: a rejected link skips every `.then` after it.
+That was the silent failure here for a long time — `postp_no_catch` rejected on
+any failed request, nothing caught it, so annotate2 never ran, no banner showed,
+and every later save was skipped while the transcript kept showing the edits.
+The chain now ends each save in a `catch`. `script/session_expiry_auto.rb` and
+`save_queue.test.ts` cover it.
 
 Until this was wired up all of those were silent: a value mismatch went to
 `console.error`, an `add` mismatch called a function that didn't exist and threw,
