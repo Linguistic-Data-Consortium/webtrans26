@@ -19,6 +19,7 @@ class PasswordsController < ApplicationController
     return redirect_to(new_session_path, notice: MAILLESS_NOTICE) if !Rails.application.config.x.mail_enabled
 
     if user = User.find_by(email_address: params[:email_address])
+      audit("password.reset_requested", user: user)
       PasswordsMailer.reset(user).deliver_later
     end
 
@@ -56,6 +57,7 @@ class PasswordsController < ApplicationController
   def reset
     if @user.update(params.permit(:name, :password, :password_confirmation))
       session.delete(:password_reset_token)
+      audit("password.reset", user: @user)
       # A reset is how you evict someone who knows the old password, and how
       # the owner of a locked account gets back in without waiting.
       @user.sessions.destroy_all

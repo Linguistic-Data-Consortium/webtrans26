@@ -10,6 +10,7 @@ class AccountActivationsController < ApplicationController
         # redirect_to user
       else
         user.activate
+        audit("account.activated", user: user, via: "activation_link")
         # start_new_session_for user
         flash[:success] = "Account activated!"
         # redirect_to user

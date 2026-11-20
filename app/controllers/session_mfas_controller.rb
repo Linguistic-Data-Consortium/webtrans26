@@ -17,7 +17,9 @@ class SessionMfasController < ApplicationController
   end
 
   def create
+    codes_before = @user.recovery_codes_left
     if @user.locked?
+      audit("sign_in.locked_out", user: @user, step: "mfa")
       end_mfa_challenge
       redirect_to new_session_path, alert: SessionsController::FAILED
     elsif @user.verify_second_factor(params[:code])
@@ -25,6 +27,8 @@ class SessionMfasController < ApplicationController
       end_mfa_challenge
       @user.clear_sign_in_failures
       start_new_session_for @user
+      audit(@user.reload.recovery_codes_left < codes_before ? "mfa.recovery_code_used" : "mfa.success",
+            user: @user, recovery_codes_left: @user.recovery_codes_left)
       if without_current
         session[:password_set_without_current] = true
         redirect_to edit_account_password_path, notice: "Welcome, #{@user.name}. Choose a password to finish signing in."
@@ -32,7 +36,7 @@ class SessionMfasController < ApplicationController
         redirect_to after_authentication_url
       end
     else
-      @user.register_failed_sign_in
+      record_failed_sign_in(@user, event: "mfa.failure")
       if @user.reload.locked?
         end_mfa_challenge
         redirect_to new_session_path, alert: SessionsController::FAILED

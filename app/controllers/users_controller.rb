@@ -38,7 +38,10 @@ class UsersController < ApplicationController
   # Flip the activated flag on a single user. Portal-manager only.
   def activate
     user = User.find(params[:id])
+    was_disabled = user.disabled_for_inactivity?
     user.activate
+    audit("account.activated", user: user, actor: current_user, via: "administrator",
+          was_disabled_for_inactivity: was_disabled || nil)
     render json: { ok: true, id: user.id }
   end
 
@@ -150,6 +153,7 @@ class UsersController < ApplicationController
   def create
     @user = User.new(user_params)
     if @user.save
+      audit("account.created", user: @user)
       if Rails.env.development?
         @user.activate
         start_new_session_for @user

@@ -43,10 +43,12 @@ class AccountPasswordsController < ApplicationController
     confirmation = params[:password_confirmation].to_s
 
     if !session[:password_set_without_current] && !current_user.authenticate(current)
+      audit("password.change_failed", user: current_user)
       { error: "Your current password is not correct." }
     elsif password != confirmation
       { error: "The new password and its confirmation don't match." }
     elsif current_user.update(password: password, password_confirmation: confirmation)
+      audit("password.changed", user: current_user, without_current: session[:password_set_without_current] || nil)
       session.delete(:password_set_without_current)
       { ok: "Your password has been changed.#{sign_out_other_sessions}" }
     else

@@ -28,6 +28,7 @@ class AccountMfasController < ApplicationController
       redirect_to account_mfa_path
     elsif (@codes = current_user.enroll_mfa(secret, params[:code]))
       session.delete(:mfa_setup_secret)
+      audit("mfa.enrolled", user: current_user)
       flash.now[:notice] = "Two-step sign-in is set up."
       render :recovery_codes
     else
@@ -41,6 +42,7 @@ class AccountMfasController < ApplicationController
     code = params[:code].to_s.delete(" ")
     if current_user.mfa_enrolled? && code.match?(/\A\d{6}\z/) && current_user.verify_second_factor(code)
       @codes = current_user.regenerate_recovery_codes
+      audit("mfa.recovery_codes_renewed", user: current_user)
       flash.now[:notice] = "New recovery codes. The old ones no longer work."
       render :recovery_codes
     else

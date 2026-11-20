@@ -51,6 +51,7 @@ class InvitesController < ApplicationController
         else
           if @user.authenticated?(:invite, params[:id])
             @user.activate
+            audit("account.activated", user: @user, via: "invite")
             flash[:success] = "Your account has been activated, please set your user name and password"
             # Into the session rather than the redirect's URL, which the log
             # records (see PasswordsController#edit).
@@ -76,7 +77,9 @@ class InvitesController < ApplicationController
           x.save
         end
         @user.activate
+        audit("account.activated", user: @user, via: "invite")
         start_new_session_for @user
+        audit("sign_in.success", user: @user, via: "invite")
         t = Task.where(name: "Personal/#{@user.id}").first
         t.update(name: "Personal/#{@user.name}") if t
         flash[:success] = "Account activated!"
@@ -101,6 +104,7 @@ class InvitesController < ApplicationController
             new_user.create_invite_digest current_user.id
             # but then create_invite_digest saves the model, skipping validations
             new_user.send_invitation_email
+            audit("invite.sent", user: new_user, actor: current_user)
             "sending to #{invite}"
           else
             found_error = true
@@ -111,6 +115,7 @@ class InvitesController < ApplicationController
             elsif new_user.invite_sent_by == current_user.id
               new_user.create_invite_digest current_user.id
               new_user.send_invitation_email
+              audit("invite.sent", user: new_user, actor: current_user, resent: true)
               "#{invite} exists, resending invitation"
             else
               "#{invite} was invited by someone else"

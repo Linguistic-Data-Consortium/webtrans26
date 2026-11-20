@@ -2552,6 +2552,12 @@
                         {account_password_busy ? 'Changing…' : 'Change password'}
                     </Button>
                 </form>
+                {#if admin}
+                    <div class="pt-6 pb-2 font-semibold">Security log</div>
+                    <p class="text-sm text-gray-600">
+                        <a class="text-indigo-600 hover:text-indigo-500" href="/security_events">Sign-ins, password and role changes, and the rest</a> (administrators only).
+                    </p>
+                {/if}
                 {#if mfa_enabled}
                     <div class="pt-6 pb-2 font-semibold">Two-step sign-in</div>
                     <p class="text-sm text-gray-600">

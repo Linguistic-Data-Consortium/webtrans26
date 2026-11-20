@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_20_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_20_200000) do
   create_table "actions", force: :cascade do |t|
     t.bigint "client_time"
     t.datetime "created_at", null: false
@@ -344,6 +344,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_160000) do
     t.index ["tree_id", "begn"], name: "index_sections_on_tree_id_and_begn"
     t.index ["tree_id", "endn"], name: "index_sections_on_tree_id_and_endn"
     t.index ["tree_id", "iid"], name: "index_sections_on_tree_id_and_iid", unique: true
+  end
+
+  create_table "security_events", force: :cascade do |t|
+    t.string "event", null: false
+    t.integer "user_id"
+    t.integer "actor_id"
+    t.string "ip"
+    t.string "user_agent"
+    t.json "details"
+    t.datetime "created_at", null: false
+    t.index ["created_at"], name: "index_security_events_on_created_at"
+    t.index ["event", "created_at"], name: "index_security_events_on_event_and_created_at"
+    t.index ["user_id", "created_at"], name: "index_security_events_on_user_id_and_created_at"
   end
 
   create_table "segments", force: :cascade do |t|

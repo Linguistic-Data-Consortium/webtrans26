@@ -16,26 +16,28 @@ class JwtsController < ApplicationController
     user = User.authenticate_by(params.permit(:email_address, :password))
     account = user || User.find_by(email_address: params[:email_address].to_s)
     if account&.locked?
+      audit("sign_in.locked_out", user: account, via: "api")
       user = nil
     elsif user
       user.clear_sign_in_failures
     else
-      account&.register_failed_sign_in
+      record_failed_sign_in(account, via: "api")
     end
-    # With MFA on, a password alone isn't enough here either: an API client
-    # sends the current code as otp_code. Without one this would be a way round
-    # the second step.
     # Past the inactivity limit: disabled here as it would be at sign-in.
     if user&.inactive_too_long?
       user.disable_for_inactivity!
       user = nil
     end
+    # With MFA on, a password alone isn't enough here either: an API client
+    # sends the current code as otp_code. Without one this would be a way round
+    # the second step.
     if user && User.mfa_enabled? && !(user.mfa_enrolled? && user.verify_second_factor(params[:otp_code]))
-      user.register_failed_sign_in if user.mfa_enrolled?
+      record_failed_sign_in(user, event: "mfa.failure", via: "api") if user.mfa_enrolled?
       user = nil
     end
     if user&.activated?
       encoded_token = encode(user)
+      audit("api_token.issued", user: user)
       render json: { token: encoded_token }, status: :ok
     else
       render json: { error: "Invalid email or password" }, status: :unauthorized

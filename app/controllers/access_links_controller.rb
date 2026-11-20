@@ -61,8 +61,12 @@ class AccessLinksController < ApplicationController
       return
     end
 
-    user.activate unless user.activated?
+    unless user.activated?
+      user.activate
+      audit("account.activated", user: user, via: "access_link")
+    end
     user.clear_access_digest # single use
+    audit("access_link.used", user: user)
     user.clear_sign_in_failures # an administrator's link is a way past a lock, too
     # A link stands in for the password, not for the authenticator: with MFA
     # set up, the code is still asked for, and the password page follows.
@@ -100,6 +104,7 @@ class AccessLinksController < ApplicationController
 
   def mint(user)
     token = user.create_access_digest(current_user.id)
+    audit("access_link.created", user: user, actor: current_user)
     {
       ok: "access link created for #{user.name}",
       name: user.name,

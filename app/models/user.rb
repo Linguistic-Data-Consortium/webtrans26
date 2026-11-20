@@ -181,6 +181,8 @@ class User < ApplicationRecord
   def disable_for_inactivity!
     update_columns(activated: false, disabled_at: Time.current)
     sessions.destroy_all
+    SecurityEvent.record("account.disabled_inactive", user: self,
+                         last_active_at: (last_active_at || created_at)&.iso8601)
     true
   end
 

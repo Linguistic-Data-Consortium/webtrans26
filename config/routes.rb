@@ -167,6 +167,8 @@ Rails.application.routes.draw do
   resources :invites
   # Signed-in password change (the dashboard's Account tab).
   get '/account/password/edit', to: 'account_passwords#edit', as: :edit_account_password
+  # The security audit log, for system admins (SecurityEventsController).
+  resources :security_events, only: :index
   # Two-step sign-in setup and recovery codes (MFA_ENABLED; AccountMfasController).
   get '/account/mfa', to: 'account_mfas#show', as: :account_mfa
   post '/account/mfa', to: 'account_mfas#create'

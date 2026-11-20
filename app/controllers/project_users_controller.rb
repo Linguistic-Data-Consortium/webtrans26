@@ -48,10 +48,14 @@ class ProjectUsersController < ApplicationController
           response = []
           if params.has_key? :owner
             project_user.update(owner: params[:owner])
+            audit("project_role.changed", user: project_user.user, actor: current_user,
+                  project: project_user.project_name, owner: project_user.owner?)
             response << "#{project_user.user_name} #{project_user.owner? ? "has been made" : "is no longer"} an owner of #{project_user.project_name}"
           end
           if params.has_key? :admin
             project_user.update(admin: params[:admin])
+            audit("project_role.changed", user: project_user.user, actor: current_user,
+                  project: project_user.project_name, admin: project_user.admin?)
             response << "#{project_user.user_name} #{project_user.admin? ? "has been made" : "is no longer"} an admin of #{project_user.project_name}"
           end
           render json: { ok: response.join(',') }

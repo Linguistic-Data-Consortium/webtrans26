@@ -15,6 +15,7 @@ class GroupUsersController < ApplicationController
           { error: "#{user.name} is already a member of the group: #{group.name}" }
         else
           group.users << user
+          audit("group.added", user: user, actor: current_user, group: group.name)
           { ok: "#{user.name} has been added to the group: #{group.name}" }
         end
       end
@@ -27,6 +28,7 @@ class GroupUsersController < ApplicationController
         gu = GroupUser.find params[:id]
         group = gu.group
         group.delete_user gu.user
+        audit("group.removed", user: gu.user, actor: current_user, group: group.name)
         { ok: "#{gu.user_name} has been removed from the group: #{group.name}" }
       end
     end

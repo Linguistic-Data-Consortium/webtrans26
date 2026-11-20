@@ -8,6 +8,7 @@ namespace :mfa do
     abort "No user with that email address." unless user
     user.reset_mfa!
     user.sessions.destroy_all
+    SecurityEvent.record("mfa.reset", user: user, via: "bin/rails mfa:reset")
     puts "Two-step sign-in cleared for #{user.name}; they'll set it up again at their next sign-in."
   end
 end

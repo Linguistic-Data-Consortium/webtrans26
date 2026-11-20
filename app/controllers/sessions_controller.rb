@@ -23,14 +23,19 @@ class SessionsController < ApplicationController
     user = User.authenticate_by(params.permit(:email_address, :password))
     account = user || User.find_by(email_address: params[:email_address].to_s)
 
+    # The address as typed goes in the log for a failure with no account
+    # behind it; never the password.
+    email = params[:email_address].to_s.strip.downcase.truncate(255)
     if account&.locked?
+      audit("sign_in.locked_out", user: account)
       redirect_to new_session_path, alert: FAILED
     elsif user.nil?
-      account&.register_failed_sign_in
+      record_failed_sign_in(account, email: (email unless account))
       redirect_to new_session_path, alert: FAILED
     elsif user.inactive_too_long? || user.disabled_for_inactivity?
       user.disable_for_inactivity! unless user.disabled_for_inactivity?
       user.clear_sign_in_failures
+      audit("sign_in.disabled", user: user)
       redirect_to new_session_path, alert: DISABLED
     elsif user.activated? && user.mfa_challenge?
       # The password was right; the code from their authenticator comes next.
@@ -41,14 +46,17 @@ class SessionsController < ApplicationController
     elsif user.activated?
       user.clear_sign_in_failures
       start_new_session_for user
+      audit("sign_in.success", user: user)
       redirect_to after_authentication_url
     else
       user.clear_sign_in_failures
+      audit("sign_in.not_activated", user: user)
       redirect_to new_session_path, alert: "Your account hasn't been activated yet."
     end
   end
 
   def destroy
+    audit("sign_out", user: Current.session&.user)
     terminate_session
     redirect_to new_session_path
   end

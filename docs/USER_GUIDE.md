@@ -197,6 +197,55 @@ marked *disabled for inactivity*; **Activate** re-enables the account and restar
 access link does the same. To see who is past the limit, or disable them at
 once: `bin/rails users:inactive` (add `DISABLE=1`).
 
+#### Security log ([system admins])
+
+Every event that matters to an account's security is recorded in an
+append-only log — the app can add to it but not change or delete it — with the
+time, the account it concerns, who did it when that's someone else (an
+administrator granting a role, say), the IP address and browser, and a few
+details. Passwords, codes and tokens are never recorded; a failed sign-in for an
+address with no account records the address as typed.
+
+**Reading it:** `/security_events`, linked from the Account tab for system
+admins. Filter by event, by user (name or email address, matching either the
+account or the one who acted) and by date; newest first, 100 a page. **Download
+CSV** exports the current filter, oldest first. Each event is also written to
+the Rails log as one `[security] event=… user=… actor=… ip=… details=…` line,
+for shipping to a central log system.
+
+The log keeps everything; nothing prunes it.
+
+| Event | Meaning |
+|---|---|
+| `sign_in.success` | Signed in |
+| `sign_in.failure` | Wrong password, or an unknown address |
+| `sign_in.locked_out` | Sign-in refused: the account is locked |
+| `sign_in.not_activated` | Right password on an account not yet activated |
+| `sign_in.disabled` | Right password on an account disabled for inactivity |
+| `sign_out` | Signed out |
+| `account.locked` | Locked after too many failed sign-ins |
+| `account.created` | Signed up |
+| `account.activated` | Activated (by an administrator, an activation link or an access link) |
+| `account.disabled_inactive` | Disabled after the inactivity limit |
+| `password.changed` | Changed their password |
+| `password.change_failed` | Password change refused: wrong current password |
+| `password.reset_requested` | Asked for a password reset email |
+| `password.reset` | Set a new password through a reset link |
+| `mfa.success` | Passed two-step sign-in |
+| `mfa.failure` | Wrong two-step code |
+| `mfa.recovery_code_used` | Signed in with a recovery code |
+| `mfa.enrolled` | Set up two-step sign-in |
+| `mfa.recovery_codes_renewed` | Made new recovery codes |
+| `mfa.reset` | Two-step sign-in cleared by an administrator |
+| `access_link.created` | An access link was made for the account |
+| `access_link.used` | Signed in with an access link |
+| `invite.sent` | Invited |
+| `group.added` | Added to a group (Portal Managers and Project Managers grant roles) |
+| `group.removed` | Removed from a group |
+| `project_role.changed` | Project owner or admin flag changed |
+| `task_role.changed` | Task admin flag changed |
+| `api_token.issued` | Issued an API token (/jwts) |
+
 #### View own profile / dashboard ([signed-in user only])
 
 | What | Where | Notes |

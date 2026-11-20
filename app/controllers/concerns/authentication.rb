@@ -95,6 +95,22 @@ module Authentication
       session.delete(:mfa_then_password_without_current)
     end
 
+    # A security audit log entry (SecurityEvent) for this request: its IP and
+    # browser come with it. +actor+ is who did it, when that's not +user+
+    # themselves (an admin granting a role, say).
+    def audit(event, user: nil, actor: nil, **details)
+      SecurityEvent.record(event, user: user, actor: actor, ip: request.remote_ip,
+                           user_agent: request.user_agent, **details)
+    end
+
+    # A wrong password or code: count it toward the lockout, and log it, and
+    # the lock too if this was the failure that set it.
+    def record_failed_sign_in(account, event: "sign_in.failure", **details)
+      account&.register_failed_sign_in
+      audit(event, user: account, **details)
+      audit("account.locked", user: account) if account&.reload&.locked?
+    end
+
     def start_new_session_for(user)
       user.record_activity
       user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|
