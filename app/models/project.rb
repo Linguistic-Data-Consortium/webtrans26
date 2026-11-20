@@ -48,8 +48,10 @@ class Project < ActiveRecord::Base
   end
 
   #function that allows the deleting of a user from a project
+  # Destroyed, not deleted, so the membership's callbacks run (the security
+  # log records the removal).
   def delete_user(user)
-    users.delete user
+    project_users.where(user_id: user.id).destroy_all
   end
 
   #returns whether a user is a member of the project

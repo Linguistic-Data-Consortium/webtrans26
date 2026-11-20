@@ -45,7 +45,7 @@ module Authentication
       session = Session.find_by(id: cookies.signed[:session_id])
       return unless session
       if session.updated_at < Authentication.session_idle_timeout.ago
-        session.destroy
+        Session.expire!(session, via: "next_use")
         return
       end
       if session.updated_at < Authentication.session_touch_interval.ago
@@ -100,7 +100,7 @@ module Authentication
     # A security audit log entry (SecurityEvent) for this request: its IP and
     # browser come with it. +actor+ is who did it, when that's not +user+
     # themselves (an admin granting a role, say).
-    def audit(event, user: nil, actor: nil, **details)
+    def audit(event, user: nil, actor: Current.user, **details)
       SecurityEvent.record(event, user: user, actor: actor, ip: request.remote_ip,
                            user_agent: request.user_agent, **details)
     end

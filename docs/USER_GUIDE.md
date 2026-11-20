@@ -17,7 +17,7 @@ Roles in this app come from three sources: a flag on the `users` row, membership
 
 | Role | Source | What it implies |
 |---|---|---|
-| **System admin** | `users.admin = true` | Top of the hierarchy. Implies *every* role below. Set directly on the `users` row (no UI to elevate someone — has to be done in the DB or a console). |
+| **System admin** | `users.admin = true` | Top of the hierarchy. Implies *every* role below. No screen grants it: `bin/rails users:grant_admin EMAIL=…` (and `users:revoke_admin`) does, and the security log records it — as it does a change made in a Rails console with `update`. |
 | **Portal manager** | Membership in the `Portal Managers` group<br>OR system admin | Implies project owner of every project, and so project admin and task admin everywhere. Also: create access links for anyone below portal manager, and change any kit type. Not everything an admin can do — groups, features, workflows and deleting projects stay admin-only. |
 | **Project manager** | Membership in the `Project Managers` group<br>OR portal manager | Can create new projects (becoming their owner) and kit types, and has read access to everything: every project, task, kit and transcript, and the workflow list. Grants no role on any project — on someone else's project a project manager can look but not change anything. |
 
@@ -214,6 +214,15 @@ CSV** exports the current filter, oldest first. Each event is also written to
 the Rails log as one `[security] event=… user=… actor=… ip=… details=…` line,
 for shipping to a central log system.
 
+Recording happens in the models where it can — memberships, roles, admin and
+activation changes, kit types, features and workflows — so every route is
+covered, the dashboard, invites, task imports and a Rails console's `update`
+alike; outside a request there's no actor or address. A console's
+`update_column` skips it, which is why the `users:` tasks exist. A session
+ending by timeout is recorded when its cookie next turns up, and by a sweep
+every 10 minutes (`ExpireIdleSessionsJob`) for the ones that never do; a
+sign-out by the screen lock is a `sign_out` with `reason: screen_lock`.
+
 The log keeps everything; nothing prunes it.
 
 | Event | Meaning |
@@ -228,6 +237,17 @@ The log keeps everything; nothing prunes it.
 | `account.created` | Signed up |
 | `account.activated` | Activated (by an administrator, an activation link or an access link) |
 | `account.disabled_inactive` | Disabled after the inactivity limit |
+| `account.deactivated` | Deactivated by hand (dashboard, users:deactivate, or the console) |
+| `admin.granted` | Made a system admin |
+| `admin.revoked` | No longer a system admin |
+| `session.expired` | A session ended after the idle limit (found on its next use, or by the sweep every 10 minutes) |
+| `project_member.added` | Added to a project |
+| `project_member.removed` | Removed from a project |
+| `task_member.added` | Added to a task |
+| `task_member.removed` | Removed from a task |
+| `kit_type.changed` | A kit type was created, changed or deleted |
+| `feature.changed` | A feature was created, changed or deleted |
+| `workflow.changed` | A workflow was created, changed or deleted |
 | `password.changed` | Changed their password |
 | `password.change_failed` | Password change refused: wrong current password |
 | `password.reset_requested` | Asked for a password reset email |
@@ -245,6 +265,7 @@ The log keeps everything; nothing prunes it.
 | `group.removed` | Removed from a group |
 | `project_role.changed` | Project owner or admin flag changed |
 | `task_role.changed` | Task admin flag changed |
+| `download_task.changed` | A project's download task was set or cleared (its members may download) |
 | `api_token.issued` | Issued an API token (/jwts) |
 
 #### View own profile / dashboard ([signed-in user only])
@@ -259,7 +280,8 @@ These exist as concepts in the data model but no UI exposes them:
 
 - **Change your email address** — there's no `users#edit` / `users#update`. The address you signed up with is permanent; reset flow doesn't change it either.
 - **Delete your own account** — no `users#destroy` either.
-- **Promote yourself or anyone else to system admin** — `users.admin = true` has to be set in the DB or a Rails console.
+- **Promote yourself or anyone else to system admin** — from a shell on the server, `bin/rails users:grant_admin EMAIL=…` / `users:revoke_admin EMAIL=…`, both in the security log.
+- **Deactivate an account** has no button yet: `PATCH /users/<id>/deactivate` (portal managers; only an admin may deactivate an admin) or `bin/rails users:deactivate EMAIL=…`. Either signs the account out everywhere and is in the security log; re-activate from the **Activations** tab.
 - **Become a portal manager / project manager** — those come from joining the `Portal Managers` / `Project Managers` Group, which only an existing portal-manager-or-higher can do (via the **Groups** dashboard tab — see the next section).
 
 ### 2.2 Dashboard top-level tabs

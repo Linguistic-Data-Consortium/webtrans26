@@ -12,6 +12,17 @@
 #
 
 class ProjectUser < ActiveRecord::Base
+  # The security log (SecurityEvent), from here rather than each controller,
+  # so every way in — the dashboard, invites, a task import, the console — is
+  # recorded.
+  after_create  { SecurityEvent.record("project_member.added", user: user, project: project&.name,
+                                       owner: owner? || nil, admin: admin? || nil) }
+  after_destroy { SecurityEvent.record("project_member.removed", user: user, project: project&.name) }
+  after_update do
+    if saved_change_to_owner? || saved_change_to_admin?
+      SecurityEvent.record("project_role.changed", user: user, project: project&.name, owner: owner?, admin: admin?)
+    end
+  end
   # attr_accessible :project_id, :user_id, :admin
   belongs_to :project
   belongs_to :user

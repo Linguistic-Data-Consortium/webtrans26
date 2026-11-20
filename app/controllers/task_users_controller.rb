@@ -138,8 +138,6 @@ class TaskUsersController < ApplicationController
           response = []
           if params.has_key? :admin
             task_user.update(admin: params[:admin])
-            audit("task_role.changed", user: task_user.user, actor: current_user,
-                  task: task_user.task_name, admin: task_user.admin?)
             response << "#{task_user.user_name} #{task_user.admin? ? "has been made" : "is no longer"} an admin of #{task_user.task_name}"
           end
           if params.has_key? :state

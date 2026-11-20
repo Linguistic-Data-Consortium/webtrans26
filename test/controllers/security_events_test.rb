@@ -80,6 +80,88 @@ class SecurityEventsTest < ActionDispatch::IntegrationTest
     assert_nil e.actor_id
   end
 
+  # ── memberships, accounts, sessions, configuration ─────────────────────
+
+  test "adding and removing project and task members is recorded, with who did it" do
+    charlie = users(:charlie)
+    sign_in_as @alice # owner of alpha, admin of alpha_task_one
+    post project_users_url, params: { project_id: projects(:alpha).id, user_id: charlie.id }, as: :json
+    e = last("project_member.added")
+    assert_equal [ charlie.id, @alice.id, projects(:alpha).name ], [ e.user_id, e.actor_id, e.details["project"] ]
+
+    post task_users_url, params: { task_id: tasks(:alpha_task_one).id, user_id: charlie.id }, as: :json
+    assert_equal charlie.id, last("task_member.added").user_id
+
+    tu = TaskUser.find_by!(task: tasks(:alpha_task_one), user: charlie)
+    delete task_user_url(tu), as: :json
+    assert_equal [ charlie.id, @alice.id ], [ last("task_member.removed").user_id, last("task_member.removed").actor_id ]
+
+    pu = ProjectUser.find_by!(project: projects(:alpha), user: charlie)
+    delete project_user_url(pu), as: :json
+    assert_equal charlie.id, last("project_member.removed").user_id
+  end
+
+  test "a role flag on a membership is recorded once, from the model" do
+    sign_in_as @alice
+    pu = project_users(:bob_on_alpha)
+    assert_difference -> { SecurityEvent.where(event: "project_role.changed").count }, 1 do
+      patch project_user_url(pu), params: { admin: true }, as: :json
+    end
+    assert_equal true, last("project_role.changed").details["admin"]
+  end
+
+  test "deactivating by hand is recorded with who did it, and a portal manager can't deactivate an admin" do
+    sign_in_as users(:pat) # portal manager
+    patch deactivate_user_url(@alice), as: :json
+    assert_not @alice.reload.activated?
+    assert_equal [ @alice.id, users(:pat).id ], [ last("account.deactivated").user_id, last("account.deactivated").actor_id ]
+
+    patch deactivate_user_url(@admin), as: :json
+    assert_response :forbidden
+    assert @admin.reload.activated?
+  end
+
+  test "granting and revoking system admin is recorded, from the console as well" do
+    @alice.update!(admin: true)
+    assert_equal @alice.id, last("admin.granted").user_id
+    @alice.update_attribute(:admin, false)
+    assert_equal @alice.id, last("admin.revoked").user_id
+  end
+
+  test "a session that timed out is recorded when it's next used, and by the sweep" do
+    sign_in_as @alice
+    @alice.sessions.update_all(updated_at: 31.minutes.ago)
+    get user_path(@alice)
+    assert_equal "next_use", last("session.expired").details["via"]
+
+    stale = users(:bob).sessions.create!(user_agent: "t", ip_address: "127.0.0.1")
+    stale.update_columns(updated_at: 2.hours.ago)
+    assert_equal 1, ExpireIdleSessionsJob.perform_now
+    e = last("session.expired")
+    assert_equal [ users(:bob).id, "sweep" ], [ e.user_id, e.details["via"] ]
+    assert_not Session.exists?(stale.id)
+  end
+
+  test "a sign-out by the screen lock says so" do
+    sign_in_as @alice
+    delete session_url(idle: 1)
+    assert_equal "screen_lock", last("sign_out").details["reason"]
+  end
+
+  test "changes to kit types, features and workflows are recorded, naming the fields" do
+    kit_types(:advanced).update_columns(node_class_id: NodeClass.create!(name: "AuditCheck:Root").id)
+    sign_in_as @admin
+    patch kit_type_url(kit_types(:advanced)), params: { kit_type: { name: "renamed_type" } }, as: :json
+    e = last("kit_type.changed")
+    assert_equal [ "updated", [ "name" ], @admin.id ], [ e.details["action"], e.details["fields"], e.actor_id ]
+
+    Feature.create!(name: "f1", value: "f1", category: "task")
+    assert_equal "created", last("feature.changed").details["action"]
+
+    WorkflowSameListForEveryone.create!(name: "AuditedList")
+    assert_equal "created", last("workflow.changed").details["action"]
+  end
+
   # ── append-only ────────────────────────────────────────────────────────
 
   test "a recorded event can't be changed or deleted" do

@@ -26,6 +26,17 @@ class SecurityEvent < ApplicationRecord
     "account.created"            => "Signed up",
     "account.activated"          => "Activated (by an administrator, an activation link or an access link)",
     "account.disabled_inactive"  => "Disabled after the inactivity limit",
+    "account.deactivated"        => "Deactivated by hand (dashboard, users:deactivate, or the console)",
+    "admin.granted"              => "Made a system admin",
+    "admin.revoked"              => "No longer a system admin",
+    "session.expired"            => "A session ended after the idle limit (found on its next use, or by the sweep every 10 minutes)",
+    "project_member.added"       => "Added to a project",
+    "project_member.removed"     => "Removed from a project",
+    "task_member.added"          => "Added to a task",
+    "task_member.removed"        => "Removed from a task",
+    "kit_type.changed"           => "A kit type was created, changed or deleted",
+    "feature.changed"            => "A feature was created, changed or deleted",
+    "workflow.changed"           => "A workflow was created, changed or deleted",
     "password.changed"           => "Changed their password",
     "password.change_failed"     => "Password change refused: wrong current password",
     "password.reset_requested"   => "Asked for a password reset email",
@@ -60,7 +71,12 @@ class SecurityEvent < ApplicationRecord
   # Record +event+. Never raises: losing an audit row is bad, but failing the
   # sign-in or password change it describes would be worse. A failure is
   # logged instead.
-  def self.record(event, user: nil, actor: nil, ip: nil, user_agent: nil, **details)
+  #
+  # From a request, where the request came from and who was signed in fill
+  # themselves in (Current); outside one (a job, a task, the console) they're
+  # empty. The actor is left out when it's the account itself.
+  def self.record(event, user: nil, actor: Current.user, ip: Current.ip, user_agent: Current.user_agent, **details)
+    actor = nil if actor && user && actor.id == user.id
     row = create!(event: event, user_id: user&.id, actor_id: actor&.id, ip: ip,
                   user_agent: user_agent&.truncate(255), details: details.compact.presence)
     Rails.logger.info(

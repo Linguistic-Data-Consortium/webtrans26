@@ -76,8 +76,10 @@ class Task < ActiveRecord::Base
   end
 
   #function that allows the deleting of a user from a task
+  # Destroyed, not deleted, so the membership's callbacks run (the security
+  # log records the removal).
   def delete_user(user)
-    users.delete user
+    task_users.where(user_id: user.id).destroy_all
   end
 
   def name_with_project

@@ -3,6 +3,7 @@ class ApplicationController < ActionController::Base
   include SessionsHelper
   # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
   allow_browser versions: :modern
+  prepend_before_action { Current.ip = request.remote_ip; Current.user_agent = request.user_agent }
   # A password past its age, or never chosen, has to be replaced before
   # anything else (AccountPasswordsController#edit).
   before_action :require_unexpired_password

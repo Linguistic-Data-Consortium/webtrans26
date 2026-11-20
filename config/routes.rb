@@ -48,6 +48,7 @@ Rails.application.routes.draw do
     end
     member do
       patch :activate
+      patch :deactivate
     end
   end
   # resources :sessions, only: [:create]

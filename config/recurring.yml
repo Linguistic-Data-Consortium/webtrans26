@@ -10,6 +10,9 @@
 #     schedule: at 5am every day
 
 production:
+  expire_idle_sessions:
+    class: ExpireIdleSessionsJob
+    schedule: every 10 minutes
   disable_inactive_accounts:
     class: DisableInactiveAccountsJob
     schedule: every day at 3am

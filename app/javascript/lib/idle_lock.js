@@ -30,7 +30,7 @@ async function clear_screen(){
     }
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
     try {
-        await fetch('/session', {
+        await fetch('/session?idle=1', {
             method: 'DELETE', credentials: 'same-origin', redirect: 'manual',
             headers: { 'X-CSRF-Token': token || '', 'Accept': 'application/json' }
         });

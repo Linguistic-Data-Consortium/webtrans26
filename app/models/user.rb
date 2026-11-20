@@ -194,11 +194,23 @@ class User < ApplicationRecord
   end
 
   # Flips the user back to "not activated" and tears down all live sessions.
-  # Used when a password reset is requested on an instance without outbound
-  # mail — the user is parked until an administrator verifies them.
-  def deactivate
+  # Deactivate by hand: signed out everywhere and unable to sign in until
+  # re-activated. From the dashboard (users#deactivate) or
+  # `bin/rails users:deactivate EMAIL=`, both of which the security log records.
+  def deactivate(by: nil)
     update_columns(activated: false, activated_at: nil, confirmed_at: nil)
     sessions.destroy_all
+    SecurityEvent.record("account.deactivated", user: self, **(by ? { actor: by } : {}))
+  end
+
+  # A change to admin or activated made with update/save — the console's usual
+  # way — is in the security log too. (update_column skips callbacks, and so
+  # this; the tasks in lib/tasks/users.rake are the logged way.)
+  after_update do
+    SecurityEvent.record(admin? ? "admin.granted" : "admin.revoked", user: self) if saved_change_to_admin?
+    if saved_change_to_activated?
+      SecurityEvent.record(activated? ? "account.activated" : "account.deactivated", user: self, via: "update")
+    end
   end
 
   def send_activation_email

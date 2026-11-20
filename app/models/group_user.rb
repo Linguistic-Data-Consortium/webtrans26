@@ -10,6 +10,11 @@
 #
 
 class GroupUser < ActiveRecord::Base
+  # Membership of Portal Managers or Project Managers is a role, so every way of
+  # adding or removing one is in the security log (SecurityEvent): the Groups
+  # tab, an invite, the console.
+  after_create  { SecurityEvent.record("group.added", user: user, group: group&.name) }
+  after_destroy { SecurityEvent.record("group.removed", user: user, group: group&.name) }
   # attr_accessible :group_id, :user_id
   belongs_to :group
   belongs_to :user

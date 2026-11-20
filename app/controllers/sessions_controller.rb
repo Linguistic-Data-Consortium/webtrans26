@@ -58,7 +58,8 @@ class SessionsController < ApplicationController
   end
 
   def destroy
-    audit("sign_out", user: Current.session&.user)
+    # ?idle=1 when the screen lock signed out (idle_lock.js).
+    audit("sign_out", user: Current.session&.user, reason: (params[:idle] ? "screen_lock" : nil))
     terminate_session
     redirect_to new_session_path
   end

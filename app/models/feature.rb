@@ -1,4 +1,6 @@
 class Feature < ApplicationRecord
+  include AuditedChanges
+  self.audit_event = "feature.changed"
   validates( :name, :presence => true,
   :uniqueness => { :case_sensitive => false })
 

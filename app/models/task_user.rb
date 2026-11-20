@@ -16,6 +16,14 @@
 #
 
 class TaskUser < ActiveRecord::Base
+  # The security log (SecurityEvent), from here so every way of adding,
+  # removing or promoting a member is recorded. Not state changes, which
+  # happen on every kit.
+  after_create  { SecurityEvent.record("task_member.added", user: user, task: task&.name, admin: admin? || nil) }
+  after_destroy { SecurityEvent.record("task_member.removed", user: user, task: task&.name) }
+  after_update do
+    SecurityEvent.record("task_role.changed", user: user, task: task&.name, admin: admin?) if saved_change_to_admin?
+  end
   # attr_accessible :task_id, :user_id, :state, :meta, :kit_id, :kit_oid
   serialize :meta, type: Hash
   belongs_to :task

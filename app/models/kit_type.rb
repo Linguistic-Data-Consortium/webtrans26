@@ -16,6 +16,8 @@
 #
 
 class KitType < ActiveRecord::Base
+  include AuditedChanges
+  self.audit_event = "kit_type.changed"
 
   # attr_accessible :name, :node_class_id, :source_id, :config_id, :meta, :annotation_set_id
   serialize :meta, type: Hash

@@ -56,6 +56,8 @@ exists and db:prepare only seeds one it had to create.
 =end
 
 class Workflow < ApplicationRecord
+  include AuditedChanges
+  self.audit_event = "workflow.changed" # subclasses (single-table) inherit it
   # attr_accessible :name, :user_states, :description, :type
   has_many :tasks
 

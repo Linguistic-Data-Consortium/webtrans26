@@ -3,7 +3,7 @@ class UsersController < ApplicationController
   # before_action :authenticate, :except => [ :new, :create, :mail_username, :check_username, :single ]
   # before_action :admin_user, :only => [ :destroy, :update_activated ]
   allow_unauthenticated_access only: %i[ new create ]
-  before_action :portal_manager_user, only: %i[ unactivated activate ]
+  before_action :portal_manager_user, only: %i[ unactivated activate deactivate ]
 
   include UsersHelper
   # include AwsHelper
@@ -33,6 +33,15 @@ class UsersController < ApplicationController
       { id: u.id, name: u.name, email: u.email_address, created_at: u.created_at, disabled_at: u.disabled_at }
     end
     render json: { users: users }
+  end
+
+  # Sign a user out everywhere and stop them signing in, until re-activated.
+  # Portal-manager only, like activate; an admin is beyond a portal manager.
+  def deactivate
+    user = User.find(params[:id])
+    return render(json: { error: "Only an administrator can deactivate an administrator." }, status: :forbidden) if user.admin? && !admin?
+    user.deactivate(by: current_user)
+    render json: { ok: true, id: user.id }
   end
 
   # Flip the activated flag on a single user. Portal-manager only.
