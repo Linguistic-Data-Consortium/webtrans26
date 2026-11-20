@@ -400,7 +400,7 @@ Your own settings. Visible to every signed-in user.
 |---|---|
 | **Change password** (current password, new password, confirmation) | Requires your existing password, so a borrowed browser can't quietly change it. The new one must follow the *Password rules* (§2.1) and match its confirmation. `PATCH /account/password`, which requires authentication and is rate-limited to 10 attempts per 3 minutes. |
 | Other devices | A successful change destroys every other session for your account and tells you how many — the current browser stays signed in. That's how you evict a device you no longer control, or retire a spent access link. |
-| Idle sign-out | A browser that hasn't used its session for **2 hours** is signed out, and signs in again (with a code, if two-step sign-in is on). Any request counts as use, so someone working, saving annotations included, is never cut off; it's a browser left open and unattended that ends. |
+| Idle sign-out and screen lock | After **30 minutes** with no keyboard, mouse or touch input (`SESSION_IDLE_MINUTES`), the page signs out and replaces itself with the sign-in page — *"You were signed out after 30 minutes without activity"* — so nothing of your work stays on screen, and **Back** doesn't bring it back (signed-in pages aren't cached). Input in any of this site's tabs counts for all of them. A line left typed in the editor is saved before the page clears. The server ends any session unused for the same 30 minutes, so a copied cookie stops working too; requests count as use there, so someone working is never cut off. |
 
 Forgotten passwords are a different path: with outbound mail, use the reset
 flow (§2.1); without it, ask an administrator for an access link (§2.2.7).

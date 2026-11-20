@@ -29,24 +29,26 @@ module Authentication
       Current.session ||= find_session_by_cookie
     end
 
-    # A session nobody has used for this long is gone: a browser left open and
-    # unattended signs itself out, and a cookie copied off a machine stops
-    # working. Someone working is never cut off, since every request is use.
-    # Use is recorded at most every SESSION_TOUCH_INTERVAL, to keep a write off
-    # every request; that interval is how much earlier than the timeout an idle
-    # session can end, so it stays small next to it.
-    SESSION_IDLE_TIMEOUT = 2.hours
-    SESSION_TOUCH_INTERVAL = 5.minutes
+    # A session nobody has used for SESSION_IDLE_MINUTES (30) is gone, so a
+    # cookie copied off a machine stops working. The browser does the same on
+    # its side and clears the screen (idle_lock.js, the screen lock), so the
+    # two end together. Someone working is never cut off: every request is use.
+    #
+    # Use is recorded at most every session_touch_interval, to keep a write off
+    # every request; that is how much earlier than the limit an idle session
+    # can end, so it stays small next to it.
+    def self.session_idle_timeout = (Rails.application.config.x.session_idle_minutes * 60).seconds
+    def self.session_touch_interval = [ 1.minute, session_idle_timeout / 10 ].min
 
     def find_session_by_cookie
       return unless cookies.signed[:session_id]
       session = Session.find_by(id: cookies.signed[:session_id])
       return unless session
-      if session.updated_at < SESSION_IDLE_TIMEOUT.ago
+      if session.updated_at < Authentication.session_idle_timeout.ago
         session.destroy
         return
       end
-      if session.updated_at < SESSION_TOUCH_INTERVAL.ago
+      if session.updated_at < Authentication.session_touch_interval.ago
         session.touch
         session.user.record_activity
       end

@@ -44,20 +44,20 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
 
   # ── idle timeout ─────────────────────────────────────────────────────────
 
-  test "a session unused for over two hours is refused and deleted" do
+  test "a session unused for over 30 minutes is refused and deleted" do
     alice = users(:alice)
     sign_in_as alice
     session = alice.sessions.order(:id).last
-    session.update_columns(updated_at: (2.hours + 1.minute).ago)
+    session.update_columns(updated_at: 31.minutes.ago)
     get user_path(alice)
     assert_redirected_to new_session_path
     assert_not Session.exists?(session.id)
   end
 
-  test "a session used within two hours carries on" do
+  test "a session used within 30 minutes carries on" do
     alice = users(:alice)
     sign_in_as alice
-    alice.sessions.order(:id).last.update_columns(updated_at: (2.hours - 1.minute).ago)
+    alice.sessions.order(:id).last.update_columns(updated_at: 29.minutes.ago)
     get user_path(alice)
     assert_response :success
   end
@@ -65,9 +65,9 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
   test "someone who keeps working is never signed out" do
     alice = users(:alice)
     sign_in_as alice
-    # Six hours of a request every 20 minutes: never two hours idle.
+    # Three hours of a request every 10 minutes: never 30 minutes idle.
     18.times do
-      travel 20.minutes
+      travel 10.minutes
       get user_path(alice)
       assert_response :success
     end
@@ -75,18 +75,50 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     travel_back
   end
 
-  test "using a session pushes its expiry back, at most every five minutes" do
+  test "using a session pushes its expiry back, at most every minute" do
     alice = users(:alice)
     sign_in_as alice
     session = alice.sessions.order(:id).last
-    session.update_columns(updated_at: 6.minutes.ago)
-    get user_path(alice)
-    assert_operator session.reload.updated_at, :>, 1.minute.ago
-
     session.update_columns(updated_at: 2.minutes.ago)
+    get user_path(alice)
+    assert_operator session.reload.updated_at, :>, 10.seconds.ago
+
+    session.update_columns(updated_at: 30.seconds.ago)
     stamp = session.reload.updated_at
     get user_path(alice)
     assert_equal stamp, session.reload.updated_at
+  end
+
+  test "SESSION_IDLE_MINUTES sets the limit" do
+    Rails.application.config.x.session_idle_minutes = 10
+    alice = users(:alice)
+    sign_in_as alice
+    alice.sessions.order(:id).last.update_columns(updated_at: 11.minutes.ago)
+    get user_path(alice)
+    assert_redirected_to new_session_path
+  ensure
+    Rails.application.config.x.session_idle_minutes = 30.0
+  end
+
+  # ── the screen lock's side of it ────────────────────────────────────────
+
+  test "a signed-in page carries the lock's limit, and a signed-out one doesn't" do
+    get new_session_path
+    assert_select "meta[name='idle-lock-seconds']", count: 0
+    sign_in_as users(:alice)
+    get user_path(users(:alice))
+    assert_select "meta[name='idle-lock-seconds'][content='1800']"
+  end
+
+  test "signed-in pages aren't kept by the browser" do
+    sign_in_as users(:alice)
+    get user_path(users(:alice))
+    assert_equal "no-store", response.headers["Cache-Control"]
+  end
+
+  test "the sign-in page says why, after the screen lock" do
+    get new_session_path(idle: 1)
+    assert_match(/signed out after 30 minutes without activity/, response.body)
   end
 
   # ── what a signed-out request gets ─────────────────────────────────────

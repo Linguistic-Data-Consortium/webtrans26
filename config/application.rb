@@ -57,6 +57,11 @@ module Webtrans26
     config.x.mfa_enabled = ENV["MFA_ENABLED"] == "true"
     config.x.mfa_issuer = ENV.fetch("MFA_ISSUER", "Webtrans")
 
+    # A session unused this long ends, and the browser clears the screen at the
+    # same mark (Authentication, idle_lock.js): the session timeout and the
+    # screen lock are one setting.
+    config.x.session_idle_minutes = Float(ENV.fetch("SESSION_IDLE_MINUTES", "30"))
+
     # Accounts nobody has signed in to or used for this many days are disabled
     # (User#inactive_too_long?, DisableInactiveAccountsJob).
     config.x.inactive_account_days = Integer(ENV.fetch("INACTIVE_ACCOUNT_DAYS", "180"))

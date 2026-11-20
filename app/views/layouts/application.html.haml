@@ -20,6 +20,11 @@
     -# Whether two-step sign-in is on (MFA_ENABLED), so the Account tab can link
     -# to its settings.
     %meta{ name: 'mfa-enabled', content: Rails.application.config.x.mfa_enabled.to_s }
+    -# The screen lock (idle_lock.js): after this many seconds without input the
+    -# page signs out and clears itself. The same limit ends the session on the
+    -# server (Authentication.session_idle_timeout). Only for a signed-in page.
+    - if authenticated?
+      %meta{ name: 'idle-lock-seconds', content: Authentication.session_idle_timeout.to_i }
     -# Whether the per-project S3 path (POST /s3_session) is on. Independent of
     -# s3-available: an instance can have either, both or neither. See
     -# aws/s3_project_prefixes.md and lib/ldcjs/s3_session.js.

@@ -8,7 +8,7 @@
 # session_hold.svelte.js). This drives exactly that:
 #
 #   1. type a segment and see it saved, as usual
-#   2. end the session server-side, as 2 hours without use would
+#   2. end the session server-side, as SESSION_IDLE_MINUTES without use would
 #   3. add a segment: the banner appears and nothing reaches the log
 #   4. sign in again in a second tab, then press "I've signed in"
 #   5. the held add lands, the segment becomes typeable, and its text saves too
@@ -72,7 +72,7 @@ wait.until { texts.().any? { |v| v.include?("typed while signed in") } }
 check.("its text is in the log", true)
 segments_before = segments.()
 
-puts "==> 2. The session ends (as after 2 hours without use)"
+puts "==> 2. The session ends (as after SESSION_IDLE_MINUTES without use)"
 ctx[:user].sessions.update_all(updated_at: 3.hours.ago)
 
 puts "==> 3. A segment added while signed out"

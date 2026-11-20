@@ -265,6 +265,25 @@ class DashboardTest < ApplicationSystemTestCase
     assert_equal "object", evaluate_script("typeof window.ldc_work_work")
   end
 
+  # The screen lock (idle_lock.js), at a few seconds instead of 30 minutes:
+  # with no input the page signs out and replaces itself, and Back doesn't
+  # bring the dashboard back.
+  test "after the idle limit with no input, the screen clears and the session ends" do
+    Rails.application.config.x.session_idle_minutes = 0.1 # 6 seconds
+    alice = users(:alice)
+    sign_in_browser alice
+    assert_selector "[role='tab']", text: /\AProjects\z/i, wait: 10
+
+    assert_current_path(new_session_path(idle: 1), wait: 30)
+    assert_text "signed out after"
+    assert_empty alice.sessions.reload, "signed out on the server too"
+
+    page.go_back
+    assert_no_selector "[role='tab']", text: /\AProjects\z/i, wait: 3
+  ensure
+    Rails.application.config.x.session_idle_minutes = 30.0
+  end
+
   private
 
   def sign_in_browser(user, password: "password123")

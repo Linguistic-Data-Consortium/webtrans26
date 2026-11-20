@@ -8,6 +8,9 @@ class ApplicationController < ActionController::Base
   before_action :require_unexpired_password
   # With MFA_ENABLED, an authenticator has to be set up next (AccountMfasController).
   before_action :require_mfa_enrollment
+  # A signed-in page isn't kept by the browser, so Back after the screen lock
+  # (or a sign-out) can't bring its contents back. See idle_lock.js.
+  after_action :forbid_caching_signed_in_pages
 
   # Handle Rack::Attack rate limiting
   rescue_from Rack::Attack::Throttle do |exception|
@@ -150,6 +153,10 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  def forbid_caching_signed_in_pages
+    response.headers["Cache-Control"] = "no-store" if Current.session
+  end
 
   def require_unexpired_password
     return unless authenticated? && current_user&.password_expired?

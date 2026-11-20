@@ -4,7 +4,9 @@ class SessionsController < ApplicationController
   skip_before_action :require_mfa_enrollment
   rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to new_session_url, alert: "Try again later." }
 
+  # ?idle=1 is where the screen lock (idle_lock.js) sends a page it cleared.
   def new
+    flash.now[:notice] = "You were signed out after #{Authentication.session_idle_timeout.in_minutes.round} minutes without activity." if params[:idle]
   end
 
   # One answer for every failure: a wrong password, an unknown address, and a

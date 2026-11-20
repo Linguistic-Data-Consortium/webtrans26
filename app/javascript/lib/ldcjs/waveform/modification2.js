@@ -99,6 +99,13 @@ function add_callback(f){
     annotations_promise = annotations_promise.then(f).catch( function(e){ console.error(e); });
 }
 
+// Resolves once every save queued so far has been answered. The screen lock
+// (idle_lock.js) waits on this, briefly, before it clears the page.
+function saves_settled(){
+    return annotations_promise.then( function(){} );
+}
+if(typeof window !== 'undefined') window.ldc_saves_settled = saves_settled;
+
 let d;
 
 //this is the function which actually submits annotations to the annotate action in the annotate controller
@@ -415,4 +422,4 @@ function annotate2(messages, client_time){
 }
 
 
-export { setldc, add_message, add_message_listitem, submit_form, add_callback }
+export { setldc, add_message, add_message_listitem, submit_form, add_callback, saves_settled }
