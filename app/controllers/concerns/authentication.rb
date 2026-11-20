@@ -29,11 +29,14 @@ module Authentication
       Current.session ||= find_session_by_cookie
     end
 
-    # A session nobody has used for this long is gone, so a cookie copied off a
-    # machine stops working. Use is recorded at most hourly, to keep a write off
-    # every request.
-    SESSION_IDLE_TIMEOUT = 14.days
-    SESSION_TOUCH_INTERVAL = 1.hour
+    # A session nobody has used for this long is gone: a browser left open and
+    # unattended signs itself out, and a cookie copied off a machine stops
+    # working. Someone working is never cut off, since every request is use.
+    # Use is recorded at most every SESSION_TOUCH_INTERVAL, to keep a write off
+    # every request; that interval is how much earlier than the timeout an idle
+    # session can end, so it stays small next to it.
+    SESSION_IDLE_TIMEOUT = 2.hours
+    SESSION_TOUCH_INTERVAL = 5.minutes
 
     def find_session_by_cookie
       return unless cookies.signed[:session_id]

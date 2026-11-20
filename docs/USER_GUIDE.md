@@ -328,7 +328,7 @@ Your own settings. Visible to every signed-in user.
 |---|---|
 | **Change password** (current password, new password, confirmation) | Requires your existing password, so a borrowed browser can't quietly change it. The new one must follow the *Password rules* (§2.1) and match its confirmation. `PATCH /account/password`, which requires authentication and is rate-limited to 10 attempts per 3 minutes. |
 | Other devices | A successful change destroys every other session for your account and tells you how many — the current browser stays signed in. That's how you evict a device you no longer control, or retire a spent access link. |
-| Idle sign-out | A browser that hasn't used its session for 14 days is signed out. |
+| Idle sign-out | A browser that hasn't used its session for **2 hours** is signed out, and signs in again (with a code, if two-step sign-in is on). Any request counts as use, so someone working, saving annotations included, is never cut off; it's a browser left open and unattended that ends. |
 
 Forgotten passwords are a different path: with outbound mail, use the reset
 flow (§2.1); without it, ask an administrator for an access link (§2.2.7).

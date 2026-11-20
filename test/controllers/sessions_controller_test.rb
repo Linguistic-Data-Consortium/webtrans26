@@ -44,25 +44,46 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
 
   # ── idle timeout ─────────────────────────────────────────────────────────
 
-  test "a session unused for over two weeks is refused and deleted" do
+  test "a session unused for over two hours is refused and deleted" do
     alice = users(:alice)
     sign_in_as alice
     session = alice.sessions.order(:id).last
-    session.update_columns(updated_at: 15.days.ago)
+    session.update_columns(updated_at: (2.hours + 1.minute).ago)
     get user_path(alice)
     assert_redirected_to new_session_path
     assert_not Session.exists?(session.id)
   end
 
-  test "using a session pushes its expiry back, at most hourly" do
+  test "a session used within two hours carries on" do
+    alice = users(:alice)
+    sign_in_as alice
+    alice.sessions.order(:id).last.update_columns(updated_at: (2.hours - 1.minute).ago)
+    get user_path(alice)
+    assert_response :success
+  end
+
+  test "someone who keeps working is never signed out" do
+    alice = users(:alice)
+    sign_in_as alice
+    # Six hours of a request every 20 minutes: never two hours idle.
+    18.times do
+      travel 20.minutes
+      get user_path(alice)
+      assert_response :success
+    end
+  ensure
+    travel_back
+  end
+
+  test "using a session pushes its expiry back, at most every five minutes" do
     alice = users(:alice)
     sign_in_as alice
     session = alice.sessions.order(:id).last
-    session.update_columns(updated_at: 2.hours.ago)
+    session.update_columns(updated_at: 6.minutes.ago)
     get user_path(alice)
     assert_operator session.reload.updated_at, :>, 1.minute.ago
 
-    session.update_columns(updated_at: 10.minutes.ago)
+    session.update_columns(updated_at: 2.minutes.ago)
     stamp = session.reload.updated_at
     get user_path(alice)
     assert_equal stamp, session.reload.updated_at
