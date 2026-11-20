@@ -108,6 +108,13 @@ class UserTest < ActiveSupport::TestCase
     assert_includes user.errors[:password], "must not be one you've used before"
   end
 
+  # has_secure_password keeps the plain password on the object after saving;
+  # the policy used to check it again on the next save and refuse it as used.
+  test "saving the same user again after setting a password isn't refused" do
+    user = User.create!(valid_user_attrs)
+    assert user.update(name: "renamed_user"), user.errors.full_messages.inspect
+  end
+
   test "PASSWORD_HISTORY limits how far back reuse is refused" do
     Rails.application.config.x.password_history = 1
     user = User.create!(valid_user_attrs)

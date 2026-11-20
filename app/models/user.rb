@@ -15,7 +15,11 @@ class User < ApplicationRecord
   validates :password, presence: true, allow_nil: true
   # The rules for a chosen password (PasswordPolicy). A password the app makes
   # up itself, for an account nobody has chosen one for yet, is exempt.
-  validate :password_meets_policy, if: -> { password.present? && !@password_generated }
+  # Only when it's being changed: has_secure_password keeps the plain password
+  # on the object after it's saved, and checking it again on a later save would
+  # refuse it as one used before.
+  validate :password_meets_policy,
+           if: -> { password.present? && will_save_change_to_password_digest? && !@password_generated }
 
   has_many :password_histories, -> { order(created_at: :desc) }, dependent: :delete_all
   before_save :stamp_password_change, if: :will_save_change_to_password_digest?
