@@ -1,0 +1,27 @@
+<%# Second step of signing in (SessionMfasController). %>
+<div class="min-h-screen bg-gray-50 py-1 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <h2 class="mt-1 text-3xl font-bold tracking-tight text-gray-900">Two-step sign-in</h2>
+    <p class="mt-2 text-sm text-gray-600">Enter the 6-digit code from your authenticator app.</p>
+  </div>
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-6 px-4 shadow sm:rounded-lg sm:px-10">
+      <%= form_with url: session_mfa_path, method: :post, local: true, class: "space-y-6" do |form| %>
+        <div>
+          <%= form.label :code, "Code", class: "block text-sm font-medium leading-6 text-gray-900" %>
+          <div class="mt-2">
+            <%= form.text_field :code, required: true, autofocus: true, autocomplete: "one-time-code",
+                spellcheck: false, placeholder: "123456", class: "block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3" %>
+          </div>
+          <p class="mt-1 text-sm text-gray-500">
+            Lost your phone? Enter one of your recovery codes instead (like <code>abcde-12345</code>). Each works once.
+          </p>
+        </div>
+        <%= form.submit "Verify", class: "flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500" %>
+      <% end %>
+      <div class="mt-6 text-center text-sm">
+        <%= link_to "Start over", new_session_path, class: "font-medium text-indigo-600 hover:text-indigo-500" %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -69,6 +69,21 @@ module MailToggleHelpers
   ensure
     Rails.application.config.x.mail_enabled = original
   end
+
+  # MFA_ENABLED for the block (User::Mfa); off by default, as in the app.
+  def with_mfa_enabled
+    original = Rails.application.config.x.mfa_enabled
+    Rails.application.config.x.mfa_enabled = true
+    yield
+  ensure
+    Rails.application.config.x.mfa_enabled = original
+  end
+
+  # Set up an authenticator for +user+ directly; returns [secret, recovery codes].
+  def enroll_mfa(user)
+    secret = User.new_otp_secret
+    [ secret, user.enroll_mfa(secret, ROTP::TOTP.new(secret).now) ]
+  end
 end
 
 # Turns the per-project S3 path (POST /s3_session) on for the block: a bucket,

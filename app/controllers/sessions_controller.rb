@@ -1,6 +1,7 @@
 class SessionsController < ApplicationController
   allow_unauthenticated_access only: %i[ new create ]
   skip_before_action :require_unexpired_password
+  skip_before_action :require_mfa_enrollment
   rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to new_session_url, alert: "Try again later." }
 
   def new
@@ -22,6 +23,12 @@ class SessionsController < ApplicationController
     elsif user.nil?
       account&.register_failed_sign_in
       redirect_to new_session_path, alert: FAILED
+    elsif user.activated? && user.mfa_challenge?
+      # The password was right; the code from their authenticator comes next.
+      # The failure count isn't cleared until that's right too, or a stolen
+      # password could reset it between guesses at the code.
+      begin_mfa_challenge(user)
+      redirect_to new_session_mfa_path
     elsif user.activated?
       user.clear_sign_in_failures
       start_new_session_for user

@@ -148,6 +148,33 @@ it, so it lets them choose one without, once. Passwords the app makes up itself
 — for an account nobody has chosen one for yet — are exempt from the rules,
 and never count as chosen.
 
+#### Two-step sign-in (when `MFA_ENABLED`)
+
+Off by default. When an instance turns it on, everyone signs in with a code from
+an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password,
+Duo Mobile or any other TOTP app) as well as their password.
+
+- **Setting it up.** A user without it is taken to **Set up two-step sign-in**
+  (`/account/mfa`) at their next request and can do nothing else first: scan
+  the QR code (or type the key), enter the code the app shows, then save the
+  10 **recovery codes** shown — once only; only digests are kept.
+- **Signing in.** After the password, a second page asks for the current code,
+  or a recovery code, each of which works once. The page times out after 5
+  minutes. A code is never accepted twice.
+- **Wrong codes** count toward the sign-in lockout like wrong passwords (3 in a
+  row lock the account for 30 minutes), and a right password in between
+  doesn't reset the count.
+- **Access links** stand in for the password, not the code: with two-step
+  sign-in set up, the code is still asked for, and then the user chooses a
+  password as usual.
+- **New recovery codes:** the Account tab links to `/account/mfa`, which
+  replaces them for a current code from the app (not a recovery code).
+- **Lost phone and recovery codes:** an administrator runs
+  `bin/rails mfa:reset EMAIL=address`, which clears the authenticator and signs
+  the user out everywhere; they set it up again at their next sign-in. Check who
+  is asking first — whoever signs in next with the password sets the new one.
+- `/jwts`, when its route is on, takes the code as `otp_code`.
+
 #### View own profile / dashboard ([signed-in user only])
 
 | What | Where | Notes |

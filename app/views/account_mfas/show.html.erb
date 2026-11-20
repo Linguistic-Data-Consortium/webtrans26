@@ -1,0 +1,27 @@
+<%# Two-step sign-in, already set up (AccountMfasController#show). %>
+<div class="min-h-screen bg-gray-50 py-1 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <h2 class="mt-1 text-3xl font-bold tracking-tight text-gray-900">Two-step sign-in</h2>
+    <p class="mt-2 text-sm text-gray-600">
+      On since <%= current_user.otp_enabled_at.to_date.to_fs(:long) %>.
+      You have <strong><%= pluralize(current_user.recovery_codes_left, "recovery code") %></strong> left.
+    </p>
+  </div>
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-6 px-4 shadow sm:rounded-lg sm:px-10 space-y-5 text-sm text-gray-700">
+      <p>Running low, or think someone has seen them? Make a new set — the old ones stop working. Enter a current code from your app to confirm:</p>
+      <%= form_with url: account_mfa_recovery_codes_path, method: :post, local: true, class: "space-y-4" do |form| %>
+        <div>
+          <%= form.label :code, "Code from the app", class: "block text-sm font-medium leading-6 text-gray-900" %>
+          <div class="mt-2">
+            <%= form.text_field :code, required: true, autocomplete: "one-time-code", inputmode: "numeric",
+                placeholder: "123456", class: "block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3" %>
+          </div>
+        </div>
+        <%= form.submit "New recovery codes", class: "flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500" %>
+      <% end %>
+      <p>New phone, or lost the old one and your recovery codes? Ask an administrator to reset your two-step sign-in; you'll set it up again at your next sign-in.</p>
+      <div class="text-center"><%= link_to "Back to the dashboard", root_path, class: "font-medium text-indigo-600 hover:text-indigo-500" %></div>
+    </div>
+  </div>
+</div>

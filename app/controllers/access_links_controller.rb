@@ -9,6 +9,7 @@
 class AccessLinksController < ApplicationController
   allow_unauthenticated_access only: %i[ show ]
   skip_before_action :require_unexpired_password, only: %i[ show ]
+  skip_before_action :require_mfa_enrollment, only: %i[ show ]
 
   # Outstanding (unused) links, so an administrator can see who is still
   # waiting to click one.
@@ -63,6 +64,12 @@ class AccessLinksController < ApplicationController
     user.activate unless user.activated?
     user.clear_access_digest # single use
     user.clear_sign_in_failures # an administrator's link is a way past a lock, too
+    # A link stands in for the password, not for the authenticator: with MFA
+    # set up, the code is still asked for, and the password page follows.
+    if user.mfa_challenge?
+      begin_mfa_challenge(user, password_set_without_current: true)
+      return redirect_to new_session_mfa_path
+    end
     start_new_session_for user
     # The link is how someone gets in without knowing the password, a new
     # account's or a forgotten one, so they choose one now, without being asked

@@ -154,6 +154,8 @@
     let sourcesp = $state();
     // Account tab: the signed-in user changing their own password. The server
     // checks the current password and drops the user's other sessions.
+    // Two-step sign-in is on for this instance (layout meta, MFA_ENABLED).
+    const mfa_enabled = document.querySelector('meta[name="mfa-enabled"]')?.content === 'true';
     let account_current_password = $state('');
     let account_new_password = $state('');
     let account_confirm_password = $state('');
@@ -2545,6 +2547,12 @@
                         {account_password_busy ? 'Changing…' : 'Change password'}
                     </Button>
                 </form>
+                {#if mfa_enabled}
+                    <div class="pt-6 pb-2 font-semibold">Two-step sign-in</div>
+                    <p class="text-sm text-gray-600">
+                        <a class="text-indigo-600 hover:text-indigo-500" href="/account/mfa">See your recovery codes count, or make a new set</a>.
+                    </p>
+                {/if}
             </div>
         {/if}
     </Tabs.Content>

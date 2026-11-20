@@ -1,5 +1,7 @@
 Rails.application.routes.draw do
   resource :session
+  # The authenticator-code step of signing in, when MFA_ENABLED (User::Mfa).
+  resource :session_mfa, path: "session/mfa", only: %i[ new create ]
   # The reset form works from a token held in the session, not one in the path:
   # see PasswordsController#edit.
   get "/passwords/reset", to: "passwords#reset_form", as: :reset_password
@@ -165,6 +167,10 @@ Rails.application.routes.draw do
   resources :invites
   # Signed-in password change (the dashboard's Account tab).
   get '/account/password/edit', to: 'account_passwords#edit', as: :edit_account_password
+  # Two-step sign-in setup and recovery codes (MFA_ENABLED; AccountMfasController).
+  get '/account/mfa', to: 'account_mfas#show', as: :account_mfa
+  post '/account/mfa', to: 'account_mfas#create'
+  post '/account/mfa/recovery_codes', to: 'account_mfas#recovery_codes', as: :account_mfa_recovery_codes
   patch '/account/password', to: 'account_passwords#update', as: :account_password
   # One-time sign-in links: index/create are the admin side (JSON), and
   # /access/:id/:token is the link a new user clicks.

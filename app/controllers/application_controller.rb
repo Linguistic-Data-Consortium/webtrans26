@@ -6,6 +6,8 @@ class ApplicationController < ActionController::Base
   # A password past its age, or never chosen, has to be replaced before
   # anything else (AccountPasswordsController#edit).
   before_action :require_unexpired_password
+  # With MFA_ENABLED, an authenticator has to be set up next (AccountMfasController).
+  before_action :require_mfa_enrollment
 
   # Handle Rack::Attack rate limiting
   rescue_from Rack::Attack::Throttle do |exception|
@@ -157,6 +159,16 @@ class ApplicationController < ActionController::Base
                status: :forbidden
       end
       format.any { redirect_to edit_account_password_path }
+    end
+  end
+
+  def require_mfa_enrollment
+    return unless authenticated? && current_user&.mfa_setup_required?
+    respond_to do |format|
+      format.json do
+        render json: { error: "Set up two-step sign-in to continue.", mfa_setup_required: true }, status: :forbidden
+      end
+      format.any { redirect_to account_mfa_path }
     end
   end
 

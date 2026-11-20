@@ -22,6 +22,13 @@ class JwtsController < ApplicationController
     else
       account&.register_failed_sign_in
     end
+    # With MFA on, a password alone isn't enough here either: an API client
+    # sends the current code as otp_code. Without one this would be a way round
+    # the second step.
+    if user && User.mfa_enabled? && !(user.mfa_enrolled? && user.verify_second_factor(params[:otp_code]))
+      user.register_failed_sign_in if user.mfa_enrolled?
+      user = nil
+    end
     if user&.activated?
       encoded_token = encode(user)
       render json: { token: encoded_token }, status: :ok

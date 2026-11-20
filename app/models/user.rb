@@ -1,4 +1,5 @@
 class User < ApplicationRecord
+  include User::Mfa
   has_secure_password
   has_many :sessions, dependent: :destroy
 

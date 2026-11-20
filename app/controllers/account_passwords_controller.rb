@@ -9,6 +9,7 @@
 # session it starts may set a new one without it, once.
 class AccountPasswordsController < ApplicationController
   skip_before_action :require_unexpired_password
+  skip_before_action :require_mfa_enrollment
 
   # Changing a password needs the old one, so throttle it the way sign-in is
   # throttled rather than leaving it as an unlimited guessing oracle.

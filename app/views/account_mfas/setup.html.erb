@@ -1,0 +1,44 @@
+<%# Setting up an authenticator (AccountMfasController#show). The QR code and
+    the secret come from the session until a code confirms them. %>
+<div class="min-h-screen bg-gray-50 py-1 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <h2 class="mt-1 text-3xl font-bold tracking-tight text-gray-900">Set up two-step sign-in</h2>
+    <p class="mt-2 text-sm text-gray-600">
+      This site asks for a code from an authenticator app as well as your password.
+      You'll need to do this once before you continue.
+    </p>
+  </div>
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-6 px-4 shadow sm:rounded-lg sm:px-10 space-y-5">
+      <ol class="list-decimal pl-5 space-y-2 text-sm text-gray-700">
+        <li>Open an authenticator app on your phone — Google Authenticator, Microsoft Authenticator, 1Password, Duo Mobile or similar.</li>
+        <li>Add an account by scanning this code:</li>
+      </ol>
+      <%# An image rather than inline markup, so nothing generated goes into the page unescaped. %>
+      <div class="mx-auto w-48" id="mfa-qr">
+        <%= image_tag "data:image/svg+xml;base64,#{Base64.strict_encode64(@qr_svg)}",
+            alt: "QR code to scan with your authenticator app", class: "w-48 h-48" %>
+      </div>
+      <p class="text-sm text-gray-600 text-center">
+        Can't scan it? Enter this key instead:<br>
+        <code class="font-mono text-base tracking-wider" id="mfa-secret"><%= @secret.scan(/.{1,4}/).join(" ") %></code>
+      </p>
+      <ol start="3" class="list-decimal pl-5 text-sm text-gray-700">
+        <li>Type the 6-digit code the app now shows:</li>
+      </ol>
+      <%= form_with url: account_mfa_path, method: :post, local: true, class: "space-y-4" do |form| %>
+        <div>
+          <%= form.label :code, "Code from the app", class: "block text-sm font-medium leading-6 text-gray-900" %>
+          <div class="mt-2">
+            <%= form.text_field :code, required: true, autocomplete: "one-time-code", inputmode: "numeric",
+                placeholder: "123456", class: "block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3" %>
+          </div>
+        </div>
+        <%= form.submit "Turn on two-step sign-in", class: "flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500" %>
+      <% end %>
+      <div class="text-center">
+        <%= button_to "Sign out", session_path, method: :delete, form: { class: "inline" }, class: "font-medium text-indigo-600 hover:text-indigo-500 text-sm" %>
+      </div>
+    </div>
+  </div>
+</div>

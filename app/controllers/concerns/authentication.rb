@@ -56,6 +56,28 @@ module Authentication
       session.delete(:return_to_after_authenticating) || root_url
     end
 
+    # Between a right password (or an access link) and the authenticator code:
+    # who is signing in, until when, and whether they may then set a password
+    # without the old one. Nothing is signed in yet.
+    MFA_CHALLENGE_TTL = 5.minutes
+
+    def begin_mfa_challenge(user, password_set_without_current: false)
+      session[:mfa_user_id] = user.id
+      session[:mfa_expires_at] = MFA_CHALLENGE_TTL.from_now.to_i
+      session[:mfa_then_password_without_current] = password_set_without_current
+    end
+
+    def mfa_challenge_user
+      return if session[:mfa_user_id].blank? || session[:mfa_expires_at].to_i < Time.now.to_i
+      User.find_by(id: session[:mfa_user_id])
+    end
+
+    def end_mfa_challenge
+      session.delete(:mfa_user_id)
+      session.delete(:mfa_expires_at)
+      session.delete(:mfa_then_password_without_current)
+    end
+
     def start_new_session_for(user)
       user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|
         Current.session = session

@@ -97,3 +97,6 @@ gem 'mini_magick'
 gem 'image_processing', '~> 1.2'
 gem 'jwt'
 gem 'csv'
+
+gem "rotp", "~> 6.4"
+gem "rqrcode", "~> 3.2"
