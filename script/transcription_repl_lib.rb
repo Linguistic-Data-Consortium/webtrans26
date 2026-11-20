@@ -121,6 +121,10 @@ module TranscriptionReplLib
     end
     ProjectUser.where(project: project, user: user).first_or_create.update!(admin: true, owner: true)
     TaskUser.where(task: task, user: user).first_or_create.update!(admin: true)
+    # Downloads are admin-only unless the project names a download task
+    # (Project#may_download?); the harness checks both downloads, so its user
+    # gets them the way a real project would grant them.
+    project.update!(download_task: task)
 
     prior_count = Kit.where(task: task).count
     Kit.where(task: task).find_each do |k|

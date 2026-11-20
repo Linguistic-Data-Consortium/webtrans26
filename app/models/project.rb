@@ -30,8 +30,22 @@ class Project < ActiveRecord::Base
   belongs_to :s3_upload_task, class_name: 'Task', optional: true
   validate :s3_upload_task_in_this_project
 
+  # The task whose members may download this project's work: transcripts and
+  # table exports (#may_download?). None by default, so only system admins can.
+  belongs_to :download_task, class_name: 'Task', optional: true
+  validate :download_task_in_this_project
+
   scope :sorted, -> { order('name ASC') }
   scope :all_newest_first, -> { order('created_at DESC') }
+
+  # Whether +user+ may use the download features for this project's work.
+  # System admins always; anyone else only as a member of the download task.
+  # The one place this is decided: the task view, the editor and the docs ask it.
+  def may_download?(user)
+    return false unless user
+    return true if user.admin?
+    download_task.present? && download_task.task_users.exists?(user_id: user.id)
+  end
 
   #function that allows the deleting of a user from a project
   def delete_user(user)
@@ -80,6 +94,13 @@ class Project < ActiveRecord::Base
   end
 
   private
+
+  def download_task_in_this_project
+    return if download_task_id.nil?
+    unless download_task && download_task.project_id == id
+      errors.add(:download_task, "must be a task in this project")
+    end
+  end
 
   # A task from another project would grant write access to this project's
   # prefix on the strength of membership somewhere else.

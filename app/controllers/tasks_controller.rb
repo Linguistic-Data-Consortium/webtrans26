@@ -106,6 +106,8 @@ class TasksController < ApplicationController
               # data_sets: DataSet.all.map { |x| { id: x.id, name: x.name } },
               # project_owner_bool: @project_owner_bool,
               task_admin_bool: task_admin?,
+              # The transcript download and the table exports (Project#may_download?).
+              may_download: @task.project.may_download?(current_user),
               # tasks: @project.tasks.map { |x| { id: x.id, name: x.name } },
               members: task_users,
               class_def: (class_def ? true : false),

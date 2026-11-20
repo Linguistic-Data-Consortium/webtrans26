@@ -27,6 +27,33 @@ class DashboardCrudTest < ApplicationSystemTestCase
 
   teardown { ViteStub.enabled = true }
 
+  # Downloads are admins' alone until the project names a download task
+  # (Project#may_download?). Alice owns the project and administers the task,
+  # which used to be enough.
+  test "the kits table offers a download only once the project has a download task with the user in it" do
+    Kit.create!(task_id: tasks(:alpha_task_one).id, kit_type_id: tasks(:alpha_task_one).kit_type_id,
+                state: "unassigned")
+    open_kits_tab = lambda do
+      visit current_url
+      find("[role='tab']", text: /\AProjects\z/i, wait: 5).click
+      within("table") { find("td", text: projects(:alpha).name).click }
+      click_on "Open"
+      find("[role='tab']", text: /Project Tasks/i, wait: 5).click
+      within("table") { find("td", text: /\A#{Regexp.escape(tasks(:alpha_task_one).name)}\z/, wait: 5).click }
+      click_on "Open Task Info"
+      find("[role='tab']", text: /\AKits\z/i, wait: 5).click
+      assert_selector "table td", text: "unassigned", wait: 5 # the kits table has drawn
+    end
+
+    sign_in_via_browser users(:alice)
+    open_kits_tab.call
+    assert_no_selector "summary.download-summary"
+
+    projects(:alpha).update!(download_task: tasks(:alpha_task_one))
+    open_kits_tab.call
+    assert_selector "summary.download-summary", text: "Download"
+  end
+
   def sign_in_via_browser(user, password: "password123")
     visit new_session_url
     fill_in "email_address", with: user.email_address

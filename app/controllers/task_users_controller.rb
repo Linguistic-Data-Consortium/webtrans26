@@ -291,7 +291,9 @@ class TaskUsersController < ApplicationController
   # (a local_audio kit not made yet) it carries where to ask for one instead.
   def work_page_data
     data = { admin: admin?, project_manager: project_manager?, project_admin: project_admin?,
-             task_admin: task_admin?, constraints: @kit_type.constraints }
+             task_admin: task_admin?, constraints: @kit_type.constraints,
+             # The editor's transcript download (Project#may_download?).
+             may_download: @project.may_download?(current_user) }
     if @kit
       hash = @kit.to_simple_hash
       hash['source']['url'] = url_for @source.file if @source and @source.file

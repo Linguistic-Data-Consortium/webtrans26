@@ -324,8 +324,10 @@
         activate_sr()
     }
     let show_asr = false;
-    const permission_to_download = constraint_export_transcript || permissions.project_manager ||
-        (constraint_export_transcript_to_task_admin && permissions.task_admin);
+    // Decided by the server (Project#may_download?): system admins, and members
+    // of the project's download task. The kit type's export_transcript flags no
+    // longer grant it on their own.
+    const permission_to_download = !!permissions.may_download;
     // setTimeout(
     //     () => {
     //         const e = {

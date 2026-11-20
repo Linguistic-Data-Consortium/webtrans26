@@ -43,6 +43,7 @@ class SecurityEvent < ApplicationRecord
     "group.removed"              => "Removed from a group",
     "project_role.changed"       => "Project owner or admin flag changed",
     "task_role.changed"          => "Task admin flag changed",
+    "download_task.changed"      => "A project's download task was set or cleared (its members may download)",
     "api_token.issued"           => "Issued an API token (/jwts)"
   }.freeze
 

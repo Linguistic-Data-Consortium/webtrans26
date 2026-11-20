@@ -82,6 +82,7 @@ class ProjectsController < ApplicationController
               project_owner_bool: project_owner_bool,
               project_admin_bool: project_admin_bool,
               s3_upload_task_id: project.s3_upload_task_id,
+              download_task_id: project.download_task_id,
               tasks: project.tasks.includes(:workflow).map { |x|
                 {
                   id: x.id,
@@ -92,7 +93,8 @@ class ProjectsController < ApplicationController
                   available_kit_count: x.workflow&.outstanding_kit_count(x, available_kit_counts[x.id] || 0) ||
                                        (available_kit_counts[x.id] || 0),
                   source_uid: x.meta['docid'],
-                  upload: x.id == project.s3_upload_task_id ? 'yes' : ''
+                  upload: x.id == project.s3_upload_task_id ? 'yes' : '',
+                  download: x.id == project.download_task_id ? 'yes' : ''
                 }
               },
               members: project_users
@@ -129,6 +131,10 @@ class ProjectsController < ApplicationController
           if not project_owner? # uses @project
             { error: "Only the project owner or an administrator can edit the project." }
           elsif @project.update project_params
+            if @project.saved_change_to_download_task_id?
+              audit("download_task.changed", actor: current_user, project: @project.name,
+                    task: @project.download_task&.name)
+            end
             @project
           else
             { error: @project.errors.full_messages }
@@ -152,9 +158,10 @@ class ProjectsController < ApplicationController
 
   def project_params
     # s3_upload_task_id: which task's members may write to the project's S3
-    # prefix. Settable only through update, which is owner-only, and the model
-    # refuses a task from another project.
-    params.require(:project).permit(:name, :title, :subtitle, :about, :image, :blog_url, :status, :comment, :image_name, :position, :s3_upload_task_id,
+    # prefix; download_task_id: which task's members may download its work.
+    # Settable only through update, which is owner-only, and the model refuses
+    # a task from another project.
+    params.require(:project).permit(:name, :title, :subtitle, :about, :image, :blog_url, :status, :comment, :image_name, :position, :s3_upload_task_id, :download_task_id,
       assets: [], researchers_attributes: [:id, :name, :title, :description, :image, :_destroy],
       partners_attributes: [:id, :name, :url, :image, :_destroy], assets_destroy: {})
   end

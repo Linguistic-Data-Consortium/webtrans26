@@ -46,6 +46,7 @@ These come from a row in `task_users` linking a User to a Task, with one boolean
 | **Task member** | A `task_users` row exists for this user × task | The user is *eligible* to receive kits from this task and see them in their **Work** tab. |
 | **Task admin** | `task_users.admin = true`<br>OR project admin of the task's project (transitively) | Can edit the task (rename, change status, change workflow, change kit_type), see all kits including others' done kits, download transcripts, and manage task members, including making them task admins. |
 | **Upload task member** | Task member of the task the project owner has made the project's **upload task**, *and* a project member | Per-project S3 only (§2.6): may add files under the project's prefix in S3. Not a separate role — it's ordinary task membership, so it's granted the way any is, by a task admin (§2.4.6). A project with no upload task has no one who can write to it, its owners included. |
+| **Download task member** | Task member of the task the project owner has made the project's **download task** | May use the download features for the project's work: the task's **Download Transcript** zip, the **Download** button on the Kits and Sources tables, and the editor's **⬇ Download transcript**. Like the upload task, it's ordinary task membership, granted by a task admin. **By default a project has no download task, and then only system admins can download** — not owners, project or task admins, portal managers or project managers. |
 
 ### Per-kit roles
 
@@ -428,6 +429,7 @@ There's no other field on Project Info — projects only have ID and name in the
 | **Create Task** (dialog: name, then defaults) | **Project admin.** Trigger gated on `project_admin_bool`. New tasks default to workflow=`OnTheFly` and a fresh per-task `KitType` (with `web_audio` + `show_source` constraints) if those aren't specified. The POST `/projects/<id>/tasks` enforces `project_admin?`. |
 | **Delete Task** (after selecting one) | **Project admin.** Trigger gated on `project_admin_bool`. The DELETE `/projects/<id>/tasks/<task_id>` endpoint enforces `project_admin?`. |
 | **Make Upload Task** (after selecting a task) | **Project owner** (so also portal managers), and only on an instance with per-project S3 turned on (§2.6). Makes the selected task the project's upload task: its members may then add files to the project's S3 prefix. The **Upload** column shows `yes` against the current one, and the button doesn't appear while that task is selected. A project has at most one upload task; choosing another moves it. PATCH `/projects/<id>` with `s3_upload_task_id`, which only accepts a task in that project. Deleting the upload task leaves the project with none. |
+| **Make Download Task** / **Remove Download Task** (after selecting a task) | **Project owner** (so also portal managers). Makes the selected task the project's download task — its members may then download the project's work (see *Download task member*, §1) — or, on the current one, removes it, leaving downloads to system admins. The **Download** column shows `yes` against the current one. PATCH `/projects/<id>` with `download_task_id`, which only accepts a task in that project; every change is in the security log (`download_task.changed`). Deleting the task leaves the project with none. |
 
 The "Open" + "Open Task Info" / "Open Kit List" buttons under the table appear once a row is selected (boiler7 on the task model). "Open Task List" is the same as the parent action; it's there for symmetry.
 
@@ -470,7 +472,8 @@ A two-mode tab: a kits table on its own, then a per-kit detail panel once you se
 | **Create Kits (Text Input)** dialog — paste docids, parse, create | **Task admin**, enforced by `/create_kits_from_kits_tab` as well as by the trigger only rendering when `vv.task_admin_bool`. See below for what a line may say. |
 | **Create Kits (File Input)** dialog — upload a file of the same lines, parse, create | Task admin, same endpoint and the same line format as above. A file starting with `[` or `{` is read as JSON kit objects instead. |
 | **Bulk Reassign** dialog — change user/state on every filter-matched row | Task admin. |
-| **Download Transcript** dialog — generate a zip of TSV transcripts (one per kit) for the whole task | Task admin. Trigger gated on `vv.task_admin_bool`. The data-providing endpoint `/kits/all?task_id=…` checks the same thing server-side (task admin, or project manager), and calls `Kit#snapshot` per kit at request time. |
+| **Download Transcript** dialog — generate a zip of TSV transcripts (one per kit) for the whole task | System admins, and members of the project's download task. Gated on `vv.may_download` (`Project#may_download?`). The data comes from `/kits/all?task_id=…`, which task admins and project managers can also read, because the Sources comparison shows the same transcripts on screen; only the download is restricted. |
+| **Download** the kits table (TSV or CSV, the rows as filtered) | System admins, and members of the project's download task (§1). Gated on `vv.may_download`; hidden from everyone else. |
 
 ##### Opening a downloaded transcript in a spreadsheet
 
@@ -532,7 +535,8 @@ The same kit list as the Kits tab, rolled up **per source** instead of per kit �
 
 Every source in the task gets a row, including ones nobody has finished yet
 (**Users Done** 0). The table sorts by clicking a column header, filters with the
-search box, and its download button exports the rows as TSV.
+search box, and its download button exports the rows as TSV — for system admins and
+members of the project's download task only, like every download (§1).
 
 Same access as Kits / Done Kits: any project member, reading `/kits/task/<id>` and
 aggregating client-side (`app/javascript/components/kit_sources.js`). Unassigned
@@ -664,7 +668,7 @@ These four header buttons are individually feature-flagged on the **kit type's**
 | Button | Always visible? | Gate |
 |---|---|---|
 | **⬆ Upload transcript** | Only if visible | `constraint_import_transcript` is set on the kit type, **or** the viewer is a project manager. Opens the upload-transcript dialog (paste TSV / load from file / auto-import via service). |
-| **⬇ Download transcript** | Only if visible | The kit type has `constraint_export_transcript` set, **or** the viewer is a project manager, **or** (`constraint_export_transcript_to_task_admin` is set AND viewer is a task admin). Opens the in-tool download dialog (filename + Include Headers / Speaker / Section checkboxes → Create Preview → Download File). Import the file into a spreadsheet as text rather than opening it — see *Opening a downloaded transcript in a spreadsheet* (§2.4). |
+| **⬇ Download transcript** | Only if visible | The viewer is a system admin or a member of the project's download task (`may_download` in the page data, from `Project#may_download?`). The kit type's `export_transcript` and `export_transcript_to_task_admin` flags no longer grant it. Opens the in-tool download dialog (filename + Include Headers / Speaker / Section checkboxes → Create Preview → Download File). Import the file into a spreadsheet as text rather than opening it — see *Opening a downloaded transcript in a spreadsheet* (§2.4). |
 | **✓ Close kit** | Always visible | No role gate beyond being the kit's assignee. The dialog flavour depends on `constraint_audit`: with audit, a popover with "Done comment Yes/No/Maybe" radios; without audit, a modal with "✓ Done", optional comment textarea, and "Skip / Broken" radios. |
 | **💬 Comments** | Only if visible | The kit type has the `comments` constraint set. Shows or hides the comments panel under the transcript — see §2.5.6. |
 | **Keyboard / Home** | Always | Help & navigation. |

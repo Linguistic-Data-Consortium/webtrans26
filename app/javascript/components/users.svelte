@@ -580,6 +580,18 @@
                 model_actions.project.get_one('tasks');
             });
         };
+        // Members of this task may download the project's transcripts and tables
+        // (Project#may_download?); null clears it, leaving downloads to admins.
+        // Owner-only, like any project edit.
+        model_actions.project.set_download_task = (task_id) => {
+            controller_actions.project.patch(models.project.id, { download_task_id: task_id })
+            .then(y => {
+                if(!y || y.error) return response(y);
+                toast.success(task_id ? `members of task ${task_id} may now download from ${y.name}`
+                                      : `only administrators may download from ${y.name} now`);
+                model_actions.project.get_one('tasks');
+            });
+        };
         model_actions.kit_type.get_one = () => {
             pp = controller_actions.kit_type.get_one(models.kit_type.id)
             .then(x => {
@@ -1862,8 +1874,8 @@
                                                                             </Modal>
                                                                         {/if} -->
                                                                     {/if}
-                                                                    {#if vv.task_admin_bool}
-                                                                        <!-- <DownloadTranscripts task_id={vv.id} /> -->
+                                                                    {#if vv.may_download}
+                                                                        <!-- Admins, and members of the project's download task (Project#may_download?). -->
                                                                         <Dialog.Root>
                                                                             <Dialog.Trigger class={buttonVariants({ variant: "secondary" })}>
                                                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -1989,7 +2001,7 @@
                                                                 {#if rows}
                                                                     <Table
                                                                         bind:this={kits_for_task_table}
-                                                                        download={true}
+                                                                        download={vv.may_download}
                                                                         indexf={x => models.kit.index = x}
                                                                         columns={[
                                                                             [ 'ID', 'id', 'col-1' ],
@@ -2064,7 +2076,7 @@
                                                                 {#if rows}
                                                                     <Table
                                                                         key_column="source"
-                                                                        download={true}
+                                                                        download={vv.may_download}
                                                                         columns={[
                                                                             [ 'Source', 'source', 'col-5' ],
                                                                             [ 'Users Done', 'done_users', 'col-1' ],
@@ -2161,6 +2173,16 @@
                                             <div>
                                                 <button class={buttonVariants({ variant: "secondary" })} onclick={() => actions.task.get_one()}>Open</button>
                                             </div>
+                                            {#if v.project_owner_bool && models.task.id != v.download_task_id}
+                                                <div>
+                                                    <button class={buttonVariants({ variant: "secondary" })} title="Members of this task may download the project's transcripts and tables" onclick={() => actions.project.set_download_task(models.task.id)}>Make Download Task</button>
+                                                </div>
+                                            {/if}
+                                            {#if v.project_owner_bool && models.task.id && models.task.id == v.download_task_id}
+                                                <div>
+                                                    <button class={buttonVariants({ variant: "secondary" })} title="Nobody but administrators may download" onclick={() => actions.project.set_download_task(null)}>Remove Download Task</button>
+                                                </div>
+                                            {/if}
                                             {#if v.project_owner_bool && s3_session_available() && models.task.id != v.s3_upload_task_id}
                                                 <div>
                                                     <button class={buttonVariants({ variant: "secondary" })} title="Members of this task may upload to the project's S3 prefix" onclick={() => actions.project.set_upload_task(models.task.id)}>Make Upload Task</button>
@@ -2182,7 +2204,8 @@
                                             [ 'Task', 'name', 'col-2' ],
                                             [ 'Available Kits', 'available_kit_count', 'col-1' ],
                                             [ 'Source UID', 'source_uid', 'col-1' ],
-                                            ...(s3_session_available() ? [ [ 'Upload', 'upload', 'col-1' ] ] : [])
+                                            ...(s3_session_available() ? [ [ 'Upload', 'upload', 'col-1' ] ] : []),
+                                            [ 'Download', 'download', 'col-1' ]
                                         ]}
                                         rows={v.tasks}
                                         selectedf={(x, y) => (models.task.id = x) && set_style(y)}
