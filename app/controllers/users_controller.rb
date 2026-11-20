@@ -3,7 +3,7 @@ class UsersController < ApplicationController
   # before_action :authenticate, :except => [ :new, :create, :mail_username, :check_username, :single ]
   # before_action :admin_user, :only => [ :destroy, :update_activated ]
   allow_unauthenticated_access only: %i[ new create ]
-  before_action :portal_manager_user, only: %i[ unactivated activate deactivate ]
+  before_action :portal_manager_user, only: %i[ unactivated active activate deactivate ]
 
   include UsersHelper
   # include AwsHelper
@@ -35,10 +35,27 @@ class UsersController < ApplicationController
     render json: { users: users }
   end
 
+  # Active accounts matching ?term= (name or email address), for the
+  # Activations tab's Deactivate. At most ACTIVE_LIMIT, so the tab asks for a
+  # search rather than listing everyone.
+  ACTIVE_LIMIT = 50
+  def active
+    term = "%#{User.sanitize_sql_like(params[:term].to_s.strip.downcase)}%"
+    users = User.where(activated: true)
+                .where("lower(name) LIKE :t OR lower(email_address) LIKE :t", t: term)
+                .order(:name).limit(ACTIVE_LIMIT)
+    render json: { users: users.map { |u|
+      { id: u.id, name: u.name, email: u.email_address, admin: u.admin?,
+        last_active_at: u.last_active_at, self: u.id == current_user.id }
+    } }
+  end
+
   # Sign a user out everywhere and stop them signing in, until re-activated.
-  # Portal-manager only, like activate; an admin is beyond a portal manager.
+  # Portal-manager only, like activate; an admin is beyond a portal manager,
+  # and nobody deactivates themselves (it would sign them out mid-click).
   def deactivate
     user = User.find(params[:id])
+    return render(json: { error: "You can't deactivate your own account." }, status: :forbidden) if user.id == current_user.id
     return render(json: { error: "Only an administrator can deactivate an administrator." }, status: :forbidden) if user.admin? && !admin?
     user.deactivate(by: current_user)
     render json: { ok: true, id: user.id }

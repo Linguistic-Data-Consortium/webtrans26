@@ -39,6 +39,8 @@ controller_actions.user = {};
 // Portal-manager-only endpoints used by the Activations tab.
 controller_actions.user.get_unactivated = () => getp('/users/unactivated');
 controller_actions.user.activate = (x) => patchp(`/users/${x}/activate`, {});
+controller_actions.user.get_active = (term) => getp(`/users/active?term=${encodeURIComponent(term)}`);
+controller_actions.user.deactivate = (x) => patchp(`/users/${x}/deactivate`, {});
 // The signed-in user's own account (Account tab).
 controller_actions.account = {};
 controller_actions.account.change_password = (x) => patchp('/account/password', x);

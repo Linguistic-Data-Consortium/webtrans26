@@ -54,6 +54,28 @@ class DashboardCrudTest < ApplicationSystemTestCase
     assert_selector "summary.download-summary", text: "Download"
   end
 
+  test "a portal manager deactivates a user from the Activations tab, and can activate them again" do
+    alice = users(:alice)
+    sign_in_via_browser users(:pat)
+    find("[role='tab']", text: /\AActivations\z/i, wait: 5).click
+
+    fill_in "active-users-term", with: alice.email_address
+    click_on "Search"
+    within("#active-users") do
+      assert_text alice.email_address
+      click_on "Deactivate"
+      click_on "Confirm deactivate" # asked once more, inline
+    end
+    assert_text "#{alice.name} is deactivated"
+    assert_not alice.reload.activated?
+    assert_equal users(:pat).id, SecurityEvent.where(event: "account.deactivated", user_id: alice.id).last.actor_id
+
+    # Now in the list above, where Activate brings it back.
+    within("tr", text: alice.email_address) { click_on "Activate" }
+    assert_no_selector "tr", text: alice.email_address, wait: 5 # gone from the inactive list
+    assert_predicate alice.reload, :activated?
+  end
+
   def sign_in_via_browser(user, password: "password123")
     visit new_session_url
     fill_in "email_address", with: user.email_address

@@ -240,6 +240,23 @@
     // users still awaiting activation. Reloaded on tab switch and after
     // each activation.
     let activations_p = $state(Promise.resolve({ users: [] }));
+    // Activations tab, Active users: search, then Deactivate (asked twice).
+    let active_term = $state('');
+    let active_p = $state(null);
+    let deactivate_confirm = $state(null); // the id waiting for its second click
+    function search_active(){
+        deactivate_confirm = null;
+        active_p = controller_actions.user.get_active(active_term);
+    }
+    async function deactivate_user(u){
+        if(deactivate_confirm !== u.id){ deactivate_confirm = u.id; return; }
+        deactivate_confirm = null;
+        const r = await controller_actions.user.deactivate(u.id);
+        if(!r || r.error){ toast.error(r?.error || 'Could not deactivate.'); return; }
+        toast.success(`${u.name} is deactivated and signed out.`);
+        active_p = controller_actions.user.get_active(active_term);
+        activations_p = controller_actions.user.get_unactivated();
+    }
     let style = $state();
     let style_timeout;
     function set_style(e){
@@ -2543,6 +2560,55 @@
                             <div class="text-gray-500">No users awaiting activation.</div>
                         {/if}
                     {/await}
+
+                    <div class="pt-8 pb-2 font-semibold">Active users</div>
+                    <p class="pb-2 text-sm text-gray-600">
+                        Deactivating signs the account out everywhere and stops it signing in;
+                        it then appears above, where Activate restores it. It's in the security log.
+                    </p>
+                    <form class="flex gap-2 pb-2" onsubmit={(e) => { e.preventDefault(); search_active(); }}>
+                        <input class="flex-1 rounded border border-gray-300 px-2 py-1 text-sm" id="active-users-term"
+                               placeholder="Name or email address" bind:value={active_term} />
+                        <button class={btn} type="submit">Search</button>
+                    </form>
+                    {#if active_p}
+                        {#await active_p}
+                            <div class="mx-auto w-8 h-8"><Spinner /></div>
+                        {:then v}
+                            {#if v?.users?.length}
+                                <table class="w-full text-sm" id="active-users">
+                                    <thead>
+                                        <tr class="border-b">
+                                            <th class="text-left py-1">Username</th>
+                                            <th class="text-left py-1">Email</th>
+                                            <th class="text-right py-1"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {#each v.users as u (u.id)}
+                                            <tr class="border-b">
+                                                <td class="py-1">{u.name || '—'}{#if u.admin} <span class="text-xs text-gray-500">(admin)</span>{/if}</td>
+                                                <td class="py-1">{u.email || '—'}</td>
+                                                <td class="py-1 text-right">
+                                                    {#if u.self}
+                                                        <span class="text-xs text-gray-500">you</span>
+                                                    {:else if u.admin && !admin}
+                                                        <span class="text-xs text-gray-500">admins only</span>
+                                                    {:else}
+                                                        <button class={btn} onclick={() => deactivate_user(u)}>
+                                                            {deactivate_confirm === u.id ? 'Confirm deactivate' : 'Deactivate'}
+                                                        </button>
+                                                    {/if}
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    </tbody>
+                                </table>
+                            {:else}
+                                <div class="text-gray-500">No active users match.</div>
+                            {/if}
+                        {/await}
+                    {/if}
                 </div>
             {:else}
                 Not allowed

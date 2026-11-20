@@ -281,12 +281,20 @@ These exist as concepts in the data model but no UI exposes them:
 - **Change your email address** — there's no `users#edit` / `users#update`. The address you signed up with is permanent; reset flow doesn't change it either.
 - **Delete your own account** — no `users#destroy` either.
 - **Promote yourself or anyone else to system admin** — from a shell on the server, `bin/rails users:grant_admin EMAIL=…` / `users:revoke_admin EMAIL=…`, both in the security log.
-- **Deactivate an account** has no button yet: `PATCH /users/<id>/deactivate` (portal managers; only an admin may deactivate an admin) or `bin/rails users:deactivate EMAIL=…`. Either signs the account out everywhere and is in the security log; re-activate from the **Activations** tab.
 - **Become a portal manager / project manager** — those come from joining the `Portal Managers` / `Project Managers` Group, which only an existing portal-manager-or-higher can do (via the **Groups** dashboard tab — see the next section).
 
 ### 2.2 Dashboard top-level tabs
 
 The dashboard at `/users/<your-id>` is a single page with ten top-level tabs along the top, plus **Activations** for portal managers. Every other tab is *visible* to every signed-in user — what changes is what's *populated* and what *actions* you can take inside.
+
+**Activations** (portal managers and admins) has two lists. *Unactivated and
+disabled users* — accounts awaiting activation, and those deactivated or disabled
+for inactivity — each with **Activate**. *Active users* — search by name or email
+address (up to 50 shown), each with **Deactivate**, which asks once more
+(**Confirm deactivate**) and then signs the account out everywhere and stops it
+signing in, moving it to the first list. Only an admin can deactivate an admin,
+and nobody can deactivate their own account. Both actions are in the security
+log. From a shell, `bin/rails users:deactivate EMAIL=…` does the same.
 
 The "Set yourself to …" buttons under the **Permissions** tab only ever *downgrade* what the front-end thinks your role is for the rest of that browser session — they never write to the server. So they're useful for previewing what the dashboard looks like to a less-privileged user, but you can't grant yourself any role this way.
 
