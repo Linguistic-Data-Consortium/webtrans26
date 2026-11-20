@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_20_160000) do
   create_table "actions", force: :cascade do |t|
     t.bigint "client_time"
     t.datetime "created_at", null: false
@@ -521,6 +521,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_120000) do
     t.datetime "otp_enabled_at"
     t.bigint "otp_last_step"
     t.json "otp_recovery_digests"
+    t.datetime "last_active_at"
+    t.datetime "disabled_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 

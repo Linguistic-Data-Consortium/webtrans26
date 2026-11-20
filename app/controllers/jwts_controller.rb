@@ -25,6 +25,11 @@ class JwtsController < ApplicationController
     # With MFA on, a password alone isn't enough here either: an API client
     # sends the current code as otp_code. Without one this would be a way round
     # the second step.
+    # Past the inactivity limit: disabled here as it would be at sign-in.
+    if user&.inactive_too_long?
+      user.disable_for_inactivity!
+      user = nil
+    end
     if user && User.mfa_enabled? && !(user.mfa_enrolled? && user.verify_second_factor(params[:otp_code]))
       user.register_failed_sign_in if user.mfa_enrolled?
       user = nil

@@ -144,9 +144,51 @@ class User < ApplicationRecord
     update_attribute(:remember_digest, nil)
   end
 
+  # Also how an administrator re-enables an account disabled for inactivity,
+  # so the clock starts again from now.
   def activate
     now = Time.zone.now
-    update_columns( activated: true, activated_at: now, confirmed_at: now)
+    update_columns( activated: true, activated_at: now, confirmed_at: now, last_active_at: now, disabled_at: nil)
+  end
+
+  # ── inactivity ──────────────────────────────────────────────────────────
+  #
+  # An account nobody has signed in to or used for INACTIVE_ACCOUNT_DAYS is
+  # disabled: deactivated, signed out everywhere, and marked disabled_at so the
+  # sign-in page and the admin's list can say why. An administrator re-enables
+  # it (#activate, from the dashboard's list or an access link).
+  # DisableInactiveAccountsJob does this daily; sign-in also checks, so it holds
+  # where no job runs.
+
+  def self.inactive_after = Rails.application.config.x.inactive_account_days.days
+
+  scope :inactive_too_long, -> {
+    where(activated: true).where("COALESCE(last_active_at, created_at) < ?", inactive_after.ago)
+  }
+
+  def self.disable_inactive!
+    inactive_too_long.find_each.count(&:disable_for_inactivity!)
+  end
+
+  def inactive_too_long?
+    activated? && (last_active_at || created_at) < User.inactive_after.ago
+  end
+
+  def disabled_for_inactivity?
+    !activated? && disabled_at.present?
+  end
+
+  def disable_for_inactivity!
+    update_columns(activated: false, disabled_at: Time.current)
+    sessions.destroy_all
+    true
+  end
+
+  # Use, as far as inactivity is concerned. Written at most daily: the limit is
+  # in days, and this runs on requests.
+  def record_activity
+    return if last_active_at && last_active_at > 1.day.ago
+    update_column(:last_active_at, Time.current)
   end
 
   # Flips the user back to "not activated" and tears down all live sessions.

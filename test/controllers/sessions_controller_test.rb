@@ -111,6 +111,47 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_url
   end
 
+  # ── inactivity ───────────────────────────────────────────────────────────
+
+  test "signing in to an account unused past the limit disables it and says why" do
+    alice = users(:alice)
+    alice.update_columns(last_active_at: 181.days.ago)
+    assert_no_difference -> { alice.sessions.count } do
+      sign_in_as alice
+    end
+    assert_redirected_to new_session_path
+    assert_equal SessionsController::DISABLED, flash[:alert]
+    assert alice.reload.disabled_for_inactivity?
+  end
+
+  test "a wrong password on a disabled account says nothing about it" do
+    alice = users(:alice)
+    alice.update_columns(last_active_at: 181.days.ago)
+    post session_url, params: { email_address: alice.email_address, password: "wrong" }
+    assert_equal SessionsController::FAILED, flash[:alert]
+  end
+
+  test "signing in and using the app records activity" do
+    alice = users(:alice)
+    alice.update_columns(last_active_at: 100.days.ago)
+    sign_in_as alice
+    assert_in_delta Time.current, alice.reload.last_active_at, 5
+  end
+
+  test "an administrator re-enabling the account lets it sign in again" do
+    alice = users(:alice)
+    alice.update_columns(last_active_at: 181.days.ago)
+    alice.disable_for_inactivity!
+    sign_in_as users(:pat) # portal manager
+    get unactivated_users_url, as: :json
+    assert JSON.parse(@response.body)["users"].find { |u| u["id"] == alice.id }["disabled_at"]
+    patch activate_user_url(alice), as: :json
+    delete session_url
+
+    sign_in_as alice
+    assert_redirected_to root_url
+  end
+
   # ── lockout ──────────────────────────────────────────────────────────────
 
   def fail_sign_in(user, times)

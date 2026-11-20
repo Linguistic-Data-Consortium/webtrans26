@@ -13,6 +13,11 @@ class SessionsController < ApplicationController
   FAILED = "Try another email address or password. After #{User::LOCKOUT_ATTEMPTS} failed attempts " \
     "in a row, an account is locked for #{User::LOCKOUT_PERIOD.in_minutes.to_i} minutes."
 
+  # Shown only after a right password, like "not activated": it says nothing
+  # to someone guessing.
+  DISABLED = "This account was disabled after #{User.inactive_after.in_days.to_i} days without use. " \
+    "Ask an administrator to re-enable it."
+
   def create
     # authenticate_by takes the same time whether or not the address exists.
     user = User.authenticate_by(params.permit(:email_address, :password))
@@ -23,6 +28,10 @@ class SessionsController < ApplicationController
     elsif user.nil?
       account&.register_failed_sign_in
       redirect_to new_session_path, alert: FAILED
+    elsif user.inactive_too_long? || user.disabled_for_inactivity?
+      user.disable_for_inactivity! unless user.disabled_for_inactivity?
+      user.clear_sign_in_failures
+      redirect_to new_session_path, alert: DISABLED
     elsif user.activated? && user.mfa_challenge?
       # The password was right; the code from their authenticator comes next.
       # The failure count isn't cleared until that's right too, or a stolen

@@ -57,6 +57,10 @@ module Webtrans26
     config.x.mfa_enabled = ENV["MFA_ENABLED"] == "true"
     config.x.mfa_issuer = ENV.fetch("MFA_ISSUER", "Webtrans")
 
+    # Accounts nobody has signed in to or used for this many days are disabled
+    # (User#inactive_too_long?, DisableInactiveAccountsJob).
+    config.x.inactive_account_days = Integer(ENV.fetch("INACTIVE_ACCOUNT_DAYS", "180"))
+
     # Set by bin/repl and the transcription REPL/auto harnesses. When on, the
     # front end suppresses the training guide popup so the scripted runs aren't
     # blocked by it (see app/javascript/lib/transcription_guide.svelte).

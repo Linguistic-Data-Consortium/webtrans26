@@ -30,7 +30,7 @@ class UsersController < ApplicationController
   # "Activations" tab on the user page.
   def unactivated
     users = User.where(activated: false).order(:name).map do |u|
-      { id: u.id, name: u.name, email: u.email_address, created_at: u.created_at }
+      { id: u.id, name: u.name, email: u.email_address, created_at: u.created_at, disabled_at: u.disabled_at }
     end
     render json: { users: users }
   end

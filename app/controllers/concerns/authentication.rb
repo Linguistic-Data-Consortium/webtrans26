@@ -46,7 +46,10 @@ module Authentication
         session.destroy
         return
       end
-      session.touch if session.updated_at < SESSION_TOUCH_INTERVAL.ago
+      if session.updated_at < SESSION_TOUCH_INTERVAL.ago
+        session.touch
+        session.user.record_activity
+      end
       session
     end
 
@@ -93,6 +96,7 @@ module Authentication
     end
 
     def start_new_session_for(user)
+      user.record_activity
       user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|
         Current.session = session
         cookies.signed.permanent[:session_id] = { value: session.id, httponly: true, same_site: :lax }

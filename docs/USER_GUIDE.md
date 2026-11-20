@@ -175,6 +175,28 @@ Duo Mobile or any other TOTP app) as well as their password.
   is asking first — whoever signs in next with the password sets the new one.
 - `/jwts`, when its route is on, takes the code as `otp_code`.
 
+#### Inactive accounts
+
+An account nobody has signed in to or used for **180 days**
+(`INACTIVE_ACCOUNT_DAYS`) is **disabled**: deactivated, and signed out on every
+device. Use means signing in or making requests while signed in, and is
+recorded at most once a day. A background job (`DisableInactiveAccountsJob`)
+does this every night at 3am; signing in also checks, so the limit holds even
+where no job runs. On deployment, existing accounts are dated from the latest
+evidence of use: a session, an annotation they wrote, or when they were
+activated or created.
+
+Someone signing in to a disabled account, with the right password, is told
+*"This account was disabled after 180 days without use. Ask an administrator to
+re-enable it."* With a wrong password they get the usual answer, so the
+message gives nothing away.
+
+**Re-enabling.** Disabled accounts appear on the dashboard's **Activations**
+tab (portal managers and admins), in the *Unactivated and disabled users* list,
+marked *disabled for inactivity*; **Activate** re-enables the account and restarts the clock. An
+access link does the same. To see who is past the limit, or disable them at
+once: `bin/rails users:inactive` (add `DISABLE=1`).
+
 #### View own profile / dashboard ([signed-in user only])
 
 | What | Where | Notes |

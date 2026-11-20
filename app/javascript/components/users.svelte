@@ -2478,7 +2478,7 @@
             {#if portal_manager}
                 <div class="mx-auto max-w-2xl">
                     <div class="pb-2 flex justify-between items-center">
-                        <div class="font-semibold">Unactivated users</div>
+                        <div class="font-semibold">Unactivated and disabled users</div>
                         <button class={btn} onclick={() => activations_p = controller_actions.user.get_unactivated()}>Refresh</button>
                     </div>
                     {#await activations_p}
@@ -2497,7 +2497,12 @@
                                     {#each v.users as u (u.id)}
                                         <tr class="border-b">
                                             <td class="py-1">{u.name || '—'}</td>
-                                            <td class="py-1">{u.email || '—'}</td>
+                                            <td class="py-1">
+                                                {u.email || '—'}
+                                                {#if u.disabled_at}
+                                                    <div class="text-xs text-gray-500">disabled for inactivity on {new Date(u.disabled_at).toLocaleDateString()}</div>
+                                                {/if}
+                                            </td>
                                             <td class="py-1 text-right">
                                                 <button
                                                     class={btn}
