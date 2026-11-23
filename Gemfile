@@ -91,7 +91,7 @@ gem "aws-sdk-cognitoidentity", "~> 1.31"
 # are also browsable directly on GitHub).
 gem "redcarpet"
 gem 'sequel'
-gem 'pg', '1.5.9'
+gem 'pg', '1.7.0'
 gem "recaptcha"
 gem 'mini_magick'
 gem 'image_processing', '~> 1.2'
