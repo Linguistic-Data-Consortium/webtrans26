@@ -128,7 +128,7 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create makes the creator owner+admin" do
-    GroupUser.create!(group: groups(:project_managers), user: @bob)
+    GroupUser.create!(group: groups(:portal_managers), user: @bob)
     sign_in_as @bob
     assert_difference -> { Project.count }, 1 do
       post projects_url, params: { project: { name: "bob_project" } }, as: :json
@@ -140,7 +140,7 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create rejects a duplicate name" do
-    GroupUser.create!(group: groups(:project_managers), user: @bob)
+    GroupUser.create!(group: groups(:portal_managers), user: @bob)
     sign_in_as @bob
     assert_no_difference -> { Project.count } do
       post projects_url, params: { project: { name: @alpha.name } }, as: :json
@@ -150,7 +150,7 @@ class ProjectsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create rejects a name that could be a path" do
-    GroupUser.create!(group: groups(:project_managers), user: @bob)
+    GroupUser.create!(group: groups(:portal_managers), user: @bob)
     sign_in_as @bob
     assert_no_difference -> { Project.count } do
       post projects_url, params: { project: { name: "../config" } }, as: :json

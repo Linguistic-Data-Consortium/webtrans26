@@ -11,7 +11,7 @@ This guide is organized in two parts:
 
 ## 1. Roles
 
-Roles in this app come from three sources: a flag on the `users` row, membership in a built-in `Group`, or a flag on a link table (`project_users`, `task_users`). Along one line, higher roles grant lower ones: a system admin is implicitly a portal manager, and a portal manager is owner, and so admin, of every project and of every task in it. Project manager sits off that line — it grants no role on any project (see the diagram at the end of this section).
+Roles in this app come from three sources: a flag on the `users` row, membership in a built-in `Group`, or a flag on a link table (`project_users`, `task_users`). Along one line, higher roles grant lower ones: a system admin is implicitly a portal manager, and a portal manager is owner, and so admin, of every project and of every task in it. Project manager is, for now, the same role as portal manager (below).
 
 ### System-level roles
 
@@ -19,9 +19,15 @@ Roles in this app come from three sources: a flag on the `users` row, membership
 |---|---|---|
 | **System admin** | `users.admin = true` | Top of the hierarchy. Implies *every* role below. No screen grants it: `bin/rails users:grant_admin EMAIL=…` (and `users:revoke_admin`) does, and the security log records it — as it does a change made in a Rails console with `update`. |
 | **Portal manager** | Membership in the `Portal Managers` group<br>OR system admin | Implies project owner of every project, and so project admin and task admin everywhere. Also: create access links for anyone below portal manager, and change any kit type. Not everything an admin can do — groups, features, workflows and deleting projects stay admin-only. |
-| **Project manager** | Membership in the `Project Managers` group<br>OR portal manager | Can create new projects (becoming their owner) and kit types, and has read access to everything: every project, task, kit and transcript, and the workflow list. Grants no role on any project — on someone else's project a project manager can look but not change anything. |
+| **Project manager** | Currently: portal manager | **Currently the same as portal manager** — see *Project manager, held in reserve* below. The pages and checks that ask for a project manager (creating projects and kit types, reading every project, task, kit and transcript, the workflow list) are therefore open to portal managers and admins. |
 
-The two role-granting Groups (`Portal Managers`, `Project Managers`) are arbitrary `Group` rows whose names are matched against by `User#portal_manager?` / `User#project_manager?`. Anyone in either group automatically gets the corresponding role; both groups are created and managed via the **Groups** dashboard tab, which only a system admin can change — so in practice granting either role takes an admin.
+The `Portal Managers` group is an arbitrary `Group` row whose name is matched against by `User#portal_manager?`. Anyone in it gets the role; the group is managed via the **Groups** dashboard tab, which only a system admin can change — so in practice granting the role takes an admin.
+
+#### Project manager, held in reserve
+
+The app was built with a separate project manager role: someone who could create projects (becoming their owner) and kit types, and read everything, but had no role on anyone else's project — they could look but not change. In practice it overlapped the other roles too much to be worth a separate grant, so `project_manager?` now just asks `portal_manager?` (in `SessionsHelper` and `User`). Membership of the `Project Managers` group, if it exists, grants nothing extra.
+
+The role still exists in principle: every check that asks for it is still in place, and the narrower rules it had (a project manager may change a kit type only when they administer every task that uses it; invite people only into projects they administer) are still in the code, just not reachable. To bring the distinction back, make `User#project_manager?` check membership of the `Project Managers` group again (the line is in its comment) and have `SessionsHelper#project_manager?` return `current_user.project_manager? || portal_manager?`; the tests skipped with *"project manager is currently the same as portal manager"* cover the narrower rules and should be re-enabled.
 
 ### Project-level roles
 
@@ -59,15 +65,14 @@ There's no separate "kit role" — access to a kit is derived from the task it b
 
 ### Quick reference: "who can do what"
 
-For a feature gated on a role, *anyone above it on the same line* can do it too. Project manager is on a branch of its own: portal managers (and so admins) are project managers, but being one grants nothing on the line below.
+For a feature gated on a role, *anyone above it* can do it too. A feature this guide lists as needing a project manager needs a portal manager, for now.
 
 ```
    system admin
         │
-   portal manager  ──────────►  project manager
-        │                       (create projects and kit types;
-        │  owner of every        read every project, task and kit;
-        │  project               no role on any project)
+   portal manager  (= project manager, for now)
+        │
+        │  owner of every project
         ▼
    project owner
         │
@@ -280,7 +285,7 @@ These exist as concepts in the data model but no UI exposes them:
 - **Change your email address** — there's no `users#edit` / `users#update`. The address you signed up with is permanent; reset flow doesn't change it either.
 - **Delete your own account** — no `users#destroy` either.
 - **Promote yourself or anyone else to system admin** — from a shell on the server, `bin/rails users:grant_admin EMAIL=…` / `users:revoke_admin EMAIL=…`, both in the security log.
-- **Become a portal manager / project manager** — those come from joining the `Portal Managers` / `Project Managers` Group, which only an existing portal-manager-or-higher can do (via the **Groups** dashboard tab — see the next section).
+- **Become a portal manager** (and so, for now, a project manager — §1) — that comes from joining the `Portal Managers` Group, which only an existing portal-manager-or-higher can do (via the **Groups** dashboard tab — see the next section).
 
 ### 2.2 Dashboard top-level tabs
 
@@ -365,14 +370,14 @@ Who can do what:
 
 #### 2.2.6 Groups
 
-Groups are arbitrary collections of users. Two of them have special meaning: `Portal Managers` and `Project Managers` — membership in either grants the matching system-level role.
+Groups are arbitrary collections of users. One has special meaning: `Portal Managers` — membership grants that system-level role. A `Project Managers` group grants nothing extra while project manager is the same role as portal manager (§1).
 
 | What | Role required |
 |---|---|
 | See the Groups table | System admin. |
 | Open a Group (drills into Group Info / Group Members sub-tabs) | System admin. |
 | Edit a Group's metadata (name, description, type) | System admin. |
-| Add a user to a Group / remove a user | System admin. There's no "group admin" role and no per-member admin flag. Adding someone to `Portal Managers` or `Project Managers` is the canonical way to grant those system-level roles, so granting them takes an admin. |
+| Add a user to a Group / remove a user | System admin. There's no "group admin" role and no per-member admin flag. Adding someone to `Portal Managers` is the canonical way to grant that system-level role, so granting it takes an admin. |
 | **Create Group** | System admin. |
 | **Delete Group** | System admin. |
 

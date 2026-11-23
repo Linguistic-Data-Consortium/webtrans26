@@ -117,8 +117,11 @@ module SessionsHelper
     end
   end
 
+  # Project manager is currently the same role as portal manager (USER_GUIDE
+  # §1). The gates that ask for it are left in place, so the distinction can
+  # come back by checking current_user.project_manager? here again.
   def project_manager?
-    signed_in? ? current_user.project_manager? || portal_manager? : false
+    portal_manager?
   end
 
   def project_manager_user

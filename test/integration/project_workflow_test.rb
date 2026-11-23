@@ -17,7 +17,7 @@ class ProjectWorkflowTest < ActionDispatch::IntegrationTest
   end
 
   test "a user can run the full create-project → add-task → assign-user → start-work → complete flow" do
-    GroupUser.create!(group: groups(:project_managers), user: @alice)
+    GroupUser.create!(group: groups(:portal_managers), user: @alice)
     sign_in_as @alice
 
     # 1. Create a project as Alice

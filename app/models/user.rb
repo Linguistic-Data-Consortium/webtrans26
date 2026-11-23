@@ -237,8 +237,11 @@ class User < ApplicationRecord
     groups.include?(Group.find_by_name 'Portal Managers')
   end
 
+  # Currently the same role as portal manager (SessionsHelper#project_manager?).
+  # To separate them again, check membership of the Project Managers group:
+  #   groups.include?(Group.find_by_name 'Project Managers')
   def project_manager?
-    groups.include?(Group.find_by_name 'Project Managers')
+    admin? || portal_manager?
   end
 
   def confirmation_expired?

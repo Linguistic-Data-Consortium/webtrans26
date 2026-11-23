@@ -89,6 +89,7 @@ class InvitesControllerTest < ActionDispatch::IntegrationTest
   # ── create: which project and task ───────────────────────────────────────
 
   test "create: a project manager can't add people to a project they don't administer" do
+    skip "project manager is currently the same as portal manager (USER_GUIDE §1)"
     charlie = users(:charlie)
     GroupUser.create!(group: groups(:project_managers), user: charlie)
     sign_in_as charlie
@@ -99,7 +100,7 @@ class InvitesControllerTest < ActionDispatch::IntegrationTest
 
   test "create: a task from another project is refused, and the project isn't joined either" do
     alice = users(:alice) # owner of alpha
-    GroupUser.create!(group: groups(:project_managers), user: alice)
+    GroupUser.create!(group: groups(:portal_managers), user: alice)
     sign_in_as alice
     post invites_url, params: { email: users(:charlie).email_address,
       project_id: projects(:alpha).id, task_id: tasks(:beta_task_one).id }, as: :json
@@ -110,7 +111,7 @@ class InvitesControllerTest < ActionDispatch::IntegrationTest
 
   test "create: the project's admin can add someone to its project and task" do
     alice = users(:alice)
-    GroupUser.create!(group: groups(:project_managers), user: alice)
+    GroupUser.create!(group: groups(:portal_managers), user: alice)
     sign_in_as alice
     post invites_url, params: { email: users(:charlie).email_address,
       project_id: projects(:alpha).id, task_id: tasks(:alpha_task_two).id }, as: :json
